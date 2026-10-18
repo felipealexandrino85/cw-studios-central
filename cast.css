@@ -1,0 +1,306 @@
+/* CW Cast: painel da produção (base: calendário da Jamille), isolado em #cast-root */
+#cast-root {
+  --bg: #F4EDF7; --surface: #FFFFFF; --surface2: #FAF6FC; --ink: #3B2150; --muted: #7A6590;
+  --line: rgba(89,50,122,.16); --eminence: #59327A; --heart: #A543FA; --yellow: #FFB600; --carnation: #FF5959;
+  --today: #A543FA; --shadow: 0 2px 6px rgba(89,50,122,.16);
+  --font: var(--font-display);
+}
+#cast-root * { box-sizing: border-box; }
+#cast-root button, #cast-root input, #cast-root select, #cast-root textarea { font: inherit; color: inherit; }
+#cast-root button { cursor: pointer; }
+#cast-root .sync { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+#cast-root .dot { width: 8px; height: 8px; border-radius: 50%; background: #3DAA6B; display: inline-block; }
+#cast-root .dot.off { background: var(--yellow); }
+#cast-root .notice { background: var(--yellow); color: #3B2150; padding: 8px 14px; border-radius: 10px; font-weight: 800; font-size: 13px; margin-bottom: 10px; }
+#cast-root .alertbar { background: var(--carnation); color: #fff; padding: 10px 14px; border-radius: 12px; margin-bottom: 12px; font-weight: 700; }
+#cast-root .alertbar b { font-weight: 900; }
+#cast-root .alertbar ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+#cast-root .alertbar li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+#cast-root .link { background: none; border: 0; padding: 0; text-decoration: underline; font-weight: 900; color: inherit; }
+#cast-root .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 10px; }
+#cast-root .monthnav { display: flex; align-items: center; gap: 8px; }
+#cast-root .monthnav h2 { margin: 0; min-width: 170px; text-align: center; font-size: 20px; font-weight: 900; text-transform: capitalize; }
+#cast-root .round { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); font-weight: 900; }
+#cast-root .round:disabled { opacity: .3; cursor: default; }
+#cast-root select, #cast-root input[type=text], #cast-root input[type=date], #cast-root textarea { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 9px; min-width: 0; }
+#cast-root textarea { width: 100%; resize: vertical; }
+#cast-root .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
+#cast-root .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; border: 2px solid; }
+#cast-root .dow { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); text-align: center; margin-bottom: 4px; }
+#cast-root .grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; }
+#cast-root .gscroll { overflow-x: auto; padding-bottom: 6px; }
+#cast-root .gin { min-width: 1000px; }
+#cast-root .cell { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-height: 170px; padding: 7px; display: flex; flex-direction: column; gap: 5px; cursor: pointer; min-width: 0; text-align: left; }
+#cast-root .cell.empty { background: transparent; border: 1px dashed var(--line); cursor: default; }
+#cast-root .cell.today { border: 2px solid var(--today); }
+#cast-root .cell.wk { background: var(--surface2); }
+#cast-root .cell.over { outline: 3px solid var(--heart); }
+#cast-root .dnum { display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 14px; gap: 4px; }
+#cast-root .dnum .n.today { background: var(--today); color: #fff; border-radius: 999px; padding: 0 7px; }
+#cast-root .hol { font-size: 10px; font-weight: 800; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#cast-root .chip { display: flex; gap: 5px; align-items: flex-start; padding: 4px 6px; border-radius: 6px; border: 2px solid; font-size: 12px; font-weight: 800; line-height: 1.2; box-shadow: var(--shadow); min-width: 0; }
+#cast-root .chip .t { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; word-break: break-word; }
+#cast-root .chip .stg { display: block; margin-top: 2px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .03em; opacity: .9; }
+#cast-root .chip.sug { border-style: dashed; }
+#cast-root .chip.done { opacity: .55; }
+#cast-root .chip.done .t { text-decoration: line-through; }
+#cast-root .chip.late { outline: 3px solid var(--carnation); outline-offset: 1px; }
+#cast-root .chip .who { margin-left: auto; font-size: 10px; background: rgba(255,255,255,.4); border-radius: 4px; padding: 0 4px; flex: none; }
+#cast-root .cortes { font-size: 11px; font-weight: 800; border-radius: 6px; padding: 4px 6px; background: #E6D2FC; color: #59327A; border: 1px solid #D2AEF8; }
+#cast-root .more { font-size: 10px; font-weight: 900; color: var(--heart); }
+#cast-root .tray { margin-top: 14px; border: 2px dashed var(--yellow); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+#cast-root .tray h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+#cast-root .tray .items { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+#cast-root .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 8px 6px; }
+#cast-root .stat { border-radius: 12px; padding: 8px 16px; min-width: 120px; }
+#cast-root .stat b { display: block; font-size: 26px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
+#cast-root .stat span { font-size: 11px; font-weight: 800; text-transform: uppercase; }
+#cast-root .week { margin-top: 16px; }
+#cast-root .week h3 { margin: 0 0 4px; background: var(--eminence); color: #fff; border-radius: 8px; padding: 5px 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+#cast-root .row { display: grid; grid-template-columns: 78px minmax(0,1fr); gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+#cast-root .row.today { background: rgba(165,67,250,.08); }
+#cast-root .row .d { text-align: left; background: none; border: 0; padding: 0; }
+#cast-root .row .d b { display: block; font-size: 18px; font-weight: 900; line-height: 1; }
+#cast-root .row .d span { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); }
+#cast-root .row .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; align-content: start; }
+#cast-root .scrim { position: fixed; inset: 0; background: rgba(40,20,60,.45); z-index: 30; }
+#cast-root .drawer { position: fixed; top: 0; bottom: 0; right: 0; width: min(460px, 100%); background: var(--bg); z-index: 31; overflow-y: auto; padding: 16px; box-shadow: -8px 0 30px rgba(0,0,0,.25); padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+#cast-root .drawer h2 { margin: 0; font-size: 20px; font-weight: 900; }
+#cast-root .dhead { display: flex; justify-content: space-between; align-items: start; gap: 8px; margin-bottom: 8px; }
+#cast-root .x { border: 0; background: var(--surface); width: 32px; height: 32px; border-radius: 50%; font-size: 18px; font-weight: 900; flex: none; }
+#cast-root .addbox { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.4fr) auto; gap: 6px; margin-block: 10px 14px; }
+#cast-root .btn { border: 0; background: var(--heart); color: #fff; border-radius: 8px; padding: 7px 14px; font-weight: 800; }
+#cast-root .btn.ghost { background: transparent; color: var(--carnation); border: 2px solid var(--carnation); }
+#cast-root .btn.sec { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+#cast-root .task { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 10px; box-shadow: var(--shadow); }
+#cast-root .task .bar { display: flex; align-items: center; gap: 8px; margin: -10px -10px 8px; padding: 5px 10px; border-radius: 11px 11px 0 0; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid; }
+#cast-root .task .bar em { margin-left: auto; font-style: normal; opacity: .85; }
+#cast-root .task .title { width: 100%; font-weight: 800; font-size: 14px; margin-bottom: 8px; }
+#cast-root .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+#cast-root label.f { display: block; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+#cast-root label.f > select, #cast-root label.f > input { display: block; width: 100%; margin-top: 2px; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 13px; color: var(--ink); }
+#cast-root details { margin-top: 8px; }
+#cast-root summary { cursor: pointer; font-size: 12px; font-weight: 800; color: var(--heart); }
+#cast-root .more-f { display: grid; gap: 8px; margin-top: 8px; }
+#cast-root .chk { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; }
+#cast-root .agendar { border: 2px solid var(--yellow); border-radius: 10px; padding: 8px 10px; background: var(--surface2); }
+#cast-root .agendar small { display: block; color: var(--muted); font-weight: 600; margin-top: 2px; }
+#cast-root .agendar.row2 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 10px; margin-top: 8px; }
+#cast-root .agendar.row2 small { margin: 0; }
+#cast-root .btn.big { padding: 4px 12px; font-size: 12px; background: var(--yellow); color: #3B2150; }
+#cast-root .btn.big.ok { background: #3DAA6B; color: #fff; }
+#cast-root .task .foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+#cast-root .empty-note { color: var(--muted); font-weight: 700; padding: 16px 4px; }
+#cast-root .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 14px; max-width: 760px; }
+#cast-root .panel h3 { margin: 0 0 6px; font-size: 15px; font-weight: 900; }
+#cast-root .panel p { margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+#cast-root .defaults { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); margin-block: 10px; }
+#cast-root .alist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+#cast-root .alist li { display: flex; gap: 10px; font-weight: 600; }
+#cast-root .alist .dt { flex: none; width: 46px; font-weight: 900; }
+#cast-root .hint { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 18px; }
+#cast-root :focus-visible { outline: 3px solid var(--heart); outline-offset: 2px; }
+@media (max-width: 700px) {#cast-root .monthnav h2 { min-width: 130px; font-size: 17px; }
+#cast-root .row { grid-template-columns: 60px minmax(0,1fr); }
+#cast-root .addbox { grid-template-columns: 1fr; }}
+@media (prefers-reduced-motion: no-preference) {#cast-root .chip { transition: transform .12s; }
+#cast-root .chip:hover { transform: scale(1.03); }}
+#cast-root { --ok: #2E9A5E; --okbg: #E3F4EA; --warnbg: #FFF1C9; --badbg: #FFE1E1; --bad: #D93B3B; }
+#cast-root input[type=number] { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 9px; min-width: 0; }
+#cast-root label.f > textarea { display: block; margin-top: 2px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+#cast-root label.f > input[type=number] { display: block; width: 100%; margin-top: 2px; font-weight: 600; font-size: 13px; }
+#cast-root .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; align-items: start; }
+#cast-root .cols .panel, #cast-root .panel.wide { max-width: none; margin-bottom: 0; }
+#cast-root .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-block: 8px 14px; }
+#cast-root .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+#cast-root .kpi span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+#cast-root .kpi b { font-size: 26px; line-height: 1.1; font-weight: 900; font-variant-numeric: tabular-nums; }
+#cast-root .kpi small { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+#cast-root .kpi.bad { background: var(--badbg); border-color: var(--bad); }
+#cast-root .kpi.bad b { color: var(--bad); }
+#cast-root .kpi.ok b { color: var(--ok); }
+#cast-root .kpi small.up { color: var(--ok); }
+#cast-root .kpi small.down { color: var(--bad); }
+#cast-root .pill { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; border-radius: 999px; padding: 3px 10px; background: var(--surface2); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+#cast-root .pill.ok { background: var(--okbg); color: var(--ok); border-color: var(--ok); }
+#cast-root .pill.warn { background: var(--warnbg); color: var(--ink); border-color: var(--yellow); }
+#cast-root .pill.bad { background: var(--badbg); color: var(--bad); border-color: var(--bad); }
+#cast-root .big { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
+#cast-root .big b { font-size: 40px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
+#cast-root .big span { font-weight: 700; color: var(--muted); }
+#cast-root .meter { position: relative; height: 14px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--line); overflow: visible; margin-block: 6px 10px; }
+#cast-root .meter i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--heart); border-radius: 999px; min-width: 0; }
+#cast-root .meter u { position: absolute; top: -5px; bottom: -5px; width: 3px; background: var(--ink); border-radius: 2px; text-decoration: none; }
+#cast-root .mrow { display: flex; flex-wrap: wrap; gap: 4px 18px; font-weight: 700; color: var(--muted); }
+#cast-root .mrow b { color: var(--ink); font-variant-numeric: tabular-nums; }
+#cast-root .panel .hint { margin-top: 8px; }
+#cast-root .rot { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+#cast-root .rot li { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+#cast-root .rot li.late { color: var(--bad); }
+#cast-root .rot small { margin-left: auto; font-weight: 800; color: var(--muted); text-transform: uppercase; font-size: 10px; letter-spacing: .05em; white-space: nowrap; }
+#cast-root .rot li.late small { color: var(--bad); }
+#cast-root .mini { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+#cast-root .mini li { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; font-weight: 700; }
+#cast-root .mini .dt { font-weight: 900; }
+#cast-root .mini .ttl { min-width: 0; overflow-wrap: anywhere; }
+#cast-root .tag { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; border-radius: 6px; padding: 2px 7px; white-space: nowrap; }
+#cast-root .tag.ok { background: var(--okbg); color: var(--ok); }
+#cast-root .tag.bad { background: var(--badbg); color: var(--bad); }
+#cast-root .tag.warn { background: var(--warnbg); color: var(--ink); }
+#cast-root .tag.idle { background: var(--surface2); color: var(--muted); }
+#cast-root .conf { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; }
+#cast-root .conf.hot { border-color: var(--carnation); }
+#cast-root .conf header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
+#cast-root .conf h3 { margin: 0; font-size: 16px; font-weight: 900; }
+#cast-root .conf .when { font-weight: 800; color: var(--muted); }
+#cast-root .cklist { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+#cast-root .cklist li { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+#cast-root .cklist li.late { color: var(--bad); }
+#cast-root .cklist small { margin-left: auto; font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
+#cast-root .cklist li.late small { color: var(--bad); }
+#cast-root .rar { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--muted); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; display: grid; gap: 10px; }
+#cast-root .rar.alto { border-left-color: var(--carnation); }
+#cast-root .rar.medio { border-left-color: var(--yellow); }
+#cast-root .rar.baixo { border-left-color: var(--heart); }
+#cast-root .rar.resolvido { opacity: .65; }
+#cast-root .rar .tt { width: 100%; font-weight: 800; font-size: 15px; }
+#cast-root .rar .flags { display: flex; flex-wrap: wrap; gap: 6px; }
+#cast-root .rar .foot { display: flex; justify-content: flex-end; }
+#cast-root .tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 14px; }
+#cast-root table.hist { border-collapse: collapse; width: 100%; min-width: 620px; font-variant-numeric: tabular-nums; }
+#cast-root table.hist th, #cast-root table.hist td { text-align: right; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+#cast-root table.hist th:first-child, #cast-root table.hist td:first-child { text-align: left; }
+#cast-root table.hist th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 900; }
+#cast-root table.hist tr:last-child td { border-bottom: 0; }
+#cast-root .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: clamp(16px, 4vw, 32px); max-width: 860px; box-shadow: var(--shadow); }
+#cast-root .sheet h2 { margin: 0 0 2px; font-size: clamp(20px, 4vw, 26px); font-weight: 900; text-wrap: balance; }
+#cast-root .sheet .sub { color: var(--muted); font-weight: 700; margin-bottom: 18px; }
+#cast-root .sheet h3 { margin: 20px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--eminence); font-weight: 900; border-bottom: 2px solid var(--yellow); padding-bottom: 4px; }
+#cast-root .sheet ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 14px; font-weight: 600; line-height: 1.45; }
+#cast-root .sheet p.none { margin: 0; color: var(--muted); font-weight: 700; }
+#cast-root .editor { max-width: 860px; margin-top: 14px; display: grid; gap: 10px; }
+#cast-root .btn.sec { white-space: nowrap; }
+#cast-root .weekedit { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+#cast-root .weekedit summary { font-size: 13px; }
+#cast-root .weekedit .grp { margin-top: 10px; }
+#cast-root .weekedit h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--eminence); }
+#cast-root .quiet { color: var(--muted); font-weight: 700; }
+@media (max-width: 700px) {#cast-root .big b { font-size: 32px; }
+#cast-root .mini li { grid-template-columns: 40px minmax(0, 1fr); }
+#cast-root .mini li .tag { grid-column: 2; justify-self: start; }}
+#cast-root { --on-eminence: #FFFFFF; --cardsh: 0 1px 2px rgba(59,33,80,.06), 0 8px 22px rgba(59,33,80,.07); }
+#cast-root .nav { display: grid; gap: 16px; }
+#cast-root .ngrp { display: grid; gap: 2px; }
+#cast-root .nlabel { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); padding: 0 10px 4px; }
+#cast-root .nv { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); font-weight: 800; font-size: 13.5px; text-align: left; transition: background .12s, color .12s; }
+#cast-root .nv svg { flex: none; opacity: .85; }
+#cast-root .nv:hover { background: var(--surface2); }
+#cast-root .nv.on { background: var(--eminence); color: var(--on-eminence); }
+#cast-root .nv.on svg { opacity: 1; }
+#cast-root .nb { margin-left: auto; min-width: 20px; text-align: center; padding: 1px 6px; border-radius: 999px; background: var(--carnation); color: #fff; font-weight: 900; font-size: 11px; font-style: normal; }
+#cast-root .content { padding: 26px clamp(16px, 3vw, 36px) 56px; min-width: 0; max-width: 1280px; width: 100%; }
+#cast-root .seg { display: inline-flex; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; margin-bottom: 14px; }
+#cast-root .seg button { border: 0; background: transparent; border-radius: 999px; padding: 6px 16px; font-weight: 800; font-size: 13px; color: var(--muted); }
+#cast-root .seg button.on { background: var(--eminence); color: var(--on-eminence); }
+#cast-root .stack { display: grid; gap: 16px; min-width: 0; align-content: start; }
+#cast-root .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: var(--cardsh); min-width: 0; }
+#cast-root .cardhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 12px; }
+#cast-root .cardhead h3 { margin: 0; font-size: 16px; font-weight: 900; }
+#cast-root .dash { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+#cast-root .agrp { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
+#cast-root .cardhead + .agrp { border-top: 0; padding-top: 0; margin-top: 0; }
+#cast-root .agrp h4 { margin: 0 0 8px; font-size: 13px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
+#cast-root .agrp .cnt { background: var(--surface2); border-radius: 999px; padding: 1px 9px; font-size: 11px; color: var(--muted); }
+#cast-root .dotc { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+#cast-root .dotc.bad { background: var(--carnation); }
+#cast-root .dotc.warn { background: var(--yellow); }
+#cast-root .irow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface2); font: inherit; color: inherit; text-align: left; transition: border-color .12s, transform .12s; }
+#cast-root .irow:last-of-type { margin-bottom: 0; }
+#cast-root .itxt { min-width: 0; display: grid; gap: 2px; flex: 1; }
+#cast-root .itxt b { font-weight: 800; overflow-wrap: anywhere; }
+#cast-root .itxt span { color: var(--muted); font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+#cast-root .itxt em { font-style: normal; color: var(--bad); font-weight: 800; }
+#cast-root .iact { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
+#cast-root button.irow { cursor: pointer; }
+#cast-root .linkrow:hover, #cast-root label.irow.check:hover { border-color: var(--heart); }
+#cast-root label.irow.check { cursor: pointer; }
+#cast-root label.irow.check input { width: 18px; height: 18px; accent-color: var(--heart); flex: none; }
+#cast-root .more { font-size: 12px; font-weight: 800; margin-top: 10px; }
+#cast-root .more .link, #cast-root .hint .link, #cast-root .quiet .link { color: var(--heart); }
+#cast-root .btn.mini { padding: 5px 11px; font-size: 12px; border-radius: 8px; }
+#cast-root .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-block: 12px 4px; }
+#cast-root .trio > div { background: var(--surface2); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+#cast-root .trio span { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+#cast-root .trio b { font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+#cast-root .entry { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 10px; }
+#cast-root .entry label.f { flex: 1 1 130px; }
+#cast-root .entry input { width: 100%; }
+#cast-root .big b strong { font-weight: 900; }
+#cast-root .hero .herogrid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 22px; align-items: center; }
+#cast-root .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+#cast-root .tiles .kpi { background: var(--surface2); }
+#cast-root .sechead { margin: 18px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--eminence); }
+#cast-root .segchart { width: 100%; height: auto; display: block; }
+#cast-root .cg { stroke: var(--line); stroke-width: 1; }
+#cast-root .ct { fill: var(--muted); font: 700 10px var(--font); }
+#cast-root .cv { fill: var(--ink); font: 800 10px var(--font); }
+#cast-root .cb-ok { fill: var(--ok); }
+#cast-root .cb-bad { fill: var(--carnation); }
+#cast-root .cb-fut { fill: var(--surface2); stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 3; }
+#cast-root .cl { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 6 4; }
+#cast-root .clt { fill: var(--ink); font: 800 11px var(--font); }
+#cast-root .legend2 { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 8px; }
+#cast-root .lg { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+#cast-root .lg.ok { background: var(--ok); }
+#cast-root .lg.bad { background: var(--carnation); }
+#cast-root .lg.fut { border: 1.5px dashed var(--muted); }
+#cast-root .tablewrap.flat { border: 0; margin: 0; background: transparent; }
+#cast-root .tablewrap.flat table.hist { min-width: 0; }
+#cast-root .tablewrap.flat table.hist th, #cast-root .tablewrap.flat table.hist td { padding: 8px 8px; }
+#cast-root .cols .tablewrap.flat table.hist { min-width: 0; }
+#cast-root .cell-in { width: 112px; text-align: right; }
+#cast-root details.card summary { font-weight: 900; font-size: 14px; color: var(--eminence); }
+#cast-root .cols .card { margin: 0; }
+#cast-root .panel, #cast-root .conf, #cast-root .rar, #cast-root .weekedit { border-radius: 16px; box-shadow: var(--cardsh); }
+#cast-root .cell { transition: border-color .12s; }
+#cast-root .cell:hover { border-color: var(--heart); }
+#cast-root .toolbar { margin-bottom: 12px; }
+#cast-root .hint { max-width: 760px; }
+#cast-root .mini .ttl { text-align: left; color: var(--ink); text-decoration: none; font-weight: 800; }
+#cast-root .mini .ttl:hover { color: var(--heart); text-decoration: underline; }
+#cast-root .pill.none { color: var(--muted); }
+@media (max-width: 1050px) {#cast-root .dash { grid-template-columns: minmax(0, 1fr); }}
+@media (max-width: 900px) {#cast-root .nav { display: flex; gap: 2px; }
+#cast-root .ngrp { display: flex; gap: 2px; }
+#cast-root .nlabel { display: none; }
+#cast-root .nv { width: auto; white-space: nowrap; }
+#cast-root .hero .herogrid { grid-template-columns: minmax(0, 1fr); }}
+@media (max-width: 560px) {#cast-root .irow { flex-wrap: wrap; }
+#cast-root .iact { width: 100%; }
+#cast-root .trio { grid-template-columns: minmax(0, 1fr); }}
+@media (prefers-reduced-motion: reduce) {#cast-root .nv, #cast-root .irow, #cast-root .cell { transition: none; }}
+#cast-root table.hist td.t { white-space: normal; min-width: 240px; text-align: left; font-weight: 600; }
+#cast-root table.hist td.t b { font-weight: 900; color: var(--eminence); margin-right: 4px; }
+#cast-root .irow.crit { border-color: var(--bad); background: var(--badbg); }
+#cast-root .irow.crit .itxt span { color: var(--ink); }
+
+/* ---- encaixe na Central: cores da central e menu do CW Cast na horizontal ---- */
+#cast-root { --bg: var(--bg0); --surface: #fff; --surface2: var(--surface-2); --ink: var(--text); --muted: var(--text-faint); --line: var(--line); font-family: var(--font-body); color: var(--text); }
+#cast-root .nav { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: flex-start; background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 10px 14px; box-shadow: var(--shadow-card); margin-bottom: 16px; }
+#cast-root .ngrp { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+#cast-root .nlabel { padding: 0 6px 0 0; font-size: 10px; letter-spacing: 1.6px; color: #a292c2; }
+#cast-root .nv { width: auto; padding: 7px 12px; border-radius: 99px; font-family: var(--font-display); font-size: 13.5px; color: var(--text-dim); }
+#cast-root .nv svg { color: #7b3fd4; }
+#cast-root .nv.on { background: #ece1fb; color: var(--brand-ink); }
+#cast-root .nb { font-style: normal; font-size: 11px; font-weight: 700; color: #8a5a00; background: #ffe5b0; padding: 1px 7px; border-radius: 99px; margin-left: 4px; }
+#cast-root .card, #cast-root .panel, #cast-root .conf, #cast-root .rar, #cast-root .sheet { border-radius: var(--r-lg); border-color: var(--line); box-shadow: var(--shadow-card); }
+#cast-root .btn:not(.ghost):not(.sec) { background: var(--grad-brand); border-color: transparent; color: #fff; }
+.cast-topo { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cast-sync { font-size: 12.5px; color: var(--text-faint); display: flex; align-items: center; gap: 6px; }
+.cast-sync .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; }
+.cast-sync .dot.off { background: var(--amber); }
+/* campos: neutraliza os estilos gerais de formulário da Central dentro do módulo */
+#cast-root label { display: block; gap: 0; font-weight: inherit; font-size: inherit; color: inherit; }
+#cast-root input[type="checkbox"], #cast-root input[type="radio"] { width: auto; padding: 0; margin: 0; background: none; border: 0; box-shadow: none; }
+#cast-root .toolbar select, #cast-root .toolbar input { width: auto; }
+#cast-root input:focus, #cast-root select:focus, #cast-root textarea:focus { box-shadow: 0 0 0 3px rgba(165, 67, 250, .16); }

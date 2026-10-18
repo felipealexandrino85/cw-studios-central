@@ -7,6 +7,8 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="cast.css">
+<script src="cast.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
   // ===== Configuração do time (Supabase: Project Settings > API). A chave anon é pública por desenho:
@@ -440,6 +442,20 @@
       <th class="n">Tempo ativo médio</th><th class="n">Atenção humana média</th><th class="n">Aprovação de 1ª</th></tr></thead><tbody id="fluxos"></tbody></table></div>
   </section>
 
+  <section id="aba-cast" hidden>
+    <div class="cast-topo">
+      <header class="cabeca"><p class="kicker">CW Cast</p><h1 id="cast-ptitle">Painel</h1><p class="sub" id="cast-psub"></p></header>
+      <div class="cast-sync" id="cast-sync"></div>
+    </div>
+    <div id="cast-root"><nav class="nav" id="cast-tabs" aria-label="Seções do CW Cast"></nav><div id="cast-notice"></div><div id="cast-banner"></div><div id="cast-main"></div><div id="cast-overlay"></div></div>
+    <details class="caixa" id="cast-importar" hidden style="background:#fff">
+      <summary style="font-weight:700;color:var(--text-dim)">Importar dados do painel antigo do CW Cast</summary>
+      <p class="nota" style="margin:8px 0">No Claude da conta dona do painel antigo, peça: <i>"Exporte o banco do artifact do Calendário CW Cast para um arquivo JSON, com todas as coleções (cards, metricas, riscos, melhorias, semana, conf, seguidores, yt_diario, videos, config), no formato { coleção: { id: dados } }"</i>. Depois envie o arquivo aqui. O que já existe na Central com o mesmo id é substituído.</p>
+      <div class="acoes"><input type="file" id="cast-arquivo" accept=".json,application/json" style="width:auto"><button class="botao peq" type="button" id="cast-importar-btn">Importar</button></div>
+      <div id="cast-importar-msg" class="aviso" hidden></div>
+    </details>
+  </section>
+
   <section id="aba-gestao" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Pessoas</h1><p class="sub">Editores, tokens de conexão e quem é gestão.</p></header>
     <div class="tabela"><table><thead><tr><th>Editor</th><th>E-mail (entra na central com ele)</th><th>Conta no Jira</th><th>Situação</th><th>Plugin</th><th></th></tr></thead><tbody id="lista-editores"></tbody></table></div>
@@ -462,6 +478,15 @@
           <button class="botao peq">Adicionar gestor</button>
         </form>
         <div id="msg-gestao" class="aviso erro" hidden></div>
+      </div>
+      <div>
+        <h3 class="grupo">Produção</h3>
+        <p class="nota" style="margin:0">Mexe no CW Cast e vê a operação (ao vivo sem números, demandas, sprint). Não vê relatório nem esta página.</p>
+        <div class="tabela"><table><tbody id="lista-producao"></tbody></table></div>
+        <form id="form-producao" class="acoes">
+          <input id="producao-email" type="email" required placeholder="produtora@cardapioweb.com" style="flex:1 1 220px;width:auto" aria-label="E-mail de quem é produção">
+          <button class="botao peq">Adicionar à produção</button>
+        </form>
       </div>
     </div>
   </section>
@@ -550,12 +575,13 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"]]],
              ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["gestao", "Pessoas"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"]]]],
+    producao: [["Programas", [["cast", "CW Cast"]]], ["Operação", [["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
   };
-  const EXTRAS = { gestor: ["pedir"], editor: [], solicitante: [] };
+  const EXTRAS = { gestor: ["pedir"], producao: ["pedir"], editor: [], solicitante: [] };
   const abasDe = (papel) => (MENU[papel] || []).flatMap(([, itens]) => itens.map(([id]) => id)).concat(EXTRAS[papel] || []);
   const ICONES = {
     inicio: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
@@ -568,6 +594,7 @@
     entregas: "M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4 12 14l-3-3",
     pedidos: "M22 12h-6l-2 3h-4l-2-3H2M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z",
     pedir: "M12 8v8M8 12h8M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
+    cast: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8",
   };
   function icone(d, cls) {
     const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), path = document.createElementNS(ns, "path");
@@ -577,7 +604,7 @@
 
   let eu = { email: "", papel: null, editor: null };   // quem está logado (papel real, decidido pelo banco)
   let visao = { papel: null, editor: null };           // como a página está sendo vista (gestão pode simular)
-  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], ajustes: [], regras: [], posicoes: {}, eventos: {}, jira: [], jiraSync: null };
+  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], producao: [], ajustes: [], regras: [], posicoes: {}, eventos: {}, jira: [], jiraSync: null };
   const TRABALHOS = { edicao: "Edição", cortes: "Cortes", capa: "Capa", foto: "Foto", copy: "Copy", roteiro: "Roteiro", outro: "Outros" };
   const CANAIS = { CWIG: "IG Cardápio Web", CHEFSIG: "IG Chefs", CWCAST: "CW Cast", YT: "YouTube", GROWTH: "Growth", CWCREATORS: "CW Creators", CWSTUDIO: "CW Studio" };
   let segmento = "sprint", filtroTrab = new Set(["edicao", "cortes"]), filtroPessoa = "", mostrarConcluidos = false;
@@ -649,7 +676,7 @@
     visao = { papel: eu.papel, editor: eu.editor && eu.editor.slug };
     const nome = eu.editor ? eu.editor.nome : eu.email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     $("#quem-nome").textContent = nome;
-    $("#quem-papel").textContent = { gestor: "Gestão", editor: "Editor", solicitante: "Pedidos" }[eu.papel] || "";
+    $("#quem-papel").textContent = { gestor: "Gestão", producao: "Produção", editor: "Editor", solicitante: "Pedidos" }[eu.papel] || "";
     $("#sb-avatar").textContent = nome.split(" ").filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase();
     const primeiro = nome.split(" ")[0];
     for (const el of document.querySelectorAll(".js-ola")) el.textContent = `Bem-vindo de volta, ${primeiro}`;
@@ -686,14 +713,14 @@
     const atual = sel.value || "gestor";
     encher(sel, h("option", { value: "gestor" }, "Ver como: Gestão"),
       D.editores.filter((e) => e.ativo).map((e) => h("option", { value: "editor:" + e.slug }, "Ver como: " + e.nome)),
-      h("option", { value: "solicitante" }, "Ver como: quem pede"));
+      h("option", { value: "producao" }, "Ver como: produção"), h("option", { value: "solicitante" }, "Ver como: quem pede"));
     sel.value = atual;
     sel.onchange = () => {
       const [p, slug] = sel.value.split(":");
       visao = { papel: p, editor: slug || null };
       const prev = $("#previa");
       prev.hidden = p === "gestor";
-      prev.textContent = p === "editor" ? `Prévia: é assim que ${nomeEditor(slug)} vê a central.` : "Prévia: é assim que quem pede vê a central (com os seus pedidos).";
+      prev.textContent = p === "editor" ? `Prévia: é assim que ${nomeEditor(slug)} vê a central.` : p === "producao" ? "Prévia: é assim que a produção vê a central." : "Prévia: é assim que quem pede vê a central (com os seus pedidos).";
       montarNav();
     };
   }
@@ -737,7 +764,9 @@
       pedidos.push(db.rpc("cw_ao_vivo"), db.from("edicoes").select("*").gte("aberto_em", desde).order("aberto_em", { ascending: false }).limit(5000),
         db.from("gestores").select("email").order("email"),
         db.from("demanda_eventos").select("demanda_id,ts,categoria,detalhe").eq("tipo", "refazer").gte("ts", desde), db.rpc("cw_posicoes"),
-        db.from("regras").select("*").order("id"));
+        db.from("regras").select("*").order("id"), db.from("producao").select("email").order("email"));
+    } else if (p === "producao") {
+      pedidos.push(db.rpc("cw_ao_vivo"));
     } else if (p === "editor") {
       pedidos.push(db.rpc("cw_ao_vivo"), db.rpc("cw_minhas_entregas"), db.from("regras").select("texto,tipo,ativa").eq("ativa", true).order("id"));
     } else {
@@ -748,7 +777,9 @@
     D.demandas = r[0].data || []; D.editores = r[1].data || [];
     if (p === "gestor") {
       D.aovivo = r[2].data || []; D.edicoes = r[3].data || []; D.gestores = (r[4].data || []).map((g) => g.email);
-      D.ajustes = r[5].data || []; D.posicoes = Object.fromEntries((r[6].data || []).map((x) => [x.id, x.posicao])); D.regras = r[7].data || [];
+      D.ajustes = r[5].data || []; D.posicoes = Object.fromEntries((r[6].data || []).map((x) => [x.id, x.posicao])); D.regras = r[7].data || []; D.producao = (r[8].data || []).map((x) => x.email);
+    } else if (p === "producao") {
+      D.aovivo = r[2].data || [];
     } else if (p === "editor") {
       D.aovivo = r[2].data || []; D.entregas = r[3].data || []; D.regras = r[4].data || [];
     } else {
@@ -767,13 +798,13 @@
     for (const e of data || []) D.eventos[e.demanda_id] = e;
   }
   async function atualizarAoVivo() {
-    if (document.hidden || !["inicio", "aovivo", "meudia"].includes(aba) || eu.papel === "solicitante") return;
+    if (document.hidden || !["inicio", "aovivo", "meudia", "cast"].includes(aba) || eu.papel === "solicitante") return;
     const { data } = await db.rpc("cw_ao_vivo");
     if (data) { D.aovivo = data; desenhar(); }
   }
 
   function desenhar() {
-    ({ inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao,
+    ({ inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1202,6 +1233,91 @@
   });
   $("#regra-limpar").addEventListener("click", () => preencherRegra({}));
 
+  // ---------------------------------------------------------------- CW Cast (painel da produção)
+  // O módulo (cast.js) fala com um "db" no formato do painel antigo; aqui ele vira a tabela cast_docs do Supabase.
+  function criarCastDb() {
+    const linhas = new Map(), ouvintes = [];
+    let carregou = false;
+    const emitir = () => {
+      for (const o of ouvintes) {
+        if (o.tipo === "col") o.cb({ docs: [...linhas].filter(([k]) => k.split("/")[0] === o.chave).map(([k, v]) => ({ id: k.slice(o.chave.length + 1), data: () => v })) });
+        else { const v = linhas.get(o.chave); o.cb({ exists: v !== undefined, data: () => v }); }
+      }
+    };
+    const puxar = async () => {
+      const { data, error } = await db.from("cast_docs").select("colecao,id,dados").limit(20000);
+      if (error) { ouvintes.forEach((o) => o.err && o.err(error)); return; }
+      linhas.clear(); for (const r of data) linhas.set(r.colecao + "/" + r.id, r.dados);
+      carregou = true; emitir();
+    };
+    const erroCast = (error) => ({ code: error.code === "42501" ? "invalid_argument" : "erro", message: error.message });
+    return {
+      puxar,
+      collection: (c) => ({ onSnapshot: (cb, err) => { ouvintes.push({ tipo: "col", chave: c, cb, err }); if (carregou) emitir(); } }),
+      doc: (caminho) => {
+        const [c, ...resto] = caminho.split("/"), id = resto.join("/");
+        return {
+          set: async (dados) => { const { error } = await db.from("cast_docs").upsert({ colecao: c, id, dados }); if (error) throw erroCast(error); linhas.set(caminho, dados); },
+          delete: async () => { const { error } = await db.from("cast_docs").delete().eq("colecao", c).eq("id", id); if (error) throw erroCast(error); linhas.delete(caminho); },
+          onSnapshot: (cb, err) => { ouvintes.push({ tipo: "doc", chave: caminho, cb, err }); if (carregou) emitir(); },
+        };
+      },
+    };
+  }
+  const semAcento = (t) => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  // card do Jira do episódio: o informado no card ou o [CWCAST] de edição com o nome do convidado no título
+  function jiraDoEpisodio(c) {
+    if (c.jira) return D.jira.find((j) => j.chave === c.jira) || null;
+    const g = semAcento(c.guest).trim();
+    if (!g) return null;
+    const cands = D.jira.filter((j) => (j.tags || []).includes("CWCAST") && j.trabalho === "edicao" && semAcento(j.titulo).includes(g));
+    return cands.find((j) => semAcento(j.titulo).startsWith("episodio")) || cands[0] || null;
+  }
+  function ajustarCardCast(c, salvo) {
+    if (c.type !== "edicao" || (salvo && salvo.stageManual)) return c;
+    const j = jiraDoEpisodio(c);
+    if (!j) return c;
+    const viva = edicaoAoVivo(j.chave);
+    const stage = j.status_categoria === "done" ? "pronto" : /revis/i.test(j.status) ? "revisao" : (j.status_categoria === "indeterminate" || (viva && viva.viva)) ? "mesa" : "";
+    return Object.assign({}, c, { stage, status: stage === "pronto" ? "concluido" : stage ? "andamento" : "pendente", jira: c.jira || j.chave,
+      auto: `Etapa automática: ${j.chave} está "${j.status}" no Jira${viva && viva.viva ? ` e ${viva.ed.nome} está editando agora` : ""}. Se você mudar a etapa aqui, ela passa a ser manual.` });
+  }
+  let castDb = null;
+  function abrirCast() {
+    if (!window.iniciarCast) { encher($("#cast-main"), h("div", { class: "aviso erro" }, "Não consegui carregar o módulo do CW Cast. Recarregue a página.")); return; }
+    if (castDb) { castDb.puxar(); return; }
+    castDb = criarCastDb();
+    const podeEditar = ["gestor", "producao"].includes(eu.papel);
+    $("#cast-importar").hidden = !podeEditar;
+    window.iniciarCast({ db: castDb, user: { can: () => Promise.resolve(podeEditar) }, ajustarCard: ajustarCardCast });
+    castDb.puxar();
+    setInterval(() => { if (aba === "cast" && !document.hidden) castDb.puxar(); }, 20000);
+  }
+
+  // importação do painel antigo: { coleção: { id: dados } } ou { coleção: [ { id, ...dados } ] }
+  $("#cast-importar-btn").addEventListener("click", async () => {
+    const m = $("#cast-importar-msg"), arq = $("#cast-arquivo").files[0];
+    m.hidden = false; m.className = "aviso";
+    if (!arq) { m.textContent = "Escolha o arquivo JSON exportado do painel antigo."; return; }
+    let dados;
+    try { dados = JSON.parse(await arq.text()); } catch { m.className = "aviso erro"; m.textContent = "O arquivo não é um JSON válido."; return; }
+    const COLS = ["cards", "metricas", "riscos", "melhorias", "semana", "conf", "seguidores", "yt_diario", "videos", "config"];
+    const linhas = [];
+    for (const [col, conteudo] of Object.entries(dados || {})) {
+      if (!COLS.includes(col) || !conteudo) continue;
+      const itens = Array.isArray(conteudo) ? conteudo.map((x) => [x.id || x.doc_id, x.data || x.dados || x]) : Object.entries(conteudo);
+      for (const [id, v] of itens) if (id && v && typeof v === "object") { const d = { ...v }; delete d.id; delete d.doc_id; linhas.push({ colecao: col, id: String(id), dados: d }); }
+    }
+    if (!linhas.length) { m.className = "aviso erro"; m.textContent = "Não achei nenhuma coleção conhecida no arquivo (cards, metricas, riscos…)."; return; }
+    for (let i = 0; i < linhas.length; i += 200) {
+      const { error } = await db.from("cast_docs").upsert(linhas.slice(i, i + 200));
+      if (error) { m.className = "aviso erro"; m.textContent = "Parou no meio: " + error.message; return; }
+    }
+    const porCol = linhas.reduce((a, l) => (a[l.colecao] = (a[l.colecao] || 0) + 1, a), {});
+    m.textContent = `Importado: ${linhas.length} registros (${Object.entries(porCol).map(([c, n]) => `${c}: ${n}`).join(", ")}).`;
+    castDb && castDb.puxar();
+  });
+
   // ---------------------------------------------------------------- pessoas (gestão)
   function erroGestao(e) { const m = $("#msg-gestao"); m.hidden = !e; m.textContent = e ? e.message : ""; }
   function desenharGestao() {
@@ -1221,6 +1337,9 @@
         h("td", { class: "n" }, e.ativo && [h("button", { class: "botao leve peq", onclick: () => { $("#ed-nome").value = e.nome; $("#ed-email").value = e.email || ""; $("#ed-email").focus(); } }, "Novo token"), " ",
           h("button", { class: "botao perigo peq", onclick: () => { confirma.hidden = false; } }, "Desativar"), confirma]));
     }) : vazioLinha(6, "Nenhum editor cadastrado ainda."));
+    encher($("#lista-producao"), D.producao.length ? D.producao.map((g) => h("tr", {}, td(g), h("td", { class: "n" },
+      h("button", { class: "botao perigo peq", onclick: async () => { const { error } = await db.rpc("cw_remover_producao", { p_email: g }); erroGestao(error); if (!error) carregar(); } }, "Remover"))))
+      : vazioLinha(2, "Ninguém na produção ainda."));
     encher($("#lista-gestores"), D.gestores.map((g) => h("tr", {}, td(g), h("td", { class: "n" },
       g !== eu.email && h("button", { class: "botao perigo peq", onclick: async () => { const { error } = await db.rpc("cw_remover_gestor", { p_email: g }); erroGestao(error); if (!error) carregar(); } }, "Remover")))));
   }
@@ -1238,6 +1357,11 @@
       h("button", { class: "botao leve peq", style: "margin-top:8px", type: "button", onclick: (e) => copiar(frase, e.currentTarget) }, "Copiar frase"),
       h("p", { class: "nota" }, `${primeiro} também entra nesta página com ${email} e vê a visão de editor.`));
     ev.target.reset(); carregar();
+  });
+  $("#form-producao").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const { error } = await db.rpc("cw_add_producao", { p_email: $("#producao-email").value.trim() });
+    erroGestao(error); if (!error) { ev.target.reset(); carregar(); }
   });
   $("#form-gestor").addEventListener("submit", async (ev) => {
     ev.preventDefault();
