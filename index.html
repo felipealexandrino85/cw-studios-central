@@ -245,6 +245,30 @@
   .caixa { border: 1px solid var(--line); background: var(--surface-2); border-radius: 18px; padding: 14px 16px; display: grid; gap: 10px; }
 
   /* ---------- telas menores: menu vira gaveta */
+  .segmentos { display: inline-flex; gap: 4px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 99px; justify-self: start; }
+  .segmentos button { border: 0; background: transparent; border-radius: 99px; padding: 8px 18px; font-weight: 700; color: var(--text-dim); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+  .segmentos button[aria-selected="true"] { background: var(--grad-brand); color: #fff; box-shadow: var(--glow-brand); }
+  .segmentos em { font-style: normal; font-size: 11.5px; background: rgba(123, 47, 247, .12); color: var(--brand-ink); border-radius: 99px; padding: 1px 8px; }
+  .segmentos button[aria-selected="true"] em { background: rgba(255, 255, 255, .25); color: #fff; }
+  .sprint-barra { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-card); padding: 16px 20px;
+                  display: flex; gap: 14px 28px; align-items: center; flex-wrap: wrap; }
+  .sprint-barra .nome { font-family: var(--font-display); font-weight: 900; font-size: 18px; }
+  .sprint-barra .meta { color: var(--text-faint); font-size: 13px; }
+  .progresso { flex: 1 1 220px; display: grid; gap: 6px; font-size: 12.5px; color: var(--text-dim); }
+  .progresso .trilho { height: 8px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+  .progresso .trilho span { display: block; height: 100%; background: var(--grad-brand); border-radius: 99px; }
+  .sincronia { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-faint); margin-left: auto; }
+  .filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .filtro { border: 1px solid var(--line); background: #fff; color: var(--text-dim); border-radius: 99px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .filtro[aria-pressed="true"] { background: #ece1fb; border-color: #d9c4f7; color: var(--brand-ink); }
+  .filtros select { width: auto; border-radius: 99px; padding: 6px 12px; font-size: 13px; background: #fff; }
+  .filtros label.check { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; color: var(--text-dim); }
+  .filtros label.check input { width: auto; }
+  .mini-av { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--grad-brand); color: #fff;
+             font: 800 10px var(--font-body); flex: none; }
+  .quem-faz { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-dim); }
+  .ao-vivo-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ok-tx); background: var(--ok-bg); border-radius: 99px; padding: 2px 10px; }
+  .ao-vivo-chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
   @media (max-width: 1080px) {
     body.logado .app { grid-template-columns: minmax(0, 1fr); }
     .sidebar { position: fixed; inset: 0 auto 0 0; width: min(310px, 88vw); padding: 10px; transform: translateX(-105%); transition: transform .28s cubic-bezier(.22, .8, .3, 1); }
@@ -341,7 +365,16 @@
 
   <section id="aba-demandas" hidden>
     <header class="cabeca"><p class="kicker">Operação</p><h1>Demandas</h1><p class="sub" id="dem-sub"></p></header>
-    <div class="quadro" id="quadro"></div>
+    <div class="segmentos" role="tablist" id="segmentos">
+      <button role="tab" data-seg="sprint" aria-selected="true">Sprint (Jira) <em id="seg-n-sprint"></em></button>
+      <button role="tab" data-seg="externas" aria-selected="false">Externas <em id="seg-n-externas"></em></button>
+    </div>
+    <div id="seg-sprint" style="display:grid;gap:14px">
+      <div class="sprint-barra" id="sprint-barra"></div>
+      <div class="filtros" id="sprint-filtros"></div>
+      <div class="quadro" id="quadro-sprint"></div>
+    </div>
+    <div id="seg-externas" hidden><div class="quadro" id="quadro"></div></div>
   </section>
 
   <section id="aba-relatorio" hidden>
@@ -409,7 +442,7 @@
 
   <section id="aba-gestao" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Pessoas</h1><p class="sub">Editores, tokens de conexão e quem é gestão.</p></header>
-    <div class="tabela"><table><thead><tr><th>Editor</th><th>E-mail (entra na central com ele)</th><th>Situação</th><th>Plugin</th><th></th></tr></thead><tbody id="lista-editores"></tbody></table></div>
+    <div class="tabela"><table><thead><tr><th>Editor</th><th>E-mail (entra na central com ele)</th><th>Conta no Jira</th><th>Situação</th><th>Plugin</th><th></th></tr></thead><tbody id="lista-editores"></tbody></table></div>
     <form class="painel" id="form-editor">
       <h3 style="font-size:19px;font-weight:900">Cadastrar editor</h3>
       <p class="nota" style="margin:0">Gera o token que conecta o Claude do editor à central. Ele aparece uma vez só. Cadastrar de novo o mesmo nome gera um token novo e invalida o antigo.</p>
@@ -544,7 +577,10 @@
 
   let eu = { email: "", papel: null, editor: null };   // quem está logado (papel real, decidido pelo banco)
   let visao = { papel: null, editor: null };           // como a página está sendo vista (gestão pode simular)
-  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], ajustes: [], regras: [], posicoes: {}, eventos: {} };
+  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], ajustes: [], regras: [], posicoes: {}, eventos: {}, jira: [], jiraSync: null };
+  const TRABALHOS = { edicao: "Edição", cortes: "Cortes", capa: "Capa", foto: "Foto", copy: "Copy", roteiro: "Roteiro", outro: "Outros" };
+  const CANAIS = { CWIG: "IG Cardápio Web", CHEFSIG: "IG Chefs", CWCAST: "CW Cast", YT: "YouTube", GROWTH: "Growth", CWCREATORS: "CW Creators", CWSTUDIO: "CW Studio" };
+  let segmento = "sprint", filtroTrab = new Set(["edicao", "cortes"]), filtroPessoa = "", mostrarConcluidos = false;
   let aba = null;
 
   // ---------------------------------------------------------------- helpers
@@ -693,7 +729,9 @@
   // ---------------------------------------------------------------- dados (cada papel busca só o que o banco deixa ver)
   async function carregar() {
     const p = eu.papel;
-    const pedidos = [db.from("demandas").select("*").order("criado", { ascending: false }).limit(1000), db.from("editores").select("slug,nome,email,ativo,criado").order("nome")];
+    const pedidos = [db.from("demandas").select("*").order("criado", { ascending: false }).limit(1000), db.from("editores").select("slug,nome,email,ativo,criado,jira_id").order("nome")];
+    const jiraPedido = p === "solicitante" ? null : Promise.all([db.from("jira_cards").select("*").eq("na_sprint", true).order("status_ordem").limit(1000),
+                                                                db.from("jira_sync").select("*").eq("id", 1).maybeSingle()]);
     if (p === "gestor") {
       const desde = new Date(Date.now() - 400 * 864e5).toISOString();
       pedidos.push(db.rpc("cw_ao_vivo"), db.from("edicoes").select("*").gte("aberto_em", desde).order("aberto_em", { ascending: false }).limit(5000),
@@ -716,6 +754,7 @@
     } else {
       D.posicoes = Object.fromEntries((r[2].data || []).map((x) => [x.id, x.posicao]));
     }
+    if (jiraPedido) { const [jc, js] = await jiraPedido; D.jira = jc.data || []; D.jiraSync = js.data || null; }
     await carregarNotasDeAjuste();
     if ($("#nav").childElementCount) { montarVerComo(); montarNav(aba); }
   }
@@ -804,6 +843,10 @@
       if (ed && ed.ativo && online(s) && !((s.payload || {}).trabalhos || []).some((t) => t.agora))
         out.push({ tom: "neutro", rotulo: "Sem vídeo", texto: `${ed.nome} está com o Claude aberto e nenhum vídeo aberto` });
     }
+    const semRegistro = D.jira.filter((c) => ["edicao", "cortes"].includes(c.trabalho) && c.status_categoria === "indeterminate"
+      && !D.edicoes.some((x) => x.jira === c.chave) && !linhasAoVivo().some((l) => l.t.jira === c.chave));
+    if (semRegistro.length) out.push({ tom: "neutro", rotulo: "Jira", texto: `${semRegistro.length} card(s) de edição em andamento no Jira sem edição registrada na central: ${semRegistro.slice(0, 4).map((c) => c.chave).join(", ")}${semRegistro.length > 4 ? "…" : ""}` });
+    if (D.jiraSync && D.jiraSync.ok === false) out.push({ tom: "aviso", rotulo: "Jira", texto: "A sincronização com o Jira falhou: " + (D.jiraSync.erro || "erro desconhecido") });
     for (const e of D.editores.filter((e) => e.ativo && !D.aovivo.some((s) => s.slug === e.slug)))
       out.push({ tom: "neutro", rotulo: "Conexão", texto: `${e.nome} ainda não conectou o Claude à central` });
     const ordem = { critico: 0, aviso: 1, neutro: 2 };
@@ -827,6 +870,97 @@
     encher($("#ini-aovivo"), vivas.length ? vivas.map(blocoEdicao) : h("div", { class: "vazio" }, "Ninguém editando neste momento."));
   }
 
+  // ---------------------------------------------------------------- sprint do Jira
+  const urlJira = (chave) => `${(cfg.jira || "").replace(/\/$/, "")}/browse/${encodeURIComponent(chave)}`;
+  const normal = (t) => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/\s+/).filter(Boolean);
+  function editorDoCard(c) {
+    let ed = D.editores.find((e) => e.jira_id && e.jira_id === c.responsavel_id);
+    if (!ed && c.responsavel_nome) {  // sem ligação feita na aba Pessoas: primeiro + último nome batendo
+      const n = normal(c.responsavel_nome);
+      ed = D.editores.find((e) => { const m = normal(e.nome); return m.length && m[0] === n[0] && (m.length === 1 || n.includes(m[m.length - 1])); });
+    }
+    return ed || null;
+  }
+  const iniciais = (nome) => normal(nome).filter((x) => x.length > 2).slice(0, 2).map((x) => x[0].toUpperCase()).join("") || "?";
+  const nomeCurto = (nome) => { const p = (nome || "").split(/\s+/); return p.length > 1 ? `${p[0][0]}${p[0].slice(1).toLowerCase()} ${p[p.length - 1][0]}${p[p.length - 1].slice(1).toLowerCase()}` : nome || ""; };
+  const edicaoAoVivo = (chave) => linhasAoVivo().find((l) => l.t.jira === chave);
+  const edicoesDoCard = (chave) => (eu.papel === "gestor" ? D.edicoes : D.entregas).filter((x) => x.jira === chave);
+  function cartaoJira(c, extra) {
+    const viva = edicaoAoVivo(c.chave), eds = edicoesDoCard(c.chave), tempo = eds.reduce((a, x) => a + (x.segundos_ativos || 0), 0);
+    const etapaNome = viva && (ETAPAS.find(([k]) => k === viva.t.etapa) || [null, ""])[1];
+    const vencido = c.prazo && c.prazo < hojeISO() && c.status_categoria !== "done";
+    return h("button", { class: "cartao", onclick: () => abrirJira(c.chave) },
+      h("div", { class: "cod" }, c.chave, c.tipo ? " · " + c.tipo : ""),
+      h("div", { class: "tit" }, c.titulo),
+      h("div", { class: "chips" }, h("span", { class: "chip" }, TRABALHOS[c.trabalho] || c.trabalho),
+        c.tags.filter((t) => CANAIS[t]).map((t) => h("span", { class: "chip tom-neutro" }, CANAIS[t])),
+        c.prazo && h("span", { class: "chip" + (vencido ? " tom-critico" : "") }, "Prazo " + dataBR(c.prazo))),
+      h("div", { class: "chips" }, c.responsavel_nome ? h("span", { class: "quem-faz" }, h("span", { class: "mini-av" }, iniciais(c.responsavel_nome)), nomeCurto(c.responsavel_nome)) : h("span", { class: "nota" }, "sem responsável"),
+        viva && viva.viva ? h("span", { class: "ao-vivo-chip" }, `Editando · ${etapaNome || "agora"}`) : null,
+        tempo ? h("span", { class: "nota" }, `· ${duracao(tempo)} de edição`) : null),
+      extra);
+  }
+  function cardsFiltrados() {
+    return D.jira.filter((c) => (filtroTrab.size === 0 || filtroTrab.has(c.trabalho)) && (!filtroPessoa || c.responsavel_nome === filtroPessoa));
+  }
+  function desenharSprint() {
+    const sync = D.jiraSync || {}, todos = D.jira, feitos = todos.filter((c) => c.status_categoria === "done").length;
+    const fim = sync.sprint_fim ? new Date(sync.sprint_fim + "T23:59:59") : null, dias = fim ? Math.ceil((fim - Date.now()) / 864e5) : null;
+    encher($("#sprint-barra"),
+      h("div", {}, h("div", { class: "nome" }, sync.sprint || "Sprint ativa"),
+        h("div", { class: "meta" }, sync.sprint_inicio ? `${dataBR(sync.sprint_inicio)} a ${dataBR(sync.sprint_fim)}` : "", dias != null ? ` · ${dias > 0 ? dias + (dias === 1 ? " dia restante" : " dias restantes") : "termina hoje"}` : "")),
+      h("div", { class: "progresso" }, h("span", {}, `${feitos} de ${todos.length} cards concluídos`),
+        h("div", { class: "trilho" }, h("span", { style: `width:${todos.length ? Math.round(100 * feitos / todos.length) : 0}%` }))),
+      h("div", { class: "sincronia" }, sync.ultima ? (sync.ok ? `Jira sincronizado ${ha(sync.ultima)}` : h("span", { class: "chip tom-critico", title: sync.erro || "" }, "Sincronização com erro")) : "Ainda não sincronizado",
+        eu.papel === "gestor" && h("button", { class: "botao leve peq", onclick: async (ev) => {
+          ev.currentTarget.disabled = true; ev.currentTarget.textContent = "Sincronizando…";
+          const { data, error } = await db.functions.invoke("jira-sync", { body: {} });
+          if (error || (data && data.erro)) alert("Não sincronizou: " + ((data && data.erro) || error.message));
+          carregar();
+        } }, "Sincronizar agora")));
+    const pessoas = [...new Set(todos.map((c) => c.responsavel_nome).filter(Boolean))].sort();
+    const contar = (t) => todos.filter((c) => c.trabalho === t).length;
+    const sel = h("select", { id: "filtro-pessoa", "aria-label": "Filtrar por pessoa" }, h("option", { value: "" }, "Todas as pessoas"),
+      pessoas.map((n) => h("option", { value: n, selected: n === filtroPessoa }, nomeCurto(n))));
+    sel.onchange = () => { filtroPessoa = sel.value; desenharSprint(); };
+    const chk = h("input", { type: "checkbox", id: "filtro-concluidos", checked: mostrarConcluidos });
+    chk.onchange = () => { mostrarConcluidos = chk.checked; desenharSprint(); };
+    encher($("#sprint-filtros"), Object.entries(TRABALHOS).filter(([k]) => contar(k)).map(([k, nome]) => h("button", { class: "filtro", "aria-pressed": String(filtroTrab.has(k)),
+      onclick: () => { filtroTrab.has(k) ? filtroTrab.delete(k) : filtroTrab.add(k); desenharSprint(); } }, `${nome} (${contar(k)})`)),
+      sel, h("label", { class: "check", for: "filtro-concluidos" }, chk, "Mostrar concluídos"));
+    const cards = cardsFiltrados();
+    const status = [...new Map(todos.map((c) => [c.status, c.status_ordem])).entries()].sort((a, b) => a[1] - b[1]).map(([n]) => n)
+      .filter((n) => mostrarConcluidos || !todos.some((c) => c.status === n && c.status_categoria === "done"));
+    $("#quadro-sprint").style.gridTemplateColumns = `repeat(${Math.max(status.length, 1)}, minmax(240px, 1fr))`;
+    encher($("#quadro-sprint"), todos.length ? status.map((st) => {
+      const itens = cards.filter((c) => c.status === st);
+      return h("div", { class: "coluna" }, h("h4", {}, h("span", {}, st), h("span", {}, itens.length)),
+        h("div", { class: "lista" }, itens.length ? itens.map((c) => cartaoJira(c)) : h("div", { class: "vazio" }, "Nada aqui com estes filtros")));
+    }) : h("div", { class: "vazio" }, "Nenhum card da sprint ainda. A sincronização com o Jira roda a cada 5 minutos."));
+  }
+  function abrirJira(chave) {
+    const c = D.jira.find((x) => x.chave === chave); if (!c) return;
+    const viva = edicaoAoVivo(chave), eds = edicoesDoCard(chave);
+    const frase = `vamos fazer o ${chave}`;
+    encher($("#detalhe-corpo"),
+      h("div", { class: "chips" }, h("span", { class: "nota", style: "font-weight:700" }, `${chave} · ${c.tipo || ""}`), h("span", { class: "chip" }, c.status)),
+      h("h2", {}, c.titulo),
+      h("dl", { class: "campos" }, [["Trabalho", TRABALHOS[c.trabalho]], ["Responsável", c.responsavel_nome], ["Sprint", c.sprint], ["Prazo", c.prazo && dataBR(c.prazo)],
+        ["Prioridade", c.prioridade], ["Tags", c.tags.join(" · ")], ["Card pai", c.pai]].filter(([, v]) => v).map(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])),
+      viva && h("div", { class: "caixa" }, h("b", {}, viva.viva ? "Editando agora" : "Vídeo aberto na central"),
+        h("div", {}, `${viva.ed.nome} · ${(ETAPAS.find(([k]) => k === viva.t.etapa) || [null, "sem etapa"])[1]}${viva.t.agora_faz ? " · " + viva.t.agora_faz.rotulo + " " + ha(viva.t.agora_faz.ts) : ""}`)),
+      eds.length ? [h("h3", { class: "grupo" }, "Edições registradas"), h("div", { class: "tabela" }, h("table", {}, h("tbody", {}, eds.map((x) =>
+        h("tr", {}, td(nomeEditor(x.editor_slug) || "–"), td(x.status === "entregue" ? "Entregue " + dataBR(x.fechado_em) : x.status || "em andamento"), td(duracao(x.segundos_ativos), 1)))))) ]
+        : h("p", { class: "nota", style: "margin:0" }, "Nenhuma edição registrada na central para este card ainda."),
+      visao.papel === "editor" && c.status_categoria !== "done" && h("div", { class: "caixa" }, h("b", {}, "Para começar"),
+        h("div", { class: "acoes" }, "Diga ao seu Claude:", h("code", { class: "token", style: "padding:4px 8px" }, frase),
+          h("button", { class: "botao leve peq", onclick: (ev) => copiar(frase, ev.currentTarget) }, "Copiar"))),
+      h("div", { class: "acoes" }, h("a", { class: "botao", href: urlJira(chave), target: "_blank", rel: "noopener", style: "text-decoration:none" }, "Abrir no Jira"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
+  for (const b of document.querySelectorAll("#segmentos button")) b.addEventListener("click", () => { segmento = b.dataset.seg; desenharDemandas(); });
+
   // ---------------------------------------------------------------- demandas (quadro)
   function cartao(d, extra) {
     const vencido = d.prazo && d.prazo < hojeISO() && !["entregue", "cancelada"].includes(d.status);
@@ -844,7 +978,13 @@
   }
   const ordenarFila = (a, b) => (b.prioridade === "urgente") - (a.prioridade === "urgente") || (a.prazo || "9999").localeCompare(b.prazo || "9999") || a.criado.localeCompare(b.criado);
   function desenharDemandas() {
-    $("#dem-sub").textContent = visao.papel === "editor" ? "Todas as demandas do time. Para pegar uma, peça ao seu Claude: pega a D-0012." : "Pedidos de fora do time. Clique num cartão para ver, atribuir ou priorizar.";
+    for (const b of document.querySelectorAll("#segmentos button")) b.setAttribute("aria-selected", String(b.dataset.seg === segmento));
+    $("#seg-sprint").hidden = segmento !== "sprint"; $("#seg-externas").hidden = segmento !== "externas";
+    $("#seg-n-sprint").textContent = D.jira.filter((c) => c.status_categoria !== "done").length;
+    $("#seg-n-externas").textContent = D.demandas.filter((d) => !["entregue", "cancelada"].includes(d.status)).length;
+    if (segmento === "sprint") desenharSprint();
+    $("#dem-sub").textContent = segmento === "sprint" ? "Os cards da sprint no Jira, atualizados a cada 5 minutos, cruzados com quem está editando agora."
+      : visao.papel === "editor" ? "Pedidos de fora do time. Para pegar um, peça ao seu Claude: pega a D-0012." : "Pedidos de fora do time. Clique num cartão para ver, atribuir ou priorizar.";
     const recentes = new Date(Date.now() - 14 * 864e5).toISOString();
     encher($("#quadro"), COLUNAS.map((st) => {
       let itens = D.demandas.filter((d) => d.status === st);
@@ -1065,17 +1205,22 @@
   // ---------------------------------------------------------------- pessoas (gestão)
   function erroGestao(e) { const m = $("#msg-gestao"); m.hidden = !e; m.textContent = e ? e.message : ""; }
   function desenharGestao() {
+    const contasJira = [...new Map(D.jira.filter((c) => c.responsavel_id).map((c) => [c.responsavel_id, c.responsavel_nome])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
     encher($("#lista-editores"), D.editores.length ? D.editores.map((e) => {
+      const sugestao = e.jira_id || (D.jira.find((c) => editorDoCard(c) && editorDoCard(c).slug === e.slug) || {}).responsavel_id || "";
+      const selJira = h("select", { "aria-label": "Conta no Jira de " + e.nome, style: "width:auto;padding:5px 10px;font-size:13px" }, h("option", { value: "" }, "Não ligado"),
+        contasJira.map(([id, nome]) => h("option", { value: id, selected: id === sugestao }, nomeCurto(nome) + (id === e.jira_id ? "" : id === sugestao ? " (sugerido)" : ""))));
+      selJira.onchange = async () => { const { error } = await db.rpc("cw_editor_jira", { p_slug: e.slug, p_jira_id: selJira.value || null }); erroGestao(error); if (!error) carregar(); };
       const s = D.aovivo.find((x) => x.slug === e.slug);
       const confirma = h("span", { hidden: true }, " Desativar? ",
         h("button", { class: "botao perigo peq", onclick: async () => { const { error } = await db.rpc("cw_desativar_editor", { p_slug: e.slug }); erroGestao(error); if (!error) carregar(); } }, "Sim"));
       const situacao = !e.ativo ? statusChip("cancelada", "Desativado") : !s ? h("span", { class: "chip tom-neutro" }, "nunca conectou")
         : online(s) ? h("span", { class: "chip tom-ok" }, s.estado === "editando" ? "editando" : "Claude aberto") : h("span", { class: "chip tom-neutro" }, "offline, visto " + ha(s.atualizado));
-      return h("tr", {}, td(e.nome), td(e.email || h("span", { class: "chip tom-critico" }, "sem e-mail: não entra na central")), td(situacao),
+      return h("tr", {}, td(e.nome), td(e.email || h("span", { class: "chip tom-critico" }, "sem e-mail: não entra na central")), h("td", {}, selJira), td(situacao),
         td(s && s.payload && s.payload.plugin ? s.payload.plugin : "–"),
         h("td", { class: "n" }, e.ativo && [h("button", { class: "botao leve peq", onclick: () => { $("#ed-nome").value = e.nome; $("#ed-email").value = e.email || ""; $("#ed-email").focus(); } }, "Novo token"), " ",
           h("button", { class: "botao perigo peq", onclick: () => { confirma.hidden = false; } }, "Desativar"), confirma]));
-    }) : vazioLinha(5, "Nenhum editor cadastrado ainda."));
+    }) : vazioLinha(6, "Nenhum editor cadastrado ainda."));
     encher($("#lista-gestores"), D.gestores.map((g) => h("tr", {}, td(g), h("td", { class: "n" },
       g !== eu.email && h("button", { class: "botao perigo peq", onclick: async () => { const { error } = await db.rpc("cw_remover_gestor", { p_email: g }); erroGestao(error); if (!error) carregar(); } }, "Remover")))));
   }
@@ -1116,7 +1261,12 @@
     const ajuste = (d) => { const e = D.eventos[d.id]; return e ? h("div", { class: "sub" }, h("b", {}, "O que mudar: "), e.categoria ? `[${MOTIVOS[e.categoria]}] ` : "", e.detalhe || "") : null; };
     const grupo = (titulo, itens, render, vazio) => [h("h3", { class: "grupo" }, `${titulo} (${itens.length})`),
       itens.length ? h("div", { class: "grade-cartoes" }, itens.map(render)) : h("div", { class: "vazio" }, vazio)];
+    const edAtual = D.editores.find((e) => e.slug === slug);
+    const meusCards = D.jira.filter((c) => c.status_categoria !== "done" && editorDoCard(c) && editorDoCard(c).slug === slug)
+      .sort((a, b) => a.status_ordem - b.status_ordem || (a.prazo || "9").localeCompare(b.prazo || "9"));
     encher($("#md-conteudo"),
+      grupo("Seus cards da sprint", meusCards, (c) => cartaoJira(c, h("div", { class: "dica" }, "Diga ao Claude: ", h("code", {}, `vamos fazer o ${c.chave}`))),
+        edAtual && !edAtual.jira_id && !D.jira.some((c) => editorDoCard(c) && editorDoCard(c).slug === slug) ? "A gestão ainda não ligou você à sua conta do Jira." : "Nenhum card seu aberto na sprint."),
       grupo("Ajustes pedidos", minhas("refazer"), (d) => cartao(d, [ajuste(d), dica(d)]), "Nenhum ajuste pendente."),
       h("h3", { class: "grupo" }, `Editando (${meusAbertos.length})`),
       meusAbertos.length ? h("div", { class: "aovivo" }, meusAbertos.map(blocoEdicao)) : h("div", { class: "vazio" }, "Nenhum vídeo aberto agora."),
@@ -1187,6 +1337,8 @@
     const bate = (...xs) => xs.some((x) => (x || "").toLowerCase().includes(q));
     const res = D.demandas.filter((d) => bate(codigo(d), d.titulo, d.solicitante_nome, d.perfil)).slice(0, 6)
       .map((d) => ({ titulo: `${codigo(d)} · ${d.titulo}`, detalhe: `${STATUS[d.status]}${d.editor_slug ? " · " + nomeEditor(d.editor_slug) : ""}`, abrir: () => abrir(d.id) }));
+    for (const c of D.jira.filter((c) => bate(c.chave, c.titulo, c.responsavel_nome)).slice(0, 6))
+      res.push({ titulo: `${c.chave} · ${c.titulo}`, detalhe: `Jira · ${c.status}${c.responsavel_nome ? " · " + nomeCurto(c.responsavel_nome) : ""}`, abrir: () => abrirJira(c.chave) });
     for (const l of linhasAoVivo().filter((l) => bate(l.t.titulo, l.t.jira, l.t.demanda, l.ed.nome)).slice(0, 4))
       res.push({ titulo: l.t.titulo, detalhe: `${l.viva ? "Editando agora" : "Aberto"} · ${l.ed.nome}${l.t.jira ? " · " + l.t.jira : ""}`, abrir: () => trocarAba("aovivo") });
     for (const x of (eu.papel === "gestor" ? D.edicoes : []).filter((x) => x.status === "entregue" && bate(x.titulo, x.jira, x.demanda)).slice(0, 4))
