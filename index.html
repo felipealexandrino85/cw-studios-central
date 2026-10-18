@@ -137,7 +137,7 @@
   th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--texto-2); white-space: nowrap; }
   td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   tr.total td { font-weight: 900; }
-  .duas-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px; }
+  .duas-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(440px, 100%), 1fr)); gap: 16px; }
   .duas-col > * { min-width: 0; display: grid; gap: 8px; align-content: start; }
 
   form.painel { background: var(--card); border: 1px solid var(--linha); border-radius: 16px; padding: 20px; max-width: 720px; box-shadow: var(--sombra); display: grid; gap: 14px; }
@@ -240,15 +240,15 @@
     <div class="numeros" id="rel-numeros"></div>
     <h3 class="grupo">Por editor</h3>
     <div class="tabela"><table><thead><tr><th>Editor</th><th class="n">Finalizados</th><th class="n">Peças</th>
-      <th class="n">Tempo ativo médio</th><th class="n">Mediana</th><th class="n">Tempo ativo total</th>
-      <th class="n">Voltaram p/ ajuste</th><th class="n">Em andamento</th></tr></thead><tbody id="rel-editores"></tbody></table></div>
+      <th class="n">Tempo ativo médio</th><th class="n">Mediana</th><th class="n">Atenção humana média</th><th class="n">Vídeos por semana</th>
+      <th class="n">Aprovação de 1ª</th><th class="n">Em andamento</th></tr></thead><tbody id="rel-editores"></tbody></table></div>
     <div class="duas-col">
       <div><h3 class="grupo">Onde o tempo vai (por etapa)</h3>
         <div class="tabela"><table><thead><tr><th>Etapa</th><th class="n">Média por vídeo</th><th class="n">% do tempo</th></tr></thead><tbody id="rel-etapas"></tbody></table></div></div>
       <div><h3 class="grupo">Por semana</h3>
         <div class="tabela"><table><thead><tr><th>Semana de</th><th class="n">Finalizados</th><th class="n">Tempo ativo médio</th><th class="n">Ajustes</th></tr></thead><tbody id="rel-semanas"></tbody></table></div></div>
       <div><h3 class="grupo">Por tipo de vídeo</h3>
-        <div class="tabela"><table><thead><tr><th>Tipo</th><th class="n">Finalizados</th><th class="n">Média</th><th class="n">Mediana</th></tr></thead><tbody id="rel-tipos"></tbody></table></div></div>
+        <div class="tabela"><table><thead><tr><th>Tipo</th><th class="n">Finalizados</th><th class="n">Média</th><th class="n">Mediana</th><th class="n">Atenção humana</th></tr></thead><tbody id="rel-tipos"></tbody></table></div></div>
       <div><h3 class="grupo">Motivos de ajuste (demandas da central)</h3>
         <div class="tabela"><table><thead><tr><th>Motivo</th><th class="n">Vezes</th></tr></thead><tbody id="rel-motivos"></tbody></table></div></div>
     </div>
@@ -256,7 +256,34 @@
     <div class="tabela"><table><thead><tr><th>Entregue</th><th>Editor</th><th>Vídeo</th><th>Origem</th><th>Tipo</th>
       <th class="n">Tempo ativo</th><th class="n">Peças</th><th class="n">Ajustes</th></tr></thead><tbody id="rel-videos"></tbody></table></div>
     <p class="nota">Tempo ativo = minutos com o Claude trabalhando no vídeo, somando todas as sessões e rodadas de ajuste; pausa de mais de 5 min não conta.
+      Atenção humana = tempo do editor lendo e decidindo (da resposta do Claude até a próxima mensagem dele, até 5 min cada); o resto é máquina.
+      Rendimento = minutos de máquina para cada minuto de atenção: quanto maior, mais escala.
       Só entram vídeos editados com o plugin. "Por etapa" só existe para vídeos editados a partir da versão 0.12 do plugin.</p>
+  </section>
+
+  <section id="aba-padrao" hidden>
+    <div class="titulo-aba"><h2>Padrão do time</h2><p>Regras que todo Claude de edição recebe ao abrir, e os fluxos que mais rendem.</p></div>
+    <h3 class="grupo">Regras do time</h3>
+    <p class="nota" style="margin:0">Cada regra ativa chega ao Claude de todos os editores na próxima sessão (plugin cw-central). Escreva como instrução direta.</p>
+    <div class="tabela"><table><thead><tr><th>Regra</th><th>Vale para</th><th>Origem</th><th>Situação</th><th></th></tr></thead><tbody id="lista-regras"></tbody></table></div>
+    <form class="painel" id="form-regra">
+      <h3 style="margin:0;font-weight:900" id="regra-titulo">Nova regra</h3>
+      <input type="hidden" id="regra-id"><input type="hidden" id="regra-origem">
+      <label for="regra-texto">Regra <small>ex.: Sempre escrever "Cardápio Web" com acento e espaço nas legendas</small>
+        <textarea id="regra-texto" required minlength="5" maxlength="400" style="min-height:70px"></textarea></label>
+      <label for="regra-tipo">Vale para
+        <select id="regra-tipo"><option value="">Todo vídeo</option><option value="reel">Reel</option><option value="cortes">Cortes</option>
+          <option value="tutorial">Tutorial</option><option value="youtube">YouTube</option><option value="anuncio">Anúncio</option><option value="story">Story</option></select></label>
+      <div class="acoes"><button class="botao">Salvar regra</button><button class="botao leve" type="button" id="regra-limpar">Limpar</button></div>
+      <div id="msg-regra" class="aviso erro" hidden></div>
+    </form>
+    <h3 class="grupo">Ajustes que podem virar regra</h3>
+    <p class="nota" style="margin:0">Pedidos de ajuste dos últimos 60 dias que ainda não viraram regra. Se o mesmo erro se repete, transforme em regra.</p>
+    <div class="alertas" id="sugestoes-regra"></div>
+    <h3 class="grupo">Fluxos que funcionam (últimos 90 dias)</h3>
+    <p class="nota" style="margin:0">Vídeos finalizados agrupados pelo tipo e pelas skills, agentes e conectores mais usados. Compare dentro do mesmo tipo: o fluxo com menos atenção humana e mais aprovação de primeira é o candidato a padrão do time.</p>
+    <div class="tabela"><table><thead><tr><th>Tipo</th><th>Fluxo (o que mais foi usado)</th><th class="n">Vídeos</th><th>Editores</th>
+      <th class="n">Tempo ativo médio</th><th class="n">Atenção humana média</th><th class="n">Aprovação de 1ª</th></tr></thead><tbody id="fluxos"></tbody></table></div>
   </section>
 
   <section id="aba-gestao" hidden>
@@ -365,14 +392,14 @@
   const ETAPAS = [["preparo", "Preparo"], ["transcricao", "Transcrição"], ["corte", "Corte e seleção"], ["montagem", "Montagem"],
     ["motion", "Legenda e motion"], ["render", "Render"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   const ABAS = {
-    gestor: [["inicio", "Início"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["relatorio", "Relatório"], ["gestao", "Pessoas"], ["pedir", "Pedir edição"]],
+    gestor: [["inicio", "Início"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["relatorio", "Relatório"], ["padrao", "Padrão"], ["gestao", "Pessoas"], ["pedir", "Pedir edição"]],
     editor: [["meudia", "Meu dia"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["entregas", "Minhas entregas"]],
     solicitante: [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]],
   };
 
   let eu = { email: "", papel: null, editor: null };   // quem está logado (papel real, decidido pelo banco)
   let visao = { papel: null, editor: null };           // como a página está sendo vista (gestão pode simular)
-  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], ajustes: [], posicoes: {}, eventos: {} };
+  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], ajustes: [], regras: [], posicoes: {}, eventos: {} };
   let aba = null;
 
   // ---------------------------------------------------------------- helpers
@@ -512,9 +539,10 @@
       const desde = new Date(Date.now() - 400 * 864e5).toISOString();
       pedidos.push(db.rpc("cw_ao_vivo"), db.from("edicoes").select("*").gte("aberto_em", desde).order("aberto_em", { ascending: false }).limit(5000),
         db.from("gestores").select("email").order("email"),
-        db.from("demanda_eventos").select("demanda_id,ts,categoria").eq("tipo", "refazer").gte("ts", desde), db.rpc("cw_posicoes"));
+        db.from("demanda_eventos").select("demanda_id,ts,categoria,detalhe").eq("tipo", "refazer").gte("ts", desde), db.rpc("cw_posicoes"),
+        db.from("regras").select("*").order("id"));
     } else if (p === "editor") {
-      pedidos.push(db.rpc("cw_ao_vivo"), db.rpc("cw_minhas_entregas"));
+      pedidos.push(db.rpc("cw_ao_vivo"), db.rpc("cw_minhas_entregas"), db.from("regras").select("texto,tipo,ativa").eq("ativa", true).order("id"));
     } else {
       pedidos.push(db.rpc("cw_posicoes"));
     }
@@ -523,9 +551,9 @@
     D.demandas = r[0].data || []; D.editores = r[1].data || [];
     if (p === "gestor") {
       D.aovivo = r[2].data || []; D.edicoes = r[3].data || []; D.gestores = (r[4].data || []).map((g) => g.email);
-      D.ajustes = r[5].data || []; D.posicoes = Object.fromEntries((r[6].data || []).map((x) => [x.id, x.posicao]));
+      D.ajustes = r[5].data || []; D.posicoes = Object.fromEntries((r[6].data || []).map((x) => [x.id, x.posicao])); D.regras = r[7].data || [];
     } else if (p === "editor") {
-      D.aovivo = r[2].data || []; D.entregas = r[3].data || [];
+      D.aovivo = r[2].data || []; D.entregas = r[3].data || []; D.regras = r[4].data || [];
     } else {
       D.posicoes = Object.fromEntries((r[2].data || []).map((x) => [x.id, x.posicao]));
     }
@@ -547,7 +575,7 @@
   }
 
   function desenhar() {
-    ({ inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, gestao: desenharGestao,
+    ({ inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -612,6 +640,11 @@
       }
       if (versoes[0] && p.plugin && p.plugin !== versoes[0]) out.push({ tom: "neutro", rotulo: "Plugin", texto: `${ed.nome} está com o plugin ${p.plugin} (o mais novo no time é ${versoes[0]})` });
     }
+    for (const s of D.aovivo) {
+      const ed = D.editores.find((e) => e.slug === s.slug);
+      if (ed && ed.ativo && online(s) && !((s.payload || {}).trabalhos || []).some((t) => t.agora))
+        out.push({ tom: "neutro", rotulo: "Sem vídeo", texto: `${ed.nome} está com o Claude aberto e nenhum vídeo aberto` });
+    }
     for (const e of D.editores.filter((e) => e.ativo && !D.aovivo.some((s) => s.slug === e.slug)))
       out.push({ tom: "neutro", rotulo: "Conexão", texto: `${e.nome} ainda não conectou o Claude à central` });
     const ordem = { critico: 0, aviso: 1, neutro: 2 };
@@ -621,7 +654,10 @@
     const ds = D.demandas, semana = Date.now() - 7 * 864e5;
     const finSemana = D.edicoes.filter((x) => x.status === "entregue" && x.fechado_em && new Date(x.fechado_em) > semana);
     const vivas = linhasAoVivo().filter((l) => l.viva);
-    encher($("#ini-numeros"), [[vivas.length, "editando agora"], [ds.filter((d) => d.status === "nova").length, "na fila"],
+    const editoresVivos = new Set(vivas.map((l) => l.ed.slug)).size;
+    encher($("#ini-numeros"), [[vivas.length, "vídeos sendo editados agora"],
+      [editoresVivos ? (vivas.length / editoresVivos).toFixed(1).replace(".", ",") : "–", "vídeos em paralelo por editor"],
+      [ds.filter((d) => d.status === "nova").length, "na fila"],
       [ds.filter((d) => d.status === "em_revisao").length, "esperando aprovação"], [finSemana.length, "vídeos finalizados em 7 dias"],
       [duracao(media(finSemana.map((x) => x.segundos_ativos))), "tempo ativo médio em 7 dias"]].map(numero));
     const al = alertas();
@@ -741,10 +777,13 @@
   }
   const td = (v, n) => h("td", { class: n ? "n" : null }, v);
   const vazioLinha = (cols, txt) => h("tr", {}, h("td", { colspan: cols, class: "vazio" }, txt || "Nada no período."));
-  function linhaGrupo(nome, fin, and) {
-    const t = fin.map((x) => x.segundos_ativos), voltas = fin.filter((x) => x.voltas > 0).length;
+  const comAtencao = (xs) => xs.filter((x) => x.interacoes > 0);
+  const primeira = (xs) => xs.length ? Math.round(100 * xs.filter((x) => !x.voltas).length / xs.length) + "%" : "–";
+  function linhaGrupo(nome, fin, and, semanas) {
+    const t = fin.map((x) => x.segundos_ativos);
     return [td(nome), td(fin.length, 1), td(fin.reduce((a, x) => a + (x.pecas || 0), 0), 1), td(duracao(media(t)), 1), td(duracao(mediana(t)), 1),
-      td(duracao(t.reduce((a, b) => a + b, 0)), 1), td(fin.length ? `${voltas} (${Math.round(100 * voltas / fin.length)}%)` : "–", 1), td(and.length, 1)];
+      td(duracao(media(comAtencao(fin).map((x) => x.segundos_humanos))), 1), td((fin.length / semanas).toFixed(1).replace(".", ","), 1),
+      td(primeira(fin), 1), td(and.length, 1)];
   }
   const origemTexto = (x) => x.jira ? "Jira " + x.jira : x.demanda ? "Central " + x.demanda : "sem card";
   function inicioSemana(t) { const x = new Date(t); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
@@ -752,17 +791,23 @@
     const sel = $("#rel-editor"), atual = sel.value;
     encher(sel, h("option", { value: "" }, "Todo o time"), D.editores.map((e) => h("option", { value: e.slug }, e.nome))); sel.value = atual;
     const { ini, fim, ed, finalizados, andamento } = relatorioFiltrado(), tempos = finalizados.map((x) => x.segundos_ativos);
-    const voltas = finalizados.filter((x) => x.voltas > 0).length;
-    encher($("#rel-numeros"), [[finalizados.length, "vídeos finalizados"], [finalizados.reduce((a, x) => a + (x.pecas || 0), 0), "peças entregues"],
-      [duracao(media(tempos)), "tempo ativo médio por vídeo"], [duracao(tempos.reduce((a, b) => a + b, 0)), "tempo ativo total"],
-      [finalizados.length ? Math.round(100 * voltas / finalizados.length) + "%" : "–", "voltaram para ajuste"], [andamento.length, "em andamento agora"]].map(numero));
+    const semanas = Math.max((fim - ini) / (7 * 864e5), 1 / 7);
+    const nEditores = new Set(finalizados.map((x) => x.editor_slug)).size || 1;
+    const medidos = comAtencao(finalizados), humano = medidos.reduce((a, x) => a + x.segundos_humanos, 0);
+    const maquina = medidos.reduce((a, x) => a + Math.max(x.segundos_ativos - x.segundos_humanos, 0), 0);
+    encher($("#rel-numeros"), [[finalizados.length, "vídeos finalizados"],
+      [(finalizados.length / semanas / nEditores).toFixed(1).replace(".", ","), "vídeos por editor por semana"],
+      [duracao(media(tempos)), "tempo ativo médio por vídeo"],
+      [duracao(medidos.length ? humano / medidos.length : null), "atenção humana média por vídeo"],
+      [humano ? (maquina / humano).toFixed(1).replace(".", ",") + "×" : "–", "rendimento (máquina por minuto humano)"],
+      [primeira(finalizados), "aprovados de primeira"], [andamento.length, "em andamento agora"]].map(numero));
 
     const slugs = [...new Set([...finalizados, ...andamento].map((x) => x.editor_slug))];
     const linhas = slugs.map((sl) => ({ nome: nomeEditor(sl), fin: finalizados.filter((x) => x.editor_slug === sl), and: andamento.filter((x) => x.editor_slug === sl) }))
       .sort((a, b) => b.fin.length - a.fin.length || a.nome.localeCompare(b.nome));
-    const corpo = linhas.map((l) => h("tr", {}, linhaGrupo(l.nome, l.fin, l.and)));
-    if (linhas.length > 1) corpo.push(h("tr", { class: "total" }, linhaGrupo("Time", finalizados, andamento)));
-    encher($("#rel-editores"), corpo.length ? corpo : vazioLinha(8));
+    const corpo = linhas.map((l) => h("tr", {}, linhaGrupo(l.nome, l.fin, l.and, semanas)));
+    if (linhas.length > 1) corpo.push(h("tr", { class: "total" }, linhaGrupo("Time", finalizados, andamento, semanas)));
+    encher($("#rel-editores"), corpo.length ? corpo : vazioLinha(9));
 
     const comEtapas = finalizados.filter((x) => x.etapas && Object.keys(x.etapas).length);
     const totEtapa = Object.fromEntries(ETAPAS.map(([k]) => [k, comEtapas.reduce((a, x) => a + (x.etapas[k] || 0), 0)]));
@@ -771,18 +816,18 @@
       : vazioLinha(3, "Ainda sem vídeos medidos por etapa no período."));
 
     const entregues = D.edicoes.filter((x) => (!ed || x.editor_slug === ed) && x.status === "entregue" && x.fechado_em);
-    const semanas = Array.from({ length: 8 }, (_, i) => inicioSemana(Date.now() - i * 7 * 864e5));
-    encher($("#rel-semanas"), semanas.map((s) => {
+    const ultimas8 = Array.from({ length: 8 }, (_, i) => inicioSemana(Date.now() - i * 7 * 864e5));
+    encher($("#rel-semanas"), ultimas8.map((s) => {
       const fimS = new Date(s.getTime() + 7 * 864e5), xs = entregues.filter((x) => new Date(x.fechado_em) >= s && new Date(x.fechado_em) < fimS);
       return h("tr", {}, td(s.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })), td(xs.length, 1),
         td(duracao(media(xs.map((x) => x.segundos_ativos))), 1), td(xs.filter((x) => x.voltas > 0).length, 1));
     }));
 
     const tipos = [...new Set(finalizados.map((x) => x.tipo || "outro"))].map((tp) => {
-      const t = finalizados.filter((x) => (x.tipo || "outro") === tp).map((x) => x.segundos_ativos);
-      return { tp, n: t.length, med: media(t), mdn: mediana(t) };
+      const xs = finalizados.filter((x) => (x.tipo || "outro") === tp), t = xs.map((x) => x.segundos_ativos);
+      return { tp, n: t.length, med: media(t), mdn: mediana(t), hum: media(comAtencao(xs).map((x) => x.segundos_humanos)) };
     }).sort((a, b) => b.n - a.n);
-    encher($("#rel-tipos"), tipos.length ? tipos.map((x) => h("tr", {}, td(TIPOS[x.tp] || x.tp), td(x.n, 1), td(duracao(x.med), 1), td(duracao(x.mdn), 1))) : vazioLinha(4));
+    encher($("#rel-tipos"), tipos.length ? tipos.map((x) => h("tr", {}, td(TIPOS[x.tp] || x.tp), td(x.n, 1), td(duracao(x.med), 1), td(duracao(x.mdn), 1), td(duracao(x.hum), 1))) : vazioLinha(5));
 
     const motivos = {};
     for (const e of D.ajustes.filter((e) => new Date(e.ts) >= ini && new Date(e.ts) < fim)) motivos[e.categoria || "sem"] = (motivos[e.categoria || "sem"] || 0) + 1;
@@ -798,13 +843,65 @@
   $("#rel-csv").addEventListener("click", () => {
     const { finalizados } = relatorioFiltrado();
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const linhas = [["entregue_em", "editor", "video", "origem", "tipo", "tempo_ativo_min", "pecas", "ajustes", "custo_estimado_usd", ...ETAPAS.map(([k]) => "min_" + k)],
-      ...finalizados.map((x) => [x.fechado_em, nomeEditor(x.editor_slug), x.titulo, origemTexto(x), x.tipo, Math.round(x.segundos_ativos / 60), x.pecas, x.voltas, x.custo_usd,
+    const linhas = [["entregue_em", "editor", "video", "origem", "tipo", "tempo_ativo_min", "atencao_humana_min", "mensagens_do_editor", "pecas", "ajustes", "custo_estimado_usd", ...ETAPAS.map(([k]) => "min_" + k)],
+      ...finalizados.map((x) => [x.fechado_em, nomeEditor(x.editor_slug), x.titulo, origemTexto(x), x.tipo, Math.round(x.segundos_ativos / 60), Math.round((x.segundos_humanos || 0) / 60), x.interacoes || 0, x.pecas, x.voltas, x.custo_usd,
         ...ETAPAS.map(([k]) => Math.round(((x.etapas || {})[k] || 0) / 60))])];
     const blob = new Blob(["﻿" + linhas.map((l) => l.map(esc).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
     const a = h("a", { href: URL.createObjectURL(blob), download: `cw-studios-relatorio-${hojeISO()}.csv` });
     document.body.append(a); a.click(); a.remove();
   });
+
+  // ---------------------------------------------------------------- padrão do time (gestão)
+  function preencherRegra(r) {
+    $("#regra-id").value = r.id || ""; $("#regra-origem").value = r.origem || "";
+    $("#regra-texto").value = r.texto || ""; $("#regra-tipo").value = r.tipo || "";
+    $("#regra-titulo").textContent = r.id ? "Editar regra" : "Nova regra";
+    $("#regra-texto").focus();
+  }
+  function assinatura(fluxo) {
+    const top = Object.entries(fluxo || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k.replace(/^(skill|agente|mcp):/, "").split(":").pop());
+    return top.length ? top.sort().join(" + ") : "sem skills ou agentes";
+  }
+  function desenharPadrao() {
+    const salvar = async (r, mudanca) => {
+      const { error } = await db.rpc("cw_regra_salvar", { p_id: r.id, p_texto: r.texto, p_tipo: r.tipo, p_origem: r.origem, p_ativa: mudanca.ativa });
+      const m = $("#msg-regra"); m.hidden = !error; m.textContent = error ? error.message : ""; if (!error) carregar();
+    };
+    encher($("#lista-regras"), D.regras.length ? D.regras.map((r) => h("tr", {}, td(r.texto), td(r.tipo ? TIPOS[r.tipo] : "Todo vídeo"), td(r.origem || "–"),
+      td(r.ativa ? h("span", { class: "chip tom-ok" }, "Ativa") : h("span", { class: "chip tom-neutro" }, "Pausada")),
+      h("td", { class: "n" }, h("button", { class: "botao leve peq", onclick: () => preencherRegra(r) }, "Editar"), " ",
+        h("button", { class: "botao leve peq", onclick: () => salvar(r, { ativa: !r.ativa }) }, r.ativa ? "Pausar" : "Ativar"))))
+      : vazioLinha(5, "Nenhuma regra ainda. Comece pelos erros que mais voltam para ajuste."));
+
+    const desde = Date.now() - 60 * 864e5, usadas = new Set(D.regras.map((r) => r.origem).filter(Boolean));
+    const sug = D.ajustes.filter((e) => e.detalhe && new Date(e.ts) > desde).map((e) => {
+      const d = D.demandas.find((x) => x.id === e.demanda_id);
+      return { e, d, origem: `ajuste ${d ? codigo(d) : "D-" + e.demanda_id}${e.categoria ? " (" + (MOTIVOS[e.categoria] || e.categoria).toLowerCase() + ")" : ""}` };
+    }).filter((x) => !usadas.has(x.origem)).sort((a, b) => b.e.ts.localeCompare(a.e.ts));
+    encher($("#sugestoes-regra"), sug.length ? sug.slice(0, 20).map(({ e, d, origem }) => h("div", { class: "alerta" },
+      h("span", { class: "chip tom-aviso" }, MOTIVOS[e.categoria] || "Ajuste"), h("span", { class: "texto" }, `"${e.detalhe}"`, h("span", { class: "nota" }, ` · ${origem}${d ? " · " + d.titulo : ""}`)),
+      h("button", { onclick: () => preencherRegra({ texto: e.detalhe, tipo: d && d.tipo !== "outro" ? d.tipo : "", origem }) }, "Virar regra")))
+      : h("div", { class: "vazio" }, "Nenhum ajuste novo para avaliar."));
+
+    const fin = D.edicoes.filter((x) => x.status === "entregue" && x.fechado_em && new Date(x.fechado_em) > Date.now() - 90 * 864e5);
+    const grupos = {};
+    for (const x of fin) { const k = (x.tipo || "outro") + "|" + assinatura(x.fluxo); (grupos[k] = grupos[k] || []).push(x); }
+    const linhas = Object.entries(grupos).map(([k, xs]) => ({ tipo: k.split("|")[0], fluxo: k.split("|")[1], xs }))
+      .sort((a, b) => a.tipo.localeCompare(b.tipo) || b.xs.length - a.xs.length);
+    encher($("#fluxos"), linhas.length ? linhas.map(({ tipo, fluxo, xs }) => h("tr", {}, td(TIPOS[tipo] || tipo), td(fluxo), td(xs.length, 1),
+      td([...new Set(xs.map((x) => nomeEditor(x.editor_slug)))].join(", ")), td(duracao(media(xs.map((x) => x.segundos_ativos))), 1),
+      td(duracao(media(comAtencao(xs).map((x) => x.segundos_humanos))), 1), td(primeira(xs), 1)))
+      : vazioLinha(7, "Ainda sem vídeos finalizados com o plugin nos últimos 90 dias."));
+  }
+  $("#form-regra").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const id = $("#regra-id").value ? Number($("#regra-id").value) : null;
+    const { error } = await db.rpc("cw_regra_salvar", { p_id: id, p_texto: $("#regra-texto").value, p_tipo: $("#regra-tipo").value || null,
+      p_origem: $("#regra-origem").value || null, p_ativa: id ? null : true });
+    const m = $("#msg-regra"); m.hidden = !error; m.textContent = error ? error.message : "";
+    if (!error) { preencherRegra({}); carregar(); }
+  });
+  $("#regra-limpar").addEventListener("click", () => preencherRegra({}));
 
   // ---------------------------------------------------------------- pessoas (gestão)
   function erroGestao(e) { const m = $("#msg-gestao"); m.hidden = !e; m.textContent = e ? e.message : ""; }
@@ -866,7 +963,9 @@
       meusAbertos.length ? h("div", { class: "aovivo" }, meusAbertos.map(blocoEdicao)) : h("div", { class: "vazio" }, "Nenhum vídeo aberto agora."),
       grupo("Atribuídas a você", minhas("nova").sort(ordenarFila), (d) => cartao(d, dica(d)), "Nada atribuído a você."),
       grupo("Disponíveis na fila", disponiveis.slice(0, 9), (d) => cartao(d, dica(d)), "Fila vazia."),
-      grupo("Esperando aprovação de quem pediu", minhas("em_revisao"), (d) => cartao(d), "Nada esperando aprovação."));
+      grupo("Esperando aprovação de quem pediu", minhas("em_revisao"), (d) => cartao(d), "Nada esperando aprovação."),
+      D.regras.filter((r) => r.ativa !== false).length ? h("details", {}, h("summary", {}, `Regras do time (${D.regras.filter((r) => r.ativa !== false).length}) · seu Claude já recebe estas regras`),
+        h("ul", { style: "margin:8px 0 0;padding-left:18px;display:grid;gap:4px" }, D.regras.filter((r) => r.ativa !== false).map((r) => h("li", {}, r.tipo ? `[${TIPOS[r.tipo]}] ` : "", r.texto)))) : null);
   }
   function desenharEntregas() {
     const ent = minhasEntregas().filter((x) => x.status === "entregue" && x.fechado_em).sort((a, b) => b.fechado_em.localeCompare(a.fechado_em));
@@ -874,7 +973,8 @@
     const mes = ent.filter((x) => x.fechado_em.slice(0, 7) === new Date().toISOString().slice(0, 7));
     encher($("#me-numeros"), [[desde(7).length, "entregues em 7 dias"], [mes.length, "entregues no mês"],
       [duracao(media(desde(30).map((x) => x.segundos_ativos))), "tempo ativo médio (30 dias)"],
-      [duracao(mediana(desde(30).map((x) => x.segundos_ativos))), "mediana (30 dias)"]].map(numero));
+      [duracao(mediana(desde(30).map((x) => x.segundos_ativos))), "mediana (30 dias)"],
+      [duracao(media(desde(30).filter((x) => x.interacoes > 0).map((x) => x.segundos_humanos))), "minha atenção média por vídeo (30 dias)"]].map(numero));
     encher($("#me-videos"), ent.length ? ent.slice(0, 60).map((x) => h("tr", {}, td(dataBR(x.fechado_em)), td(x.titulo || x.id), h("td", {}, origemChip(x)),
       td(TIPOS[x.tipo] || x.tipo || ""), td(duracao(x.segundos_ativos), 1), td(x.voltas || "", 1))) : vazioLinha(6, "Nenhuma entrega registrada ainda."));
   }
