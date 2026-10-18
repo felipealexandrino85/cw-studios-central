@@ -15,6 +15,7 @@
     url: "https://ukjlbkjqseamkswtzmfp.supabase.co",
     chave: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVramxia2pxc2VhbWtzd3R6bWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNzEwNDEsImV4cCI6MjEwNzg0NzA0MX0.l3RqaBjxvWP4y21Hy1wXdvqylY4GudWY1EB6vvH7viU",
     jira: "https://cardapio-web.atlassian.net",  // cards SCC-123 viram link
+    pastaEntrada: "CW Studios - Produção › 0. ENVIE AQUI - Demandas",  // onde o material de cada pedido fica no Drive
   };
 </script>
 <style>
@@ -353,8 +354,8 @@
             <option>YouTube</option><option>Interno</option><option>Outro</option>
           </select></label>
       </div>
-      <label for="p-bruto">Link do material bruto <small>pasta ou arquivo no Google Drive, com acesso para o time</small>
-        <input id="p-bruto" name="link_bruto" type="url" required placeholder="https://drive.google.com/..."></label>
+      <label for="p-bruto">Link do material bruto <small>opcional: depois de enviar, você também pode colocar o material direto na pasta do pedido no Drive</small>
+        <input id="p-bruto" name="link_bruto" type="url" placeholder="https://drive.google.com/..."></label>
       <label for="p-roteiro">Roteiro <small>opcional</small>
         <input id="p-roteiro" name="link_roteiro" type="url" placeholder="https://docs.google.com/..."></label>
       <label for="p-desc">O que você precisa <small>CTA, nomes e grafias, referências, o que não pode faltar</small>
@@ -704,7 +705,7 @@
     const campos = [["Status", STATUS[d.status]], ["Tipo", TIPOS[d.tipo]], ["Publicação", d.perfil], ["Prioridade", d.prioridade],
       ["Prazo", d.prazo && dataBR(d.prazo)], ["Pediu", `${d.solicitante_nome || ""} (${d.solicitante_email})`], ["Área", d.area],
       ["Editor", d.editor_slug && nomeEditor(d.editor_slug)], ["Etapa", d.etapa], ["Posição na fila", d.status === "nova" && D.posicoes[d.id] ? `${D.posicoes[d.id]}º` : null],
-      ["Bruto", link(d.link_bruto)], ["Roteiro", d.link_roteiro && link(d.link_roteiro)], ["Entrega", d.link_entrega && link(d.link_entrega)],
+      ["Material", d.link_bruto ? link(d.link_bruto) : `${cfg.pastaEntrada} › ${codigo(d)}`], ["Roteiro", d.link_roteiro && link(d.link_roteiro)], ["Entrega", d.link_entrega && link(d.link_entrega)],
       ["Peças", d.pecas], ["Nota do editor", d.nota_entrega], ["Pedido", d.descricao]].filter(([, v]) => v != null && v !== "");
     const msg = h("div", { class: "aviso erro", hidden: true });
     const fechar = () => $("#detalhe").close();
@@ -1006,7 +1007,8 @@
     botao.disabled = false; m.hidden = false;
     if (error) { m.className = "aviso erro"; m.textContent = "Não consegui enviar: " + error.message; return; }
     localSet("cw-nome", v.solicitante_nome || "");
-    m.className = "aviso"; m.textContent = `Pedido D-${String(data.id).padStart(4, "0")} enviado. Acompanhe em ${eu.papel === "gestor" ? "Demandas" : "Meus pedidos"}.`;
+    const cod = `D-${String(data.id).padStart(4, "0")}`;
+    m.className = "aviso"; m.textContent = `Pedido ${cod} enviado. ${v.link_bruto ? "" : `Agora coloque o material no Drive, na pasta ${cfg.pastaEntrada} › ${cod} (crie a pasta com esse nome). `}Acompanhe em ${eu.papel === "gestor" ? "Demandas" : "Meus pedidos"}.`;
     const nome = v.solicitante_nome; f.reset(); $("#p-nome").value = nome || "";
     carregar();
   });
