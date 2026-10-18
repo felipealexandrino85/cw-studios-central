@@ -2,160 +2,196 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Central CW Studios</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-  // ===== Configuração do time (URL e chave "anon public" do Supabase: Project Settings > API) =====
-  // A chave anon é pública por desenho; quem protege os dados é o login + as regras do banco.
+  // ===== Configuração do time (Supabase: Project Settings > API). A chave anon é pública por desenho:
+  // quem protege os dados é o login com e-mail @cardapioweb.com e as regras do banco (papel de cada pessoa).
   window.CW_CENTRAL = {
     url: "https://ukjlbkjqseamkswtzmfp.supabase.co",
-    chave: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVramxia2pxc2VhbWtzd3R6bWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNzEwNDEsImV4cCI6MjEwNzg0NzA0MX0.l3RqaBjxvWP4y21Hy1wXdvqylY4GudWY1EB6vvH7viU",  // anon public (pública por desenho)
+    chave: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVramxia2pxc2VhbWtzd3R6bWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNzEwNDEsImV4cCI6MjEwNzg0NzA0MX0.l3RqaBjxvWP4y21Hy1wXdvqylY4GudWY1EB6vvH7viU",
     jira: "https://cardapio-web.atlassian.net",  // cards SCC-123 viram link
   };
 </script>
 <style>
+  /* Painel de operação: cabeçalho roxo da marca, conteúdo em cartões só onde é objeto (demanda, edição). */
   :root {
-    --roxo: #59327A; --roxo-vivo: #A543FA; --amarelo: #FFB600; --lilas: #F4EDF7; --vermelho: #FF5959;
-    --verde: #1F9D6B; --bg: #FBF8FD; --card: #FFFFFF; --texto: #22172B; --texto-2: rgba(34, 23, 43, .66);
-    --linha: #E6DCEE; --tag-texto: #59327A; --sombra: 0 1px 2px rgba(89, 50, 122, .08), 0 4px 14px rgba(89, 50, 122, .06);
+    --roxo: #59327A; --roxo-vivo: #A543FA; --amarelo: #FFB600; --vermelho: #FF5959;
+    --bg: #FBF8FD; --card: #FFFFFF; --texto: #22172B; --texto-2: rgba(34, 23, 43, .64); --linha: #E6DCEE;
+    --lilas: #F4EDF7; --tag-texto: #59327A; --sombra: 0 1px 2px rgba(89, 50, 122, .08), 0 4px 14px rgba(89, 50, 122, .06);
+    --ok: #1F9D6B; --ok-bg: #E2F5EC; --ok-tx: #10603F;
+    --aviso-bg: #FFF1CC; --aviso-tx: #6B4A00;
+    --critico-bg: #FFE3E3; --critico-tx: #9A1C1C;
+    --neutro-bg: #EEE9F2; --neutro-tx: #5B5065;
+    --fonte: Nunito, ui-rounded, system-ui, sans-serif;
+    color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #17111D; --card: #211829; --texto: #F4EDF7; --texto-2: rgba(244, 237, 247, .62); --linha: #3A2C47;
-      --lilas: #2C2036; --tag-texto: #E2C8FF; --sombra: none; color-scheme: dark;
+      --lilas: #2C2036; --tag-texto: #E2C8FF; --sombra: none;
+      --ok-bg: #123A2B; --ok-tx: #8EE3BE; --aviso-bg: #3D2F0A; --aviso-tx: #FFD775;
+      --critico-bg: #431D22; --critico-tx: #FFB3B3; --neutro-bg: #2E2537; --neutro-tx: #C9BFD3;
+      color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #17111D; --card: #211829; --texto: #F4EDF7; --texto-2: rgba(244, 237, 247, .62); --linha: #3A2C47;
-    --lilas: #2C2036; --tag-texto: #E2C8FF; --sombra: none; color-scheme: dark;
+    --lilas: #2C2036; --tag-texto: #E2C8FF; --sombra: none;
+    --ok-bg: #123A2B; --ok-tx: #8EE3BE; --aviso-bg: #3D2F0A; --aviso-tx: #FFD775;
+    --critico-bg: #431D22; --critico-tx: #FFB3B3; --neutro-bg: #2E2537; --neutro-tx: #C9BFD3;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--texto); font: 500 15px/1.45 Nunito, system-ui, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--texto); font: 500 15px/1.45 var(--fonte); }
   button, input, select, textarea { font: inherit; color: inherit; }
   a { color: var(--roxo-vivo); }
-  header { background: var(--roxo); color: #fff; padding-block: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  header h1 { margin: 0; font-weight: 900; font-size: 20px; letter-spacing: .2px; }
+  :focus-visible { outline: 2px solid var(--roxo-vivo); outline-offset: 2px; }
+  h1, h2, h3 { text-wrap: balance; }
+
+  header { background: var(--roxo); color: #fff; padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-weight: 900; font-size: 20px; white-space: nowrap; }
   header h1 span { background: var(--amarelo); color: var(--roxo); border-radius: 999px; padding: 1px 10px; margin-left: 6px; font-size: 13px; vertical-align: 3px; }
   nav { display: flex; gap: 4px; flex-wrap: wrap; max-width: 100%; }
-  nav button { background: transparent; border: 0; color: #fff; opacity: .75; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-weight: 800; }
+  nav button { background: transparent; border: 0; color: #fff; opacity: .78; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-weight: 800; }
   nav button[aria-current="true"] { background: rgba(255, 255, 255, .16); opacity: 1; }
-  .quem { margin-left: auto; font-size: 13px; opacity: .85; display: flex; gap: 10px; align-items: center; }
+  nav button .cont { background: var(--amarelo); color: #3A2600; border-radius: 999px; font-size: 11px; padding: 0 6px; margin-left: 4px; }
+  .quem { margin-left: auto; font-size: 13px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .quem .papel { background: rgba(255, 255, 255, .16); border-radius: 999px; padding: 2px 10px; font-weight: 800; }
+  .quem select { background: rgba(255, 255, 255, .12); color: #fff; border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; padding: 3px 10px; font-size: 13px; width: auto; }
+  .quem select option { color: #22172B; }
   .quem button { background: transparent; border: 1px solid rgba(255, 255, 255, .4); color: #fff; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
-  main { max-width: 1280px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .previa { background: var(--amarelo); color: #3A2600; text-align: center; font-weight: 800; font-size: 13px; padding-block: 6px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+  main { max-width: 1280px; margin: 0 auto; padding-block: 20px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+  main > section { display: grid; gap: 14px; min-width: 0; }
+  .titulo-aba { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+  .titulo-aba h2 { margin: 0; font-size: 22px; font-weight: 900; }
+  .titulo-aba p { margin: 0; color: var(--texto-2); }
+  h3.grupo { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; font-weight: 900; margin: 10px 0 0; color: var(--texto-2); }
+  .vazio { color: var(--texto-2); font-size: 14px; padding: 4px 2px; }
+  .nota { font-size: 12.5px; color: var(--texto-2); }
+
+  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   .numero { background: var(--card); border: 1px solid var(--linha); border-radius: 14px; padding: 12px 14px; box-shadow: var(--sombra); }
-  .numero b { display: block; font-size: 26px; font-weight: 900; }
+  .numero b { display: block; font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; }
   .numero small { color: var(--texto-2); }
+
+  .chip { display: inline-block; font-size: 11.5px; font-weight: 800; border-radius: 999px; padding: 1px 9px; background: var(--lilas); color: var(--tag-texto); white-space: nowrap; text-decoration: none; }
+  a.chip:hover { text-decoration: underline; }
+  .chip.tom-ok { background: var(--ok-bg); color: var(--ok-tx); }
+  .chip.tom-aviso { background: var(--aviso-bg); color: var(--aviso-tx); }
+  .chip.tom-critico { background: var(--critico-bg); color: var(--critico-tx); }
+  .chip.tom-neutro { background: var(--neutro-bg); color: var(--neutro-tx); }
+  .chip.urgente { background: var(--vermelho); color: #fff; }
+  .chip.editor { background: var(--amarelo); color: #3A2600; }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+
+  .alertas { display: grid; gap: 8px; }
+  .alerta { background: var(--card); border: 1px solid var(--linha); border-radius: 12px; padding: 10px 14px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .alerta .texto { flex: 1 1 260px; min-width: 0; }
+  .alerta button { background: transparent; border: 0; color: var(--roxo-vivo); font-weight: 800; cursor: pointer; padding: 0; }
+
   .quadro { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
   .coluna { background: var(--lilas); border-radius: 14px; padding: 10px; min-height: 120px; }
-  .coluna h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; margin: 2px 4px 10px; font-weight: 900; display: flex; justify-content: space-between; }
-  .cartao { background: var(--card); border: 1px solid var(--linha); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; box-shadow: var(--sombra); width: 100%; text-align: left; display: block; }
+  .coluna h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; margin: 2px 4px 10px; font-weight: 900; display: flex; justify-content: space-between; }
+  .lista { display: grid; gap: 8px; }
+  .cartao { background: var(--card); border: 1px solid var(--linha); border-radius: 12px; padding: 10px 12px; cursor: pointer; box-shadow: var(--sombra); width: 100%; text-align: left; display: grid; gap: 6px; align-content: start; }
   .cartao:hover { border-color: var(--roxo-vivo); }
   .cartao .cod { font-size: 12px; color: var(--texto-2); font-weight: 700; }
-  .cartao .tit { font-weight: 800; margin: 2px 0 6px; }
-  .tags { display: flex; gap: 4px; flex-wrap: wrap; }
-  .tag { font-size: 11.5px; font-weight: 800; border-radius: 999px; padding: 1px 8px; background: var(--lilas); color: var(--tag-texto); }
-  .tag.urgente { background: var(--vermelho); color: #fff; }
-  .tag.prazo-vencido { background: #FFE3E3; color: #B42323; }
-  .tag.editor { background: var(--amarelo); color: #3A2600; }
-  .cartao .etapa { font-size: 12.5px; color: var(--texto-2); margin-top: 6px; }
-  .time { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
-  .editor { background: var(--card); border: 1px solid var(--linha); border-radius: 14px; padding: 14px; box-shadow: var(--sombra); }
-  .editor h3 { margin: 0 0 2px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
-  .bolinha { width: 10px; height: 10px; border-radius: 50%; background: #B9AFC2; display: inline-block; }
-  .bolinha.editando { background: var(--verde); box-shadow: 0 0 0 4px rgba(31, 157, 107, .18); }
-  .bolinha.conectado { background: var(--amarelo); }
-  .editor .meta { font-size: 12.5px; color: var(--texto-2); }
-  .editor ul { margin: 10px 0 0; padding-left: 18px; }
-  .editor li { margin-bottom: 4px; }
-  form.pedido { background: var(--card); border: 1px solid var(--linha); border-radius: 16px; padding: 20px; max-width: 720px; box-shadow: var(--sombra); display: grid; gap: 14px; }
-  .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  label { display: grid; gap: 4px; font-weight: 800; font-size: 13.5px; }
-  label small { font-weight: 500; color: var(--texto-2); }
-  input, select, textarea { background: var(--bg); border: 1px solid var(--linha); border-radius: 10px; padding: 9px 11px; width: 100%; }
-  textarea { min-height: 110px; resize: vertical; }
-  input:focus, select:focus, textarea:focus { outline: 2px solid var(--roxo-vivo); outline-offset: 0; }
-  .botao { background: var(--roxo); color: #fff; border: 0; border-radius: 999px; padding: 10px 20px; font-weight: 900; cursor: pointer; justify-self: start; }
-  .botao.amarelo { background: var(--amarelo); color: #3A2600; }
-  .botao.leve { background: transparent; color: var(--texto); border: 1px solid var(--linha); }
-  .botao.perigo { background: transparent; color: var(--vermelho); border: 1px solid var(--vermelho); }
-  .botao:disabled { opacity: .5; cursor: default; }
-  .aviso { padding: 10px 14px; border-radius: 10px; background: var(--lilas); }
-  .aviso.erro { background: #FFE3E3; color: #8A1C1C; }
-  .entrar { max-width: 420px; margin: 10vh auto; background: var(--card); border: 1px solid var(--linha); border-radius: 18px; padding: 28px; box-shadow: var(--sombra); display: grid; gap: 14px; }
-  .entrar h2 { margin: 0; font-weight: 900; }
-  dialog { border: 0; border-radius: 18px; padding: 0; width: min(680px, calc(100vw - 32px)); background: var(--card); color: var(--texto); }
-  dialog::backdrop { background: rgba(23, 17, 29, .5); }
-  .modal { padding: 22px; display: grid; gap: 12px; }
-  .modal h2 { margin: 0; font-weight: 900; }
-  .campos { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-size: 14px; }
-  .campos dt { color: var(--texto-2); font-weight: 700; }
-  .campos dd { margin: 0; word-break: break-word; }
-  .historico { border-left: 2px solid var(--linha); padding-left: 12px; display: grid; gap: 6px; font-size: 13.5px; max-height: 240px; overflow: auto; }
-  .historico time { color: var(--texto-2); font-size: 12px; margin-right: 6px; }
-  .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
-  .token { font-family: ui-monospace, Menlo, monospace; background: var(--lilas); padding: 10px; border-radius: 10px; word-break: break-all; user-select: all; }
-  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; }
-  td, th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--linha); font-size: 14px; }
-  .vazio { color: var(--texto-2); font-size: 13px; padding: 6px 4px; }
+  .cartao .tit { font-weight: 800; }
+  .cartao .sub, .cartao .dica { font-size: 12.5px; color: var(--texto-2); }
+  .cartao .dica code { background: var(--lilas); border-radius: 6px; padding: 0 5px; color: var(--texto); }
+  .grade-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 10px; }
+
   .aovivo { display: grid; gap: 12px; }
-  .aovivo h2.grupo { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; font-weight: 900; margin: 8px 0 0; color: var(--texto-2); }
   .edicao { background: var(--card); border: 1px solid var(--linha); border-radius: 14px; padding: 14px 16px; box-shadow: var(--sombra); display: grid; gap: 10px; }
-  .edicao.viva { border-left: 5px solid var(--verde); }
-  .edicao .topo { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .edicao > * { min-width: 0; }
+  .edicao .topo { display: flex; gap: 8px 10px; align-items: baseline; flex-wrap: wrap; }
   .edicao .topo b { font-size: 16px; font-weight: 900; }
-  .edicao .agora { font-size: 14px; }
-  .edicao .agora strong { color: var(--verde); }
+  .edicao .desde { margin-left: auto; color: var(--texto-2); font-size: 12.5px; }
+  .bolinha { width: 10px; height: 10px; border-radius: 50%; background: #B9AFC2; display: inline-block; flex: none; }
+  .bolinha.editando { background: var(--ok); box-shadow: 0 0 0 4px rgba(31, 157, 107, .18); }
+  .bolinha.conectado { background: var(--amarelo); }
+  .agora strong { color: var(--ok); }
   .passos { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
-  .aovivo > *, .edicao > * { min-width: 0; }
   .passo { overflow-wrap: anywhere; font-size: 11px; font-weight: 800; text-align: center; color: var(--texto-2); }
   .passo::before { content: ""; display: block; height: 6px; border-radius: 3px; background: var(--linha); margin-bottom: 4px; }
   .passo.feito::before { background: var(--roxo-vivo); opacity: .45; }
   .passo.atual { color: var(--texto); }
-  .passo.atual::before { background: var(--verde); }
+  .passo.atual::before { background: var(--ok); }
   details summary { cursor: pointer; font-size: 13px; color: var(--texto-2); font-weight: 700; }
-  .tag.sem-card { background: #FFF1CC; color: #6B4A00; }
-  @media (max-width: 640px) { .passos { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  .controles { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 16px; }
+  .historico { border-left: 2px solid var(--linha); padding-left: 12px; display: grid; gap: 6px; font-size: 13.5px; max-height: 240px; overflow: auto; }
+  .historico time { color: var(--texto-2); font-size: 12px; margin-right: 6px; font-variant-numeric: tabular-nums; }
+
+  .controles { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
   .controles label { min-width: 180px; }
-  .rel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; font-weight: 900; margin: 22px 0 8px; color: var(--texto-2); }
-  .tabela { overflow-x: auto; border: 1px solid var(--linha); border-radius: 12px; }
-  .tabela table { border-radius: 0; }
-  .tabela th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--texto-2); white-space: nowrap; }
-  .tabela td.n, .tabela th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .tabela tr.total td { font-weight: 900; }
-  .nota { font-size: 12.5px; color: var(--texto-2); margin-top: 8px; }
+  .tabela { overflow-x: auto; border: 1px solid var(--linha); border-radius: 12px; background: var(--card); }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--linha); font-size: 14px; vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--texto-2); white-space: nowrap; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.total td { font-weight: 900; }
+  .duas-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px; }
+  .duas-col > * { min-width: 0; display: grid; gap: 8px; align-content: start; }
+
+  form.painel { background: var(--card); border: 1px solid var(--linha); border-radius: 16px; padding: 20px; max-width: 720px; box-shadow: var(--sombra); display: grid; gap: 14px; }
+  .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  label { display: grid; gap: 4px; font-weight: 800; font-size: 13.5px; }
+  label small { font-weight: 500; color: var(--texto-2); }
+  input, select, textarea { background: var(--bg); border: 1px solid var(--linha); border-radius: 10px; padding: 9px 11px; width: 100%; }
+  textarea { min-height: 100px; resize: vertical; }
+  .botao { background: var(--roxo); color: #fff; border: 0; border-radius: 999px; padding: 9px 18px; font-weight: 900; cursor: pointer; justify-self: start; }
+  .botao.amarelo { background: var(--amarelo); color: #3A2600; }
+  .botao.leve { background: transparent; color: var(--texto); border: 1px solid var(--linha); }
+  .botao.perigo { background: transparent; color: var(--vermelho); border: 1px solid var(--vermelho); }
+  .botao.peq { padding: 4px 12px; font-size: 13px; }
+  .botao:disabled { opacity: .5; cursor: default; }
+  .aviso { padding: 10px 14px; border-radius: 10px; background: var(--lilas); }
+  .aviso.erro { background: var(--critico-bg); color: var(--critico-tx); }
+  .entrar { max-width: 420px; width: 100%; margin: 10vh auto; background: var(--card); border: 1px solid var(--linha); border-radius: 18px; padding: 28px; box-shadow: var(--sombra); display: grid; gap: 14px; }
+  .entrar h2 { margin: 0; font-weight: 900; }
+  .token { font-family: ui-monospace, Menlo, monospace; background: var(--lilas); padding: 10px; border-radius: 10px; word-break: break-all; user-select: all; }
+
+  dialog { border: 0; border-radius: 18px; padding: 0; width: min(700px, calc(100vw - 32px)); background: var(--card); color: var(--texto); }
+  dialog::backdrop { background: rgba(23, 17, 29, .5); }
+  .modal { padding: 22px; display: grid; gap: 12px; }
+  .modal h2 { margin: 0; font-weight: 900; }
+  .campos { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-size: 14px; margin: 0; }
+  .campos dt { color: var(--texto-2); font-weight: 700; }
+  .campos dd { margin: 0; word-break: break-word; white-space: pre-wrap; }
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .caixa { border: 1px solid var(--linha); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
   [hidden] { display: none !important; }
   @media (max-width: 640px) {
     .duas { grid-template-columns: 1fr; }
     .campos { grid-template-columns: 1fr; }
     .campos dt { margin-top: 6px; }
+    .passos { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .quem { margin-left: 0; }
   }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
 <header>
   <h1>Central <span>CW Studios</span></h1>
-  <nav id="nav" hidden>
-    <button data-aba="aovivo">Ao vivo</button>
-    <button data-aba="fila" aria-current="true">Fila</button>
-    <button data-aba="pedir">Pedir edição</button>
-    <button data-aba="time">Time</button>
-    <button data-aba="relatorio">Relatório</button>
-    <button data-aba="gestao" hidden>Gestão</button>
-  </nav>
-  <div class="quem" id="quem" hidden><span id="quem-email"></span><button id="sair">Sair</button></div>
-</header>
-
-<main>
-  <div id="erro-config" class="aviso erro" hidden>
-    Falta configurar a URL e a chave do Supabase no início deste arquivo (<code>window.CW_CENTRAL</code>).
+  <nav id="nav" hidden></nav>
+  <div class="quem" id="quem" hidden>
+    <span id="quem-nome"></span><span class="papel" id="quem-papel"></span>
+    <select id="ver-como" hidden aria-label="Ver a central como"></select>
+    <button id="sair">Sair</button>
   </div>
+</header>
+<div class="previa" id="previa" hidden></div>
+
+<main id="main">
+  <div id="erro-config" class="aviso erro" hidden>Falta configurar a URL e a chave do Supabase no início deste arquivo.</div>
 
   <section id="tela-entrar" class="entrar" hidden>
     <h2>Entrar</h2>
@@ -167,23 +203,115 @@
     <div id="msg-entrar" class="aviso" hidden></div>
   </section>
 
+  <!-- gestão -->
+  <section id="aba-inicio" hidden>
+    <div class="titulo-aba"><h2>Início</h2><p>O que precisa da sua atenção agora.</p></div>
+    <div class="numeros" id="ini-numeros"></div>
+    <h3 class="grupo" id="ini-alertas-tit">Atenção</h3>
+    <div class="alertas" id="ini-alertas"></div>
+    <h3 class="grupo">Editando agora</h3>
+    <div class="aovivo" id="ini-aovivo"></div>
+  </section>
+
   <section id="aba-aovivo" hidden>
+    <div class="titulo-aba"><h2>Ao vivo</h2><p>Atualiza sozinho a cada 8 segundos.</p></div>
     <div class="aovivo" id="aovivo"></div>
   </section>
 
-  <section id="aba-fila" hidden>
-    <div class="numeros" id="numeros"></div>
+  <section id="aba-demandas" hidden>
+    <div class="titulo-aba"><h2>Demandas</h2><p id="dem-sub"></p></div>
     <div class="quadro" id="quadro"></div>
   </section>
 
-  <section id="aba-pedir" hidden>
-    <form class="pedido" id="form-pedido">
-      <h2 style="margin:0;font-weight:900">Pedir uma edição</h2>
-      <label>Título <small>o que é o vídeo, em poucas palavras</small>
-        <input name="titulo" required minlength="3" maxlength="140" placeholder="Reel: novo painel de pedidos"></label>
+  <section id="aba-relatorio" hidden>
+    <div class="titulo-aba"><h2>Relatório</h2><p>Só a gestão vê esta aba.</p></div>
+    <div class="controles">
+      <label for="rel-periodo">Período
+        <select id="rel-periodo">
+          <option value="7">Últimos 7 dias</option>
+          <option value="30" selected>Últimos 30 dias</option>
+          <option value="mes">Este mês</option>
+          <option value="mes-passado">Mês passado</option>
+          <option value="90">Últimos 90 dias</option>
+        </select></label>
+      <label for="rel-editor">Editor <select id="rel-editor"></select></label>
+      <button class="botao leve" id="rel-csv" type="button">Baixar CSV</button>
+    </div>
+    <div class="numeros" id="rel-numeros"></div>
+    <h3 class="grupo">Por editor</h3>
+    <div class="tabela"><table><thead><tr><th>Editor</th><th class="n">Finalizados</th><th class="n">Peças</th>
+      <th class="n">Tempo ativo médio</th><th class="n">Mediana</th><th class="n">Tempo ativo total</th>
+      <th class="n">Voltaram p/ ajuste</th><th class="n">Em andamento</th></tr></thead><tbody id="rel-editores"></tbody></table></div>
+    <div class="duas-col">
+      <div><h3 class="grupo">Onde o tempo vai (por etapa)</h3>
+        <div class="tabela"><table><thead><tr><th>Etapa</th><th class="n">Média por vídeo</th><th class="n">% do tempo</th></tr></thead><tbody id="rel-etapas"></tbody></table></div></div>
+      <div><h3 class="grupo">Por semana</h3>
+        <div class="tabela"><table><thead><tr><th>Semana de</th><th class="n">Finalizados</th><th class="n">Tempo ativo médio</th><th class="n">Ajustes</th></tr></thead><tbody id="rel-semanas"></tbody></table></div></div>
+      <div><h3 class="grupo">Por tipo de vídeo</h3>
+        <div class="tabela"><table><thead><tr><th>Tipo</th><th class="n">Finalizados</th><th class="n">Média</th><th class="n">Mediana</th></tr></thead><tbody id="rel-tipos"></tbody></table></div></div>
+      <div><h3 class="grupo">Motivos de ajuste (demandas da central)</h3>
+        <div class="tabela"><table><thead><tr><th>Motivo</th><th class="n">Vezes</th></tr></thead><tbody id="rel-motivos"></tbody></table></div></div>
+    </div>
+    <h3 class="grupo">Vídeos finalizados</h3>
+    <div class="tabela"><table><thead><tr><th>Entregue</th><th>Editor</th><th>Vídeo</th><th>Origem</th><th>Tipo</th>
+      <th class="n">Tempo ativo</th><th class="n">Peças</th><th class="n">Ajustes</th></tr></thead><tbody id="rel-videos"></tbody></table></div>
+    <p class="nota">Tempo ativo = minutos com o Claude trabalhando no vídeo, somando todas as sessões e rodadas de ajuste; pausa de mais de 5 min não conta.
+      Só entram vídeos editados com o plugin. "Por etapa" só existe para vídeos editados a partir da versão 0.12 do plugin.</p>
+  </section>
+
+  <section id="aba-gestao" hidden>
+    <div class="titulo-aba"><h2>Pessoas</h2><p>Editores, tokens e quem é gestão.</p></div>
+    <div class="tabela"><table><thead><tr><th>Editor</th><th>E-mail (entra na central com ele)</th><th>Situação</th><th>Plugin</th><th></th></tr></thead><tbody id="lista-editores"></tbody></table></div>
+    <form class="painel" id="form-editor">
+      <h3 style="margin:0;font-weight:900">Cadastrar editor</h3>
+      <p class="nota" style="margin:0">Gera o token que conecta o Claude do editor à central. Ele aparece uma vez só. Cadastrar de novo o mesmo nome gera um token novo e invalida o antigo.</p>
       <div class="duas">
-        <label>Tipo
-          <select name="tipo" required>
+        <label for="ed-nome">Nome <input id="ed-nome" name="nome" required placeholder="Ana Souza"></label>
+        <label for="ed-email">E-mail @cardapioweb.com <input id="ed-email" name="email" type="email" required placeholder="ana@cardapioweb.com"></label>
+      </div>
+      <button class="botao">Gerar token</button>
+      <div id="novo-token" hidden></div>
+    </form>
+    <div class="duas-col">
+      <div>
+        <h3 class="grupo">Gestão</h3>
+        <div class="tabela"><table><tbody id="lista-gestores"></tbody></table></div>
+        <form id="form-gestor" class="acoes">
+          <input id="gestor-email" type="email" required placeholder="lider@cardapioweb.com" style="flex:1 1 220px;width:auto" aria-label="E-mail do novo gestor">
+          <button class="botao peq">Adicionar gestor</button>
+        </form>
+        <div id="msg-gestao" class="aviso erro" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- editor -->
+  <section id="aba-meudia" hidden>
+    <div class="titulo-aba"><h2 id="md-titulo">Meu dia</h2><p>Para pegar uma demanda, peça ao seu Claude: <b>pega a D-0012</b>.</p></div>
+    <div class="numeros" id="md-numeros"></div>
+    <div id="md-conteudo" style="display:grid;gap:14px"></div>
+  </section>
+
+  <section id="aba-entregas" hidden>
+    <div class="titulo-aba"><h2>Minhas entregas</h2><p>Só você e a gestão veem estes números.</p></div>
+    <div class="numeros" id="me-numeros"></div>
+    <div class="tabela"><table><thead><tr><th>Entregue</th><th>Vídeo</th><th>Origem</th><th>Tipo</th><th class="n">Tempo ativo</th><th class="n">Ajustes</th></tr></thead><tbody id="me-videos"></tbody></table></div>
+  </section>
+
+  <!-- quem pede -->
+  <section id="aba-pedidos" hidden>
+    <div class="titulo-aba"><h2>Meus pedidos</h2><p>Quando um pedido chegar em "esperando sua aprovação", abra e aprove ou peça ajuste.</p></div>
+    <div class="grade-cartoes" id="pedidos"></div>
+  </section>
+
+  <section id="aba-pedir" hidden>
+    <form class="painel" id="form-pedido">
+      <h2 style="margin:0;font-weight:900">Pedir uma edição</h2>
+      <label for="p-titulo">Título <small>o que é o vídeo, em poucas palavras</small>
+        <input id="p-titulo" name="titulo" required minlength="3" maxlength="140" placeholder="Reel: novo painel de pedidos"></label>
+      <div class="duas">
+        <label for="p-tipo">Tipo
+          <select id="p-tipo" name="tipo" required>
             <option value="reel">Reel / Short roteirizado</option>
             <option value="cortes">Cortes de podcast / entrevista</option>
             <option value="tutorial">Tutorial do sistema (tela + câmera)</option>
@@ -192,76 +320,30 @@
             <option value="story">Story de evento</option>
             <option value="outro">Outro</option>
           </select></label>
-        <label>Onde vai ser publicado
-          <select name="perfil">
+        <label for="p-perfil">Onde vai ser publicado
+          <select id="p-perfil" name="perfil">
             <option>Cardápio Web</option><option>CW Club</option><option>Growth / anúncios</option>
             <option>YouTube</option><option>Interno</option><option>Outro</option>
           </select></label>
       </div>
-      <label>Link do material bruto <small>pasta ou arquivo no Google Drive, com acesso para o time</small>
-        <input name="link_bruto" type="url" required placeholder="https://drive.google.com/..."></label>
-      <label>Roteiro <small>opcional</small>
-        <input name="link_roteiro" type="url" placeholder="https://docs.google.com/..."></label>
-      <label>O que você precisa <small>CTA, nomes e grafias, referências, o que não pode faltar</small>
-        <textarea name="descricao" placeholder="CTA: Comente PAINEL. Mostrar a tela de pedidos aos 20s. Nome do convidado: ..."></textarea></label>
+      <label for="p-bruto">Link do material bruto <small>pasta ou arquivo no Google Drive, com acesso para o time</small>
+        <input id="p-bruto" name="link_bruto" type="url" required placeholder="https://drive.google.com/..."></label>
+      <label for="p-roteiro">Roteiro <small>opcional</small>
+        <input id="p-roteiro" name="link_roteiro" type="url" placeholder="https://docs.google.com/..."></label>
+      <label for="p-desc">O que você precisa <small>CTA, nomes e grafias, referências, o que não pode faltar</small>
+        <textarea id="p-desc" name="descricao" placeholder="CTA: Comente PAINEL. Mostrar a tela de pedidos aos 20s."></textarea></label>
       <div class="duas">
-        <label>Prazo <input name="prazo" type="date"></label>
-        <label>Prioridade
-          <select name="prioridade"><option value="normal">Normal</option><option value="urgente">Urgente</option></select></label>
+        <label for="p-prazo">Prazo <input id="p-prazo" name="prazo" type="date"></label>
+        <label for="p-prio">Prioridade
+          <select id="p-prio" name="prioridade"><option value="normal">Normal</option><option value="urgente">Urgente</option></select></label>
       </div>
       <div class="duas">
-        <label>Seu nome <input name="solicitante_nome" required autocomplete="name"></label>
-        <label>Área <input name="area" placeholder="Marketing, Growth, CS..."></label>
+        <label for="p-nome">Seu nome <input id="p-nome" name="solicitante_nome" required autocomplete="name"></label>
+        <label for="p-area">Área <input id="p-area" name="area" placeholder="Marketing, Growth, CS..."></label>
       </div>
-      <button class="botao amarelo">Enviar para a fila</button>
+      <button class="botao amarelo">Enviar pedido</button>
       <div id="msg-pedido" class="aviso" hidden></div>
     </form>
-  </section>
-
-  <section id="aba-time" hidden>
-    <div class="time" id="time"></div>
-  </section>
-
-  <section id="aba-relatorio" class="rel" hidden>
-    <div class="controles">
-      <label>Período
-        <select id="rel-periodo">
-          <option value="7">Últimos 7 dias</option>
-          <option value="30" selected>Últimos 30 dias</option>
-          <option value="mes">Este mês</option>
-          <option value="mes-passado">Mês passado</option>
-          <option value="90">Últimos 90 dias</option>
-        </select></label>
-      <label>Editor <select id="rel-editor"><option value="">Todo o time</option></select></label>
-      <button class="botao leve" id="rel-csv" type="button">Baixar CSV</button>
-    </div>
-    <div class="numeros" id="rel-numeros"></div>
-    <h3>Por editor</h3>
-    <div class="tabela"><table><thead><tr><th>Editor</th><th class="n">Finalizados</th><th class="n">Peças</th>
-      <th class="n">Tempo ativo médio</th><th class="n">Mediana</th><th class="n">Tempo ativo total</th>
-      <th class="n">Voltaram p/ ajuste</th><th class="n">Em andamento</th></tr></thead><tbody id="rel-editores"></tbody></table></div>
-    <h3>Por tipo de vídeo</h3>
-    <div class="tabela"><table><thead><tr><th>Tipo</th><th class="n">Finalizados</th><th class="n">Tempo ativo médio</th>
-      <th class="n">Mediana</th></tr></thead><tbody id="rel-tipos"></tbody></table></div>
-    <h3>Vídeos finalizados</h3>
-    <div class="tabela"><table><thead><tr><th>Entregue</th><th>Editor</th><th>Vídeo</th><th>Origem</th><th>Tipo</th>
-      <th class="n">Tempo ativo</th><th class="n">Peças</th><th class="n">Ajustes</th></tr></thead><tbody id="rel-videos"></tbody></table></div>
-    <p class="nota">Tempo ativo = minutos com o Claude trabalhando no vídeo, somando todas as sessões e as rodadas de ajuste;
-      pausas de mais de 5 min não contam. Só entram vídeos editados com o plugin e abertos no registro (o hub faz isso no começo).</p>
-  </section>
-
-  <section id="aba-gestao" hidden>
-    <form class="pedido" id="form-editor" style="margin-bottom:20px">
-      <h2 style="margin:0;font-weight:900">Cadastrar editor</h2>
-      <p style="margin:0;color:var(--texto-2)">Gera o token pessoal que conecta a máquina do editor à central. Ele aparece uma vez só; cadastrar de novo o mesmo nome gera um token novo e invalida o antigo.</p>
-      <div class="duas">
-        <label>Nome <input name="nome" required placeholder="Ana Souza"></label>
-        <label>E-mail <input name="email" type="email" placeholder="ana@cardapioweb.com"></label>
-      </div>
-      <button class="botao">Gerar token</button>
-      <div id="novo-token" hidden></div>
-    </form>
-    <table><thead><tr><th>Editor</th><th>E-mail</th><th>Situação</th><th></th></tr></thead><tbody id="lista-editores"></tbody></table>
   </section>
 </main>
 
@@ -271,23 +353,29 @@
 (() => {
   const cfg = window.CW_CENTRAL || {};
   const $ = (s) => document.querySelector(s);
-  if (!cfg.url || !cfg.chave) { $("#erro-config").hidden = false; return; }
+  if (!cfg.url || !cfg.chave || !window.supabase) { $("#erro-config").hidden = false; return; }
   const db = supabase.createClient(cfg.url, cfg.chave);
 
-  const STATUS = {
-    nova: "Na fila", em_edicao: "Em edição", em_revisao: "Esperando aprovação",
-    refazer: "Refazer", entregue: "Entregue", cancelada: "Cancelada",
-  };
+  // ---------------------------------------------------------------- vocabulário
+  const STATUS = { nova: "Na fila", em_edicao: "Em edição", em_revisao: "Esperando aprovação", refazer: "Ajuste pedido", entregue: "Entregue", cancelada: "Cancelada" };
+  const STATUS_TOM = { nova: "neutro", em_edicao: "ok", em_revisao: "aviso", refazer: "critico", entregue: "ok", cancelada: "neutro" };
   const COLUNAS = ["nova", "em_edicao", "em_revisao", "refazer", "entregue"];
   const TIPOS = { reel: "Reel", cortes: "Cortes", tutorial: "Tutorial", youtube: "YouTube", anuncio: "Anúncio", story: "Story", outro: "Outro" };
-  let eu = { email: "", gestor: false };
-  let dados = { demandas: [], editores: [], status: [], edicoes: [] };
-  let aba = "fila";
-  const ABAS = ["aovivo", "fila", "pedir", "time", "relatorio", "gestao"];
-  const ETAPAS_PADRAO = [["preparo", "Preparo"], ["transcricao", "Transcrição"], ["corte", "Corte e seleção"], ["montagem", "Montagem"],
+  const MOTIVOS = { corte: "Corte e ritmo", legenda: "Legenda", visual: "Motion e visual", audio: "Áudio", conteudo: "Conteúdo / fala", marca: "Marca e CTA", outro: "Outro" };
+  const ETAPAS = [["preparo", "Preparo"], ["transcricao", "Transcrição"], ["corte", "Corte e seleção"], ["montagem", "Montagem"],
     ["motion", "Legenda e motion"], ["render", "Render"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
+  const ABAS = {
+    gestor: [["inicio", "Início"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["relatorio", "Relatório"], ["gestao", "Pessoas"], ["pedir", "Pedir edição"]],
+    editor: [["meudia", "Meu dia"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["entregas", "Minhas entregas"]],
+    solicitante: [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]],
+  };
 
-  // ---- helpers de DOM (tudo vira texto; nada de innerHTML com dado de usuário)
+  let eu = { email: "", papel: null, editor: null };   // quem está logado (papel real, decidido pelo banco)
+  let visao = { papel: null, editor: null };           // como a página está sendo vista (gestão pode simular)
+  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], ajustes: [], posicoes: {}, eventos: {} };
+  let aba = null;
+
+  // ---------------------------------------------------------------- helpers
   function h(tag, attrs, ...filhos) {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -296,7 +384,7 @@
       else if (k === "class") el.className = v;
       else el.setAttribute(k, v === true ? "" : v);
     }
-    for (const f of filhos.flat()) if (f != null && f !== false) el.append(f instanceof Node ? f : String(f));
+    for (const f of filhos.flat(3)) if (f != null && f !== false) el.append(f instanceof Node ? f : String(f));
     return el;
   }
   const encher = (el, ...filhos) => el.replaceChildren(...filhos.flat(3).filter((f) => f != null && f !== false));
@@ -304,6 +392,7 @@
   const codigo = (d) => "D-" + String(d.id).padStart(4, "0");
   const dataBR = (iso) => iso ? new Date(iso.length === 10 ? iso + "T12:00:00" : iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "";
   const horaBR = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const minutosDesde = (iso) => (Date.now() - new Date(iso)) / 60000;
   function ha(iso) {
     const seg = Math.round((Date.now() - new Date(iso)) / 1000), min = Math.round(seg / 60);
     if (seg < 60) return seg < 5 ? "agora" : `há ${seg} s`;
@@ -311,192 +400,6 @@
     if (min < 60 * 24) return `há ${Math.round(min / 60)} h`;
     return `há ${Math.round(min / 1440)} d`;
   }
-  const nomeEditor = (slug) => (dados.editores.find((e) => e.slug === slug) || {}).nome || slug;
-  const hoje = () => new Date().toISOString().slice(0, 10);
-
-  // ---- sessão
-  async function iniciar() {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) return mostrarEntrar();
-    eu.email = (session.user.email || "").toLowerCase();
-    if (!eu.email.endsWith("@cardapioweb.com")) {
-      await db.auth.signOut();
-      return mostrarEntrar("Use o e-mail @cardapioweb.com.");
-    }
-    $("#quem-email").textContent = eu.email;
-    $("#quem").hidden = false; $("#nav").hidden = false; $("#tela-entrar").hidden = true;
-    const { data: g } = await db.from("gestores").select("email").eq("email", eu.email);
-    eu.gestor = !!(g && g.length);
-    document.querySelector('[data-aba="gestao"]').hidden = !eu.gestor;
-    const nomeSalvo = localGet("cw-nome");
-    if (nomeSalvo) $("#form-pedido").solicitante_nome.value = nomeSalvo;
-    trocarAba(location.hash.slice(1) || (eu.gestor ? "aovivo" : "fila"));
-    await carregar();
-    setInterval(carregar, 20000);
-    setInterval(async () => {  // ao vivo: só o status dos editores, a cada 8 s
-      if (aba !== "aovivo" || document.hidden) return;
-      const { data } = await db.from("status_editores").select("*");
-      if (data) { dados.status = data; desenharAoVivo(); }
-    }, 8000);
-  }
-  function mostrarEntrar(msg) {
-    $("#tela-entrar").hidden = false;
-    if (msg) { const m = $("#msg-entrar"); m.hidden = false; m.className = "aviso erro"; m.textContent = msg; }
-  }
-  function localGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
-  function localSet(k, v) { try { localStorage.setItem(k, v); } catch {} }
-
-  $("#form-entrar").addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const email = $("#email").value.trim().toLowerCase();
-    const m = $("#msg-entrar"); m.hidden = false;
-    if (!email.endsWith("@cardapioweb.com")) { m.className = "aviso erro"; m.textContent = "Use o e-mail @cardapioweb.com."; return; }
-    const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
-    m.className = error ? "aviso erro" : "aviso";
-    m.textContent = error ? "Não consegui enviar: " + error.message : "Pronto. Abra o link que chegou no seu e-mail.";
-  });
-  $("#sair").addEventListener("click", async () => { await db.auth.signOut(); location.reload(); });
-
-  // ---- abas
-  function trocarAba(nova) {
-    if (!ABAS.includes(nova) || (nova === "gestao" && !eu.gestor)) nova = "fila";
-    aba = nova; history.replaceState(null, "", "#" + nova);
-    for (const b of document.querySelectorAll("nav button")) b.setAttribute("aria-current", String(b.dataset.aba === nova));
-    for (const s of ABAS) $("#aba-" + s).hidden = s !== nova;
-    desenhar();
-  }
-  $("#nav").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-aba]"); if (b) trocarAba(b.dataset.aba); });
-
-  // ---- dados
-  async function carregar() {
-    const limite = new Date(Date.now() - 30 * 864e5).toISOString();
-    const [d, e, s, ed] = await Promise.all([
-      db.from("demandas").select("*").or(`status.not.in.(entregue,cancelada),atualizado.gte."${limite}"`).order("criado", { ascending: false }).limit(500),
-      db.from("editores").select("slug,nome,email,ativo,criado").order("nome"),
-      db.from("status_editores").select("*"),
-      db.from("edicoes").select("*").gte("aberto_em", new Date(Date.now() - 400 * 864e5).toISOString()).order("aberto_em", { ascending: false }).limit(5000),
-    ]);
-    if (d.error) { console.error(d.error); return; }
-    dados = { demandas: d.data || [], editores: e.data || [], status: s.data || [], edicoes: (ed && ed.data) || [] };
-    desenhar();
-  }
-
-  function desenhar() {
-    if (aba === "aovivo") desenharAoVivo();
-    if (aba === "fila") desenharFila();
-    if (aba === "time") desenharTime();
-    if (aba === "relatorio") desenharRelatorio();
-    if (aba === "gestao") desenharGestao();
-  }
-
-  function cartao(d) {
-    const vencido = d.prazo && d.prazo < hoje() && !["entregue", "cancelada"].includes(d.status);
-    return h("button", { class: "cartao", onclick: () => abrir(d.id) },
-      h("div", { class: "cod" }, codigo(d), d.solicitante_nome ? " · " + d.solicitante_nome : ""),
-      h("div", { class: "tit" }, d.titulo),
-      h("div", { class: "tags" },
-        d.prioridade === "urgente" && h("span", { class: "tag urgente" }, "Urgente"),
-        h("span", { class: "tag" }, TIPOS[d.tipo] || d.tipo),
-        d.perfil && h("span", { class: "tag" }, d.perfil),
-        d.prazo && h("span", { class: "tag" + (vencido ? " prazo-vencido" : "") }, "Prazo " + dataBR(d.prazo)),
-        d.editor_slug && h("span", { class: "tag editor" }, nomeEditor(d.editor_slug)),
-        d.rodadas > 0 && h("span", { class: "tag" }, `Rodada ${d.rodadas + 1}`)),
-      d.etapa && h("div", { class: "etapa" }, d.etapa + " · " + ha(d.atualizado)));
-  }
-
-  function desenharFila() {
-    const ds = dados.demandas;
-    const mes = new Date().toISOString().slice(0, 7);
-    const online = dados.status.filter(online_).length;
-    const n = (st) => ds.filter((d) => d.status === st).length;
-    $("#numeros").replaceChildren(
-      ...[[n("nova"), "na fila"], [n("em_edicao"), "em edição"], [n("em_revisao"), "esperando aprovação"],
-          [ds.filter((d) => d.status === "entregue" && (d.concluido_em || "").startsWith(mes)).length, "entregues no mês"],
-          [online, "editores online"]]
-        .map(([v, t]) => h("div", { class: "numero" }, h("b", {}, v), h("small", {}, t))));
-    const entreguesRecentes = new Date(Date.now() - 14 * 864e5).toISOString();
-    $("#quadro").replaceChildren(...COLUNAS.map((st) => {
-      let itens = ds.filter((d) => d.status === st);
-      if (st === "entregue") itens = itens.filter((d) => (d.concluido_em || "") >= entreguesRecentes);
-      else itens.sort((a, b) => (b.prioridade === "urgente") - (a.prioridade === "urgente") || (a.prazo || "9999").localeCompare(b.prazo || "9999") || a.criado.localeCompare(b.criado));
-      return h("div", { class: "coluna" },
-        h("h2", {}, h("span", {}, STATUS[st]), h("span", {}, itens.length)),
-        itens.length ? itens.map(cartao) : h("div", { class: "vazio" }, st === "entregue" ? "Nada nos últimos 14 dias" : "Nada aqui"));
-    }));
-  }
-
-  function origem(t) {
-    if (t.jira) return h("a", { class: "tag", href: `${(cfg.jira || "").replace(/\/$/, "")}/browse/${encodeURIComponent(t.jira)}`, target: "_blank", rel: "noopener" }, "Jira " + t.jira);
-    if (t.demanda) {
-      const d = dados.demandas.find((x) => codigo(x) === t.demanda);
-      return h("a", { class: "tag", href: "#aovivo", onclick: (ev) => { ev.preventDefault(); if (d) abrir(d.id); } }, "Central " + t.demanda);
-    }
-    return h("span", { class: "tag sem-card", title: "Edição sem card do Jira nem demanda da central" }, t.status === "sem registro" ? "sem registro" : "sem card");
-  }
-
-  function desenharAoVivo() {
-    const linhas = [];
-    for (const s of dados.status) {
-      const ed = dados.editores.find((e) => e.slug === s.slug);
-      if (!ed || !ed.ativo) continue;
-      const p = s.payload || {}, on = online_(s);
-      for (const t of p.trabalhos || []) linhas.push({ t, ed, s, p, viva: on && t.agora });
-    }
-    const vivas = linhas.filter((l) => l.viva), paradas = linhas.filter((l) => !l.viva);
-    const semNada = dados.editores.filter((e) => e.ativo && !linhas.some((l) => l.ed.slug === e.slug));
-    const bloco = ({ t, ed, s, p, viva }) => {
-      const etapas = p.etapas || ETAPAS_PADRAO, idx = (k) => etapas.findIndex(([e]) => e === k);
-      const atual = idx(t.etapa), max = Math.max(idx(t.etapa_max), atual);
-      const af = t.agora_faz;
-      return h("div", { class: "edicao" + (viva ? " viva" : "") },
-        h("div", { class: "topo" },
-          h("span", { class: "bolinha " + (viva ? "editando" : online_(s) ? "conectado" : "") }),
-          h("b", {}, ed.nome), h("span", {}, "·"), h("span", { style: "font-weight:800" }, t.titulo), origem(t),
-          t.tipo && h("span", { class: "tag" }, TIPOS[t.tipo] || t.tipo),
-          h("span", { class: "meta", style: "margin-left:auto;color:var(--texto-2);font-size:12.5px" }, "começou " + ha(t.desde))),
-        h("div", { class: "passos" }, etapas.map(([k, nome], i) =>
-          h("div", { class: "passo" + (i === atual ? " atual" : i <= max ? " feito" : "") }, nome))),
-        h("div", { class: "agora" }, af
-          ? [viva ? h("strong", {}, "Agora: ") : "Último passo: ", af.rotulo, " · ", ha(af.ts)]
-          : (viva ? "Aberto nesta sessão, nenhum passo de edição ainda" : "Sem sessão do Claude aberta neste trabalho"),
-          !online_(s) ? h("span", { style: "color:var(--texto-2)" }, ` · ${ed.nome.split(" ")[0]} offline, visto ${ha(s.atualizado)}`) : null),
-        (t.historico || []).length > 1 && h("details", {}, h("summary", {}, "Passos desta edição"),
-          h("div", { class: "historico", style: "margin-top:8px" }, t.historico.slice().reverse().map((x) =>
-            h("div", {}, h("time", {}, horaBR(x.ts)), x.rotulo)))));
-    };
-    encher($("#aovivo"),
-      h("h2", { class: "grupo" }, `Editando agora (${vivas.length})`),
-      vivas.length ? vivas.map(bloco) : h("div", { class: "vazio" }, "Ninguém editando neste momento."),
-      paradas.length ? [h("h2", { class: "grupo" }, `Em aberto, parados (${paradas.length})`), paradas.map(bloco)] : null,
-      semNada.length ? h("div", { class: "vazio" }, "Sem edição aberta: " + semNada.map((e) => e.nome).join(", ")) : null);
-  }
-
-  function online_(s) { return Date.now() - new Date(s.atualizado) < 3 * 60000 && s.estado !== "desconectado"; }
-
-  function desenharTime() {
-    const ativos = dados.editores.filter((e) => e.ativo);
-    if (!ativos.length) { $("#time").replaceChildren(h("div", { class: "vazio" }, "Nenhum editor cadastrado ainda.")); return; }
-    $("#time").replaceChildren(...ativos.map((e) => {
-      const s = dados.status.find((x) => x.slug === e.slug);
-      const p = (s && s.payload) || {};
-      const on = s && online_(s);
-      const estado = !s ? "nunca conectou" : on ? (s.estado === "editando" ? "editando agora" : "Claude aberto") : "offline · visto " + ha(s.atualizado);
-      const minhas = dados.demandas.filter((d) => d.editor_slug === e.slug && ["em_edicao", "refazer"].includes(d.status));
-      const hj = p.hoje || {};
-      return h("div", { class: "editor" },
-        h("h3", {}, h("span", { class: "bolinha " + (on ? s.estado : "") }), e.nome),
-        h("div", { class: "meta" }, [estado, p.maquina, p.plugin && "plugin " + p.plugin, p.disco_livre_gb != null && p.disco_livre_gb + " GB livres"].filter(Boolean).join(" · ")),
-        h("div", { class: "meta", style: "margin-top:4px" },
-          `Hoje: ${hj.entregues || 0} entregue(s), ${hj.pecas || 0} peça(s), ${hj.minutos_ativos || 0} min ativos` +
-          (hj.custo_estimado_usd ? `, ~US$ ${Number(hj.custo_estimado_usd).toFixed(2)} (equivalente API)` : "")),
-        (minhas.length || (p.trabalhos || []).length) ? h("ul", {},
-          minhas.map((d) => h("li", {}, h("a", { href: "#fila", onclick: (ev) => { ev.preventDefault(); abrir(d.id); } }, codigo(d)), " ", d.titulo, d.etapa ? " · " + d.etapa : "")),
-          (p.trabalhos || []).filter((t) => !t.demanda || !minhas.some((d) => codigo(d) === t.demanda))
-            .map((t) => h("li", {}, t.titulo, " ", h("span", { class: "meta" }, `(fora da central${t.agora ? ", nesta sessão" : ""})`)))) : null);
-    }));
-  }
-
-  // ---- relatório
   function duracao(seg) {
     if (seg == null || isNaN(seg)) return "–";
     const min = Math.round(seg / 60);
@@ -505,11 +408,324 @@
     return `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
   }
   const media = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
-  function mediana(xs) {
-    if (!xs.length) return null;
-    const o = [...xs].sort((a, b) => a - b), m = Math.floor(o.length / 2);
-    return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2;
+  function mediana(xs) { if (!xs.length) return null; const o = [...xs].sort((a, b) => a - b), m = Math.floor(o.length / 2); return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2; }
+  const nomeEditor = (slug) => (D.editores.find((e) => e.slug === slug) || {}).nome || slug || "";
+  const hojeISO = () => new Date().toISOString().slice(0, 10);
+  const online = (s) => !!s && minutosDesde(s.atualizado) < 3 && s.estado !== "desconectado";
+  const numero = ([v, t]) => h("div", { class: "numero" }, h("b", {}, v), h("small", {}, t));
+  function localGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+  function localSet(k, v) { try { localStorage.setItem(k, v); } catch {} }
+  const statusChip = (st, texto) => h("span", { class: "chip tom-" + (STATUS_TOM[st] || "neutro") }, texto || STATUS[st] || st);
+  function origemChip(t) {
+    if (t.jira) return h("a", { class: "chip", href: `${(cfg.jira || "").replace(/\/$/, "")}/browse/${encodeURIComponent(t.jira)}`, target: "_blank", rel: "noopener" }, "Jira " + t.jira);
+    if (t.demanda) {
+      const d = D.demandas.find((x) => codigo(x) === t.demanda);
+      return h("a", { class: "chip", href: "#", onclick: (ev) => { ev.preventDefault(); if (d) abrir(d.id); } }, "Central " + t.demanda);
+    }
+    return h("span", { class: "chip tom-aviso", title: "Sem card do Jira nem demanda da central" }, t.status === "sem registro" ? "sem registro" : "sem card");
   }
+  async function copiar(texto, botao) {
+    try { await navigator.clipboard.writeText(texto); botao.textContent = "Copiado"; }
+    catch { botao.textContent = "Selecione e copie"; }
+  }
+
+  // ---------------------------------------------------------------- sessão e papel
+  async function iniciar() {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return mostrarEntrar();
+    const email = (session.user.email || "").toLowerCase();
+    if (!email.endsWith("@cardapioweb.com")) { await db.auth.signOut(); return mostrarEntrar("Use o e-mail @cardapioweb.com."); }
+    const { data, error } = await db.rpc("cw_eu");
+    if (error) return mostrarEntrar("Não consegui carregar seu acesso: " + error.message);
+    eu = data;
+    visao = { papel: eu.papel, editor: eu.editor && eu.editor.slug };
+    $("#quem-nome").textContent = eu.editor ? eu.editor.nome : eu.email;
+    $("#quem-papel").textContent = { gestor: "Gestão", editor: "Editor", solicitante: "Pedidos" }[eu.papel] || "";
+    $("#quem").hidden = false; $("#nav").hidden = false; $("#tela-entrar").hidden = true;
+    const nomeSalvo = localGet("cw-nome"); if (nomeSalvo) $("#p-nome").value = nomeSalvo;
+    await carregar();
+    montarVerComo();
+    montarNav(location.hash.slice(1));
+    setInterval(carregar, 20000);
+    setInterval(atualizarAoVivo, 8000);
+  }
+  function mostrarEntrar(msg) {
+    $("#tela-entrar").hidden = false;
+    if (msg) { const m = $("#msg-entrar"); m.hidden = false; m.className = "aviso erro"; m.textContent = msg; }
+  }
+  $("#form-entrar").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const email = $("#email").value.trim().toLowerCase(), m = $("#msg-entrar"); m.hidden = false;
+    if (!email.endsWith("@cardapioweb.com")) { m.className = "aviso erro"; m.textContent = "Use o e-mail @cardapioweb.com."; return; }
+    const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+    m.className = error ? "aviso erro" : "aviso";
+    m.textContent = error ? (/rate|limit/i.test(error.message) ? "Muitos pedidos de link agora. Tente de novo em alguns minutos." : "Não consegui enviar: " + error.message)
+      : "Pronto. Abra o link que chegou no seu e-mail (o assunto vem em inglês, \"Magic Link\").";
+  });
+  $("#sair").addEventListener("click", async () => { await db.auth.signOut(); history.replaceState(null, "", location.pathname); location.reload(); });
+
+  // gestão pode ver a central como um editor ou como quem pede, para conferir
+  function montarVerComo() {
+    const sel = $("#ver-como");
+    if (eu.papel !== "gestor") return;
+    sel.hidden = false;
+    const atual = sel.value || "gestor";
+    encher(sel, h("option", { value: "gestor" }, "Ver como: Gestão"),
+      D.editores.filter((e) => e.ativo).map((e) => h("option", { value: "editor:" + e.slug }, "Ver como: " + e.nome)),
+      h("option", { value: "solicitante" }, "Ver como: quem pede"));
+    sel.value = atual;
+    sel.onchange = () => {
+      const [p, slug] = sel.value.split(":");
+      visao = { papel: p, editor: slug || null };
+      const prev = $("#previa");
+      prev.hidden = p === "gestor";
+      prev.textContent = p === "editor" ? `Prévia: é assim que ${nomeEditor(slug)} vê a central.` : "Prévia: é assim que quem pede vê a central (com os seus pedidos).";
+      montarNav();
+    };
+  }
+
+  function montarNav(pedida) {
+    const abas = ABAS[visao.papel] || [];
+    encher($("#nav"), abas.map(([id, nome]) => h("button", { "data-aba": id, onclick: () => trocarAba(id) }, nome, contador(id))));
+    trocarAba(abas.some(([id]) => id === pedida) ? pedida : (abas[0] || [])[0]);
+  }
+  function contador(id) {
+    let n = 0;
+    if (id === "inicio") n = alertas().filter((a) => a.tom !== "neutro").length;
+    if (id === "pedidos") n = meusPedidos().filter((d) => d.status === "em_revisao").length;
+    if (id === "meudia") n = D.demandas.filter((d) => d.editor_slug === visao.editor && d.status === "refazer").length;
+    return n ? h("span", { class: "cont" }, n) : null;
+  }
+  function trocarAba(nova) {
+    aba = nova;
+    if (nova) history.replaceState(null, "", "#" + nova);
+    for (const b of document.querySelectorAll("nav button")) b.setAttribute("aria-current", String(b.dataset.aba === nova));
+    for (const s of document.querySelectorAll("main > section[id^='aba-']")) s.hidden = s.id !== "aba-" + nova;
+    desenhar();
+  }
+
+  // ---------------------------------------------------------------- dados (cada papel busca só o que o banco deixa ver)
+  async function carregar() {
+    const p = eu.papel;
+    const pedidos = [db.from("demandas").select("*").order("criado", { ascending: false }).limit(1000), db.from("editores").select("slug,nome,email,ativo,criado").order("nome")];
+    if (p === "gestor") {
+      const desde = new Date(Date.now() - 400 * 864e5).toISOString();
+      pedidos.push(db.rpc("cw_ao_vivo"), db.from("edicoes").select("*").gte("aberto_em", desde).order("aberto_em", { ascending: false }).limit(5000),
+        db.from("gestores").select("email").order("email"),
+        db.from("demanda_eventos").select("demanda_id,ts,categoria").eq("tipo", "refazer").gte("ts", desde), db.rpc("cw_posicoes"));
+    } else if (p === "editor") {
+      pedidos.push(db.rpc("cw_ao_vivo"), db.rpc("cw_minhas_entregas"));
+    } else {
+      pedidos.push(db.rpc("cw_posicoes"));
+    }
+    const r = await Promise.all(pedidos);
+    for (const x of r) if (x && x.error) console.error(x.error);
+    D.demandas = r[0].data || []; D.editores = r[1].data || [];
+    if (p === "gestor") {
+      D.aovivo = r[2].data || []; D.edicoes = r[3].data || []; D.gestores = (r[4].data || []).map((g) => g.email);
+      D.ajustes = r[5].data || []; D.posicoes = Object.fromEntries((r[6].data || []).map((x) => [x.id, x.posicao]));
+    } else if (p === "editor") {
+      D.aovivo = r[2].data || []; D.entregas = r[3].data || [];
+    } else {
+      D.posicoes = Object.fromEntries((r[2].data || []).map((x) => [x.id, x.posicao]));
+    }
+    await carregarNotasDeAjuste();
+    if ($("#nav").childElementCount) { montarVerComo(); montarNav(aba); }
+  }
+  // último pedido de ajuste de cada demanda em "ajuste pedido" (o editor vê o que mudar)
+  async function carregarNotasDeAjuste() {
+    D.eventos = {};
+    const ids = D.demandas.filter((d) => d.status === "refazer").map((d) => d.id);
+    if (!ids.length) return;
+    const { data } = await db.from("demanda_eventos").select("demanda_id,ts,autor,detalhe,categoria").eq("tipo", "refazer").in("demanda_id", ids).order("ts");
+    for (const e of data || []) D.eventos[e.demanda_id] = e;
+  }
+  async function atualizarAoVivo() {
+    if (document.hidden || !["inicio", "aovivo", "meudia"].includes(aba) || eu.papel === "solicitante") return;
+    const { data } = await db.rpc("cw_ao_vivo");
+    if (data) { D.aovivo = data; desenhar(); }
+  }
+
+  function desenhar() {
+    ({ inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, gestao: desenharGestao,
+       meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
+  }
+
+  // ---------------------------------------------------------------- ao vivo (gestão e editores; editor não recebe números)
+  function linhasAoVivo() {
+    const out = [];
+    for (const s of D.aovivo) {
+      const ed = D.editores.find((e) => e.slug === s.slug);
+      if (!ed || !ed.ativo) continue;
+      for (const t of (s.payload || {}).trabalhos || []) out.push({ t, ed, s, p: s.payload || {}, viva: online(s) && t.agora });
+    }
+    return out;
+  }
+  function blocoEdicao({ t, ed, s, p, viva }) {
+    const etapas = p.etapas || ETAPAS, idx = (k) => etapas.findIndex(([e]) => e === k);
+    const atual = idx(t.etapa), max = Math.max(idx(t.etapa_max), atual), af = t.agora_faz;
+    return h("div", { class: "edicao" },
+      h("div", { class: "topo" },
+        h("span", { class: "bolinha " + (viva ? "editando" : online(s) ? "conectado" : "") }),
+        h("b", {}, ed.nome), h("span", {}, "·"), h("span", { style: "font-weight:800" }, t.titulo), origemChip(t),
+        t.tipo && h("span", { class: "chip" }, TIPOS[t.tipo] || t.tipo),
+        h("span", { class: "desde" }, "começou " + ha(t.desde))),
+      h("div", { class: "passos" }, etapas.map(([k, nome], i) => h("div", { class: "passo" + (i === atual ? " atual" : i <= max ? " feito" : "") }, nome))),
+      h("div", { class: "agora" }, af ? [viva ? h("strong", {}, "Agora: ") : "Último passo: ", af.rotulo, " · ", ha(af.ts)]
+        : (viva ? "Aberto nesta sessão, nenhum passo de edição ainda" : "Sem sessão do Claude aberta neste vídeo"),
+        !online(s) ? h("span", { class: "nota" }, ` · ${ed.nome.split(" ")[0]} offline, visto ${ha(s.atualizado)}`) : null),
+      (t.historico || []).length > 1 && h("details", {}, h("summary", {}, "Passos deste vídeo"),
+        h("div", { class: "historico", style: "margin-top:8px" }, t.historico.slice().reverse().map((x) => h("div", {}, h("time", {}, horaBR(x.ts)), x.rotulo)))));
+  }
+  function desenharAoVivo() {
+    const linhas = linhasAoVivo(), vivas = linhas.filter((l) => l.viva), paradas = linhas.filter((l) => !l.viva);
+    const semNada = D.editores.filter((e) => e.ativo && !linhas.some((l) => l.ed.slug === e.slug));
+    encher($("#aovivo"),
+      h("h3", { class: "grupo" }, `Editando agora (${vivas.length})`),
+      vivas.length ? vivas.map(blocoEdicao) : h("div", { class: "vazio" }, "Ninguém editando neste momento."),
+      paradas.length ? [h("h3", { class: "grupo" }, `Em aberto, parados (${paradas.length})`), paradas.map(blocoEdicao)] : null,
+      semNada.length ? h("div", { class: "vazio" }, "Sem vídeo aberto: " + semNada.map((e) => e.nome).join(", ")) : null);
+  }
+
+  // ---------------------------------------------------------------- início da gestão: alertas
+  function alertas() {
+    if (eu.papel !== "gestor") return [];
+    const out = [], hoje = hojeISO(), amanha = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+    for (const d of D.demandas.filter((d) => !["entregue", "cancelada"].includes(d.status))) {
+      const ref = `${codigo(d)} ${d.titulo}`;
+      if (d.prazo && d.prazo < hoje) out.push({ tom: "critico", rotulo: "Prazo vencido", texto: `${ref}: venceu em ${dataBR(d.prazo)} (${STATUS[d.status].toLowerCase()})`, demanda: d.id });
+      else if (d.prazo && d.prazo <= amanha) out.push({ tom: "aviso", rotulo: "Prazo", texto: `${ref}: vence ${d.prazo === hoje ? "hoje" : "amanhã"} (${STATUS[d.status].toLowerCase()})`, demanda: d.id });
+      if (d.status === "nova" && !d.editor_slug && minutosDesde(d.criado) > 24 * 60) out.push({ tom: "aviso", rotulo: "Fila", texto: `${ref}: na fila sem ninguém ${ha(d.criado)}`, demanda: d.id });
+      if (d.status === "nova" && d.editor_slug && minutosDesde(d.atualizado) > 24 * 60) out.push({ tom: "aviso", rotulo: "Atribuída", texto: `${ref}: atribuída a ${nomeEditor(d.editor_slug)} e ainda não começou`, demanda: d.id });
+      if (d.status === "refazer" && minutosDesde(d.atualizado) > 24 * 60) out.push({ tom: "aviso", rotulo: "Ajuste", texto: `${ref}: ajuste pedido ${ha(d.atualizado)}, com ${nomeEditor(d.editor_slug)}`, demanda: d.id });
+      if (d.status === "em_revisao" && minutosDesde(d.enviado_revisao_em || d.atualizado) > 48 * 60) out.push({ tom: "neutro", rotulo: "Aprovação", texto: `${ref}: esperando aprovação de ${d.solicitante_nome || d.solicitante_email} ${ha(d.enviado_revisao_em || d.atualizado)}`, demanda: d.id });
+    }
+    const versoes = D.aovivo.map((s) => (s.payload || {}).plugin).filter(Boolean).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    for (const s of D.aovivo) {
+      const ed = D.editores.find((e) => e.slug === s.slug); if (!ed || !ed.ativo) continue;
+      const p = s.payload || {};
+      for (const t of p.trabalhos || []) {
+        const nomeEtapa = (ETAPAS.find(([k]) => k === t.etapa) || [null, "sem etapa"])[1];
+        if (online(s) && t.agora && t.agora_faz && minutosDesde(t.agora_faz.ts) > 60) out.push({ tom: "aviso", rotulo: "Parado", texto: `${ed.nome}: "${t.titulo}" sem passo de edição ${ha(t.agora_faz.ts)} (${nomeEtapa})` });
+        if (!t.agora && minutosDesde(t.desde) > 3 * 24 * 60) out.push({ tom: "aviso", rotulo: "Esquecido?", texto: `${ed.nome}: "${t.titulo}" aberto ${ha(t.desde)} sem entrega` });
+        if (!t.jira && !t.demanda) out.push({ tom: "neutro", rotulo: t.status === "sem registro" ? "Sem registro" : "Sem card", texto: `${ed.nome}: "${t.titulo}" ${t.status === "sem registro" ? "editado sem abrir registro" : "sem card do Jira"}` });
+      }
+      if (versoes[0] && p.plugin && p.plugin !== versoes[0]) out.push({ tom: "neutro", rotulo: "Plugin", texto: `${ed.nome} está com o plugin ${p.plugin} (o mais novo no time é ${versoes[0]})` });
+    }
+    for (const e of D.editores.filter((e) => e.ativo && !D.aovivo.some((s) => s.slug === e.slug)))
+      out.push({ tom: "neutro", rotulo: "Conexão", texto: `${e.nome} ainda não conectou o Claude à central` });
+    const ordem = { critico: 0, aviso: 1, neutro: 2 };
+    return out.sort((a, b) => ordem[a.tom] - ordem[b.tom]);
+  }
+  function desenharInicio() {
+    const ds = D.demandas, semana = Date.now() - 7 * 864e5;
+    const finSemana = D.edicoes.filter((x) => x.status === "entregue" && x.fechado_em && new Date(x.fechado_em) > semana);
+    const vivas = linhasAoVivo().filter((l) => l.viva);
+    encher($("#ini-numeros"), [[vivas.length, "editando agora"], [ds.filter((d) => d.status === "nova").length, "na fila"],
+      [ds.filter((d) => d.status === "em_revisao").length, "esperando aprovação"], [finSemana.length, "vídeos finalizados em 7 dias"],
+      [duracao(media(finSemana.map((x) => x.segundos_ativos))), "tempo ativo médio em 7 dias"]].map(numero));
+    const al = alertas();
+    $("#ini-alertas-tit").textContent = `Atenção (${al.length})`;
+    encher($("#ini-alertas"), al.length ? al.map((a) => h("div", { class: "alerta" },
+      h("span", { class: "chip tom-" + a.tom }, a.rotulo), h("span", { class: "texto" }, a.texto),
+      a.demanda && h("button", { onclick: () => abrir(a.demanda) }, "Abrir"))) : h("div", { class: "vazio" }, "Nada pedindo atenção agora."));
+    encher($("#ini-aovivo"), vivas.length ? vivas.map(blocoEdicao) : h("div", { class: "vazio" }, "Ninguém editando neste momento."));
+  }
+
+  // ---------------------------------------------------------------- demandas (quadro)
+  function cartao(d, extra) {
+    const vencido = d.prazo && d.prazo < hojeISO() && !["entregue", "cancelada"].includes(d.status);
+    return h("button", { class: "cartao", onclick: () => abrir(d.id) },
+      h("div", { class: "cod" }, codigo(d), d.solicitante_nome ? " · " + d.solicitante_nome : ""),
+      h("div", { class: "tit" }, d.titulo),
+      h("div", { class: "chips" },
+        d.prioridade === "urgente" && h("span", { class: "chip urgente" }, "Urgente"),
+        h("span", { class: "chip" }, TIPOS[d.tipo] || d.tipo), d.perfil && h("span", { class: "chip" }, d.perfil),
+        d.prazo && h("span", { class: "chip" + (vencido ? " tom-critico" : "") }, "Prazo " + dataBR(d.prazo)),
+        d.editor_slug && h("span", { class: "chip editor" }, (d.status === "nova" ? "Para " : "") + nomeEditor(d.editor_slug)),
+        d.rodadas > 0 && h("span", { class: "chip" }, `Rodada ${d.rodadas + 1}`)),
+      d.etapa && h("div", { class: "sub" }, d.etapa + " · " + ha(d.atualizado)),
+      extra);
+  }
+  const ordenarFila = (a, b) => (b.prioridade === "urgente") - (a.prioridade === "urgente") || (a.prazo || "9999").localeCompare(b.prazo || "9999") || a.criado.localeCompare(b.criado);
+  function desenharDemandas() {
+    $("#dem-sub").textContent = visao.papel === "editor" ? "Todas as demandas do time. Para pegar uma, peça ao seu Claude: pega a D-0012." : "Pedidos de fora do time. Clique num cartão para ver, atribuir ou priorizar.";
+    const recentes = new Date(Date.now() - 14 * 864e5).toISOString();
+    encher($("#quadro"), COLUNAS.map((st) => {
+      let itens = D.demandas.filter((d) => d.status === st);
+      itens = st === "entregue" ? itens.filter((d) => (d.concluido_em || "") >= recentes) : itens.sort(ordenarFila);
+      return h("div", { class: "coluna" }, h("h4", {}, h("span", {}, STATUS[st]), h("span", {}, itens.length)),
+        h("div", { class: "lista" }, itens.length ? itens.map((d) => cartao(d)) : h("div", { class: "vazio" }, st === "entregue" ? "Nada nos últimos 14 dias" : "Nada aqui")));
+    }));
+  }
+
+  // ---------------------------------------------------------------- detalhe da demanda (ações conforme o papel)
+  async function abrir(id) {
+    const d = D.demandas.find((x) => x.id === id);
+    if (!d) return;
+    const { data: eventos } = await db.from("demanda_eventos").select("*").eq("demanda_id", id).order("ts");
+    const gestor = visao.papel === "gestor", editor = visao.papel === "editor", dono = d.solicitante_email === eu.email;
+    const campos = [["Status", STATUS[d.status]], ["Tipo", TIPOS[d.tipo]], ["Publicação", d.perfil], ["Prioridade", d.prioridade],
+      ["Prazo", d.prazo && dataBR(d.prazo)], ["Pediu", `${d.solicitante_nome || ""} (${d.solicitante_email})`], ["Área", d.area],
+      ["Editor", d.editor_slug && nomeEditor(d.editor_slug)], ["Etapa", d.etapa], ["Posição na fila", d.status === "nova" && D.posicoes[d.id] ? `${D.posicoes[d.id]}º` : null],
+      ["Bruto", link(d.link_bruto)], ["Roteiro", d.link_roteiro && link(d.link_roteiro)], ["Entrega", d.link_entrega && link(d.link_entrega)],
+      ["Peças", d.pecas], ["Nota do editor", d.nota_entrega], ["Pedido", d.descricao]].filter(([, v]) => v != null && v !== "");
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    const fechar = () => $("#detalhe").close();
+    const rpc = async (fn, args) => {
+      const { error } = await db.rpc(fn, args);
+      if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+      fechar(); carregar();
+    };
+
+    // quem pediu (ou a gestão): aprovar ou pedir ajuste, com motivo
+    const podeDecidir = (dono || gestor) && d.status === "em_revisao" && !editor;
+    const nota = h("textarea", { id: "aj-nota", placeholder: "O que precisa mudar? (obrigatório para pedir ajuste)", style: "min-height:70px" });
+    const motivo = h("select", { id: "aj-motivo" }, Object.entries(MOTIVOS).map(([k, v]) => h("option", { value: k }, v)));
+    const caixaDecidir = podeDecidir && h("div", { class: "caixa" }, h("b", {}, "Sua decisão"),
+      h("label", { for: "aj-motivo" }, "Motivo, se for pedir ajuste", motivo), nota,
+      h("div", { class: "acoes" },
+        h("button", { class: "botao amarelo", onclick: () => rpc("cw_decidir", { p_id: id, p_acao: "aprovar", p_nota: nota.value.trim() || null, p_categoria: null }) }, "Aprovar entrega"),
+        h("button", { class: "botao", onclick: () => rpc("cw_decidir", { p_id: id, p_acao: "refazer", p_nota: nota.value.trim() || null, p_categoria: motivo.value }) }, "Pedir ajuste")));
+
+    // gestão: atribuir, prioridade e prazo
+    const selEditor = h("select", { id: "at-editor" }, h("option", { value: "" }, "Fila geral (qualquer editor pega)"),
+      D.editores.filter((e) => e.ativo).map((e) => h("option", { value: e.slug, selected: e.slug === d.editor_slug }, e.nome)));
+    const selPrio = h("select", { id: "at-prio" }, ["normal", "urgente"].map((p) => h("option", { value: p, selected: p === d.prioridade }, p === "urgente" ? "Urgente" : "Normal")));
+    const inPrazo = h("input", { id: "at-prazo", type: "date", value: d.prazo || "" });
+    const caixaGestao = gestor && !["entregue", "cancelada"].includes(d.status) && h("div", { class: "caixa" }, h("b", {}, "Gestão"),
+      ["nova", "refazer"].includes(d.status) && h("div", { class: "acoes" }, h("label", { for: "at-editor", style: "flex:1 1 240px" }, "Quem faz", selEditor),
+        h("button", { class: "botao peq", style: "align-self:end", onclick: () => rpc("cw_atribuir", { p_id: id, p_editor: selEditor.value || null }) }, "Atribuir")),
+      h("div", { class: "acoes" }, h("label", { for: "at-prio" }, "Prioridade", selPrio), h("label", { for: "at-prazo" }, "Prazo", inPrazo),
+        h("button", { class: "botao peq", style: "align-self:end", onclick: () => rpc("cw_priorizar", { p_id: id, p_prioridade: selPrio.value, p_prazo: inPrazo.value || null }) }, "Salvar")));
+
+    // cancelar em duas etapas, sem diálogo do navegador
+    const podeCancelar = (gestor && !["entregue", "cancelada"].includes(d.status)) || (dono && d.status === "nova" && !editor);
+    const confirmaCancelar = h("div", { class: "acoes", hidden: true }, h("span", {}, "Cancelar esta demanda?"),
+      h("button", { class: "botao perigo peq", onclick: () => rpc("cw_decidir", { p_id: id, p_acao: "cancelar", p_nota: null, p_categoria: null }) }, "Sim, cancelar"));
+
+    // editor: como pegar
+    const dicaEditor = editor && ["nova", "refazer"].includes(d.status) && (!d.editor_slug || d.editor_slug === visao.editor) && (() => {
+      const frase = `pega a ${codigo(d)}`;
+      return h("div", { class: "caixa" }, h("b", {}, "Para pegar"), h("div", { class: "acoes" }, "Diga ao seu Claude:",
+        h("code", { class: "token", style: "padding:4px 8px" }, frase), h("button", { class: "botao leve peq", onclick: (ev) => copiar(frase, ev.currentTarget) }, "Copiar")));
+    })();
+
+    encher($("#detalhe-corpo"),
+      h("div", { class: "chips" }, h("span", { class: "nota", style: "font-weight:800" }, codigo(d)), statusChip(d.status)),
+      h("h2", {}, d.titulo),
+      h("dl", { class: "campos" }, campos.map(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])),
+      h("h3", { class: "grupo" }, "Histórico"),
+      h("div", { class: "historico" }, (eventos || []).map((e) => h("div", {}, h("time", {}, horaBR(e.ts)), h("b", {}, e.autor), " ", e.tipo,
+        e.categoria ? ` (${MOTIVOS[e.categoria] || e.categoria})` : "", e.detalhe ? ": " + e.detalhe : ""))),
+      dicaEditor, caixaDecidir, caixaGestao, msg, confirmaCancelar,
+      h("div", { class: "acoes" },
+        podeCancelar && h("button", { class: "botao perigo peq", onclick: () => { confirmaCancelar.hidden = false; } }, "Cancelar demanda"),
+        h("button", { class: "botao leve", onclick: fechar }, "Fechar")));
+    $("#detalhe").showModal();
+  }
+
+  // ---------------------------------------------------------------- relatório (gestão)
   function intervalo(v) {
     const agora = new Date();
     if (v === "mes") return [new Date(agora.getFullYear(), agora.getMonth(), 1), agora];
@@ -518,115 +734,167 @@
   }
   function relatorioFiltrado() {
     const [ini, fim] = intervalo($("#rel-periodo").value), ed = $("#rel-editor").value;
-    const doEditor = dados.edicoes.filter((x) => !ed || x.editor_slug === ed);
+    const doEditor = D.edicoes.filter((x) => !ed || x.editor_slug === ed);
     const finalizados = doEditor.filter((x) => x.status === "entregue" && x.fechado_em && new Date(x.fechado_em) >= ini && new Date(x.fechado_em) < fim)
       .sort((a, b) => b.fechado_em.localeCompare(a.fechado_em));
-    const andamento = doEditor.filter((x) => !x.status || x.status === "refazer");
-    return { finalizados, andamento };
+    return { ini, fim, ed, finalizados, andamento: doEditor.filter((x) => !x.status || x.status === "refazer") };
   }
   const td = (v, n) => h("td", { class: n ? "n" : null }, v);
+  const vazioLinha = (cols, txt) => h("tr", {}, h("td", { colspan: cols, class: "vazio" }, txt || "Nada no período."));
   function linhaGrupo(nome, fin, and) {
-    const t = fin.map((x) => x.segundos_ativos);
-    const voltas = fin.filter((x) => x.voltas > 0).length;
-    return [td(nome), td(fin.length, 1), td(fin.reduce((a, x) => a + (x.pecas || 0), 0), 1), td(duracao(media(t)), 1),
-      td(duracao(mediana(t)), 1), td(duracao(t.reduce((a, b) => a + b, 0)), 1),
-      td(fin.length ? `${voltas} (${Math.round(100 * voltas / fin.length)}%)` : "–", 1), td(and.length, 1)];
+    const t = fin.map((x) => x.segundos_ativos), voltas = fin.filter((x) => x.voltas > 0).length;
+    return [td(nome), td(fin.length, 1), td(fin.reduce((a, x) => a + (x.pecas || 0), 0), 1), td(duracao(media(t)), 1), td(duracao(mediana(t)), 1),
+      td(duracao(t.reduce((a, b) => a + b, 0)), 1), td(fin.length ? `${voltas} (${Math.round(100 * voltas / fin.length)}%)` : "–", 1), td(and.length, 1)];
   }
-  function origemTexto(x) { return x.jira ? "Jira " + x.jira : x.demanda ? "Central " + x.demanda : "sem card"; }
+  const origemTexto = (x) => x.jira ? "Jira " + x.jira : x.demanda ? "Central " + x.demanda : "sem card";
+  function inicioSemana(t) { const x = new Date(t); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
   function desenharRelatorio() {
     const sel = $("#rel-editor"), atual = sel.value;
-    const opcoes = dados.editores.map((e) => h("option", { value: e.slug }, e.nome));
-    sel.replaceChildren(h("option", { value: "" }, "Todo o time"), ...opcoes); sel.value = atual;
-    const { finalizados, andamento } = relatorioFiltrado();
-    const tempos = finalizados.map((x) => x.segundos_ativos);
+    encher(sel, h("option", { value: "" }, "Todo o time"), D.editores.map((e) => h("option", { value: e.slug }, e.nome))); sel.value = atual;
+    const { ini, fim, ed, finalizados, andamento } = relatorioFiltrado(), tempos = finalizados.map((x) => x.segundos_ativos);
     const voltas = finalizados.filter((x) => x.voltas > 0).length;
-    $("#rel-numeros").replaceChildren(...[
-      [finalizados.length, "vídeos finalizados"], [finalizados.reduce((a, x) => a + (x.pecas || 0), 0), "peças entregues"],
+    encher($("#rel-numeros"), [[finalizados.length, "vídeos finalizados"], [finalizados.reduce((a, x) => a + (x.pecas || 0), 0), "peças entregues"],
       [duracao(media(tempos)), "tempo ativo médio por vídeo"], [duracao(tempos.reduce((a, b) => a + b, 0)), "tempo ativo total"],
-      [finalizados.length ? Math.round(100 * voltas / finalizados.length) + "%" : "–", "voltaram para ajuste"], [andamento.length, "em andamento agora"],
-    ].map(([v, t]) => h("div", { class: "numero" }, h("b", {}, v), h("small", {}, t))));
+      [finalizados.length ? Math.round(100 * voltas / finalizados.length) + "%" : "–", "voltaram para ajuste"], [andamento.length, "em andamento agora"]].map(numero));
 
     const slugs = [...new Set([...finalizados, ...andamento].map((x) => x.editor_slug))];
     const linhas = slugs.map((sl) => ({ nome: nomeEditor(sl), fin: finalizados.filter((x) => x.editor_slug === sl), and: andamento.filter((x) => x.editor_slug === sl) }))
       .sort((a, b) => b.fin.length - a.fin.length || a.nome.localeCompare(b.nome));
     const corpo = linhas.map((l) => h("tr", {}, linhaGrupo(l.nome, l.fin, l.and)));
     if (linhas.length > 1) corpo.push(h("tr", { class: "total" }, linhaGrupo("Time", finalizados, andamento)));
-    $("#rel-editores").replaceChildren(...(corpo.length ? corpo : [h("tr", {}, h("td", { colspan: 8, class: "vazio" }, "Nada no período."))]));
+    encher($("#rel-editores"), corpo.length ? corpo : vazioLinha(8));
+
+    const comEtapas = finalizados.filter((x) => x.etapas && Object.keys(x.etapas).length);
+    const totEtapa = Object.fromEntries(ETAPAS.map(([k]) => [k, comEtapas.reduce((a, x) => a + (x.etapas[k] || 0), 0)]));
+    const somaEtapas = Object.values(totEtapa).reduce((a, b) => a + b, 0);
+    encher($("#rel-etapas"), somaEtapas ? ETAPAS.filter(([k]) => totEtapa[k]).map(([k, nome]) => h("tr", {}, td(nome), td(duracao(totEtapa[k] / comEtapas.length), 1), td(Math.round(100 * totEtapa[k] / somaEtapas) + "%", 1)))
+      : vazioLinha(3, "Ainda sem vídeos medidos por etapa no período."));
+
+    const entregues = D.edicoes.filter((x) => (!ed || x.editor_slug === ed) && x.status === "entregue" && x.fechado_em);
+    const semanas = Array.from({ length: 8 }, (_, i) => inicioSemana(Date.now() - i * 7 * 864e5));
+    encher($("#rel-semanas"), semanas.map((s) => {
+      const fimS = new Date(s.getTime() + 7 * 864e5), xs = entregues.filter((x) => new Date(x.fechado_em) >= s && new Date(x.fechado_em) < fimS);
+      return h("tr", {}, td(s.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })), td(xs.length, 1),
+        td(duracao(media(xs.map((x) => x.segundos_ativos))), 1), td(xs.filter((x) => x.voltas > 0).length, 1));
+    }));
 
     const tipos = [...new Set(finalizados.map((x) => x.tipo || "outro"))].map((tp) => {
       const t = finalizados.filter((x) => (x.tipo || "outro") === tp).map((x) => x.segundos_ativos);
       return { tp, n: t.length, med: media(t), mdn: mediana(t) };
     }).sort((a, b) => b.n - a.n);
-    $("#rel-tipos").replaceChildren(...(tipos.length ? tipos.map((x) => h("tr", {}, td(TIPOS[x.tp] || x.tp), td(x.n, 1), td(duracao(x.med), 1), td(duracao(x.mdn), 1)))
-      : [h("tr", {}, h("td", { colspan: 4, class: "vazio" }, "Nada no período."))]));
+    encher($("#rel-tipos"), tipos.length ? tipos.map((x) => h("tr", {}, td(TIPOS[x.tp] || x.tp), td(x.n, 1), td(duracao(x.med), 1), td(duracao(x.mdn), 1))) : vazioLinha(4));
 
-    $("#rel-videos").replaceChildren(...(finalizados.length ? finalizados.map((x) => h("tr", {},
-      td(dataBR(x.fechado_em)), td(nomeEditor(x.editor_slug)), td(x.titulo || x.id), h("td", {}, origem({ jira: x.jira, demanda: x.demanda })),
-      td(TIPOS[x.tipo] || x.tipo || ""), td(duracao(x.segundos_ativos), 1), td(x.pecas ?? "", 1), td(x.voltas || "", 1)))
-      : [h("tr", {}, h("td", { colspan: 8, class: "vazio" }, "Nenhum vídeo finalizado no período."))]));
+    const motivos = {};
+    for (const e of D.ajustes.filter((e) => new Date(e.ts) >= ini && new Date(e.ts) < fim)) motivos[e.categoria || "sem"] = (motivos[e.categoria || "sem"] || 0) + 1;
+    const ms = Object.entries(motivos).sort((a, b) => b[1] - a[1]);
+    encher($("#rel-motivos"), ms.length ? ms.map(([k, n]) => h("tr", {}, td(MOTIVOS[k] || "Sem motivo informado"), td(n, 1))) : vazioLinha(2, "Nenhum ajuste pedido no período."));
+
+    encher($("#rel-videos"), finalizados.length ? finalizados.map((x) => h("tr", {}, td(dataBR(x.fechado_em)), td(nomeEditor(x.editor_slug)), td(x.titulo || x.id),
+      h("td", {}, origemChip({ jira: x.jira, demanda: x.demanda })), td(TIPOS[x.tipo] || x.tipo || ""), td(duracao(x.segundos_ativos), 1), td(x.pecas ?? "", 1), td(x.voltas || "", 1)))
+      : vazioLinha(8, "Nenhum vídeo finalizado no período."));
   }
   $("#rel-periodo").addEventListener("change", desenharRelatorio);
   $("#rel-editor").addEventListener("change", desenharRelatorio);
   $("#rel-csv").addEventListener("click", () => {
     const { finalizados } = relatorioFiltrado();
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const linhas = [["entregue_em", "editor", "video", "origem", "tipo", "tempo_ativo_min", "pecas", "ajustes", "custo_estimado_usd"],
-      ...finalizados.map((x) => [x.fechado_em, nomeEditor(x.editor_slug), x.titulo, origemTexto(x), x.tipo,
-        Math.round(x.segundos_ativos / 60), x.pecas, x.voltas, x.custo_usd])];
-    const blob = new Blob(["\ufeff" + linhas.map((l) => l.map(esc).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
-    const a = h("a", { href: URL.createObjectURL(blob), download: `cw-studios-relatorio-${hoje()}.csv` });
+    const linhas = [["entregue_em", "editor", "video", "origem", "tipo", "tempo_ativo_min", "pecas", "ajustes", "custo_estimado_usd", ...ETAPAS.map(([k]) => "min_" + k)],
+      ...finalizados.map((x) => [x.fechado_em, nomeEditor(x.editor_slug), x.titulo, origemTexto(x), x.tipo, Math.round(x.segundos_ativos / 60), x.pecas, x.voltas, x.custo_usd,
+        ...ETAPAS.map(([k]) => Math.round(((x.etapas || {})[k] || 0) / 60))])];
+    const blob = new Blob(["﻿" + linhas.map((l) => l.map(esc).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = h("a", { href: URL.createObjectURL(blob), download: `cw-studios-relatorio-${hojeISO()}.csv` });
     document.body.append(a); a.click(); a.remove();
   });
 
+  // ---------------------------------------------------------------- pessoas (gestão)
+  function erroGestao(e) { const m = $("#msg-gestao"); m.hidden = !e; m.textContent = e ? e.message : ""; }
   function desenharGestao() {
-    $("#lista-editores").replaceChildren(...dados.editores.map((e) => h("tr", {},
-      h("td", {}, e.nome), h("td", {}, e.email || ""), h("td", {}, e.ativo ? "Ativo" : "Desativado"),
-      h("td", {}, e.ativo && h("button", { class: "botao perigo", onclick: async () => {
-        if (!confirm(`Desativar ${e.nome}? O token dele para de funcionar.`)) return;
-        const { error } = await db.rpc("cw_desativar_editor", { p_slug: e.slug });
-        if (error) alert(error.message); else carregar();
-      } }, "Desativar")))));
+    encher($("#lista-editores"), D.editores.length ? D.editores.map((e) => {
+      const s = D.aovivo.find((x) => x.slug === e.slug);
+      const confirma = h("span", { hidden: true }, " Desativar? ",
+        h("button", { class: "botao perigo peq", onclick: async () => { const { error } = await db.rpc("cw_desativar_editor", { p_slug: e.slug }); erroGestao(error); if (!error) carregar(); } }, "Sim"));
+      const situacao = !e.ativo ? statusChip("cancelada", "Desativado") : !s ? h("span", { class: "chip tom-neutro" }, "nunca conectou")
+        : online(s) ? h("span", { class: "chip tom-ok" }, s.estado === "editando" ? "editando" : "Claude aberto") : h("span", { class: "chip tom-neutro" }, "offline, visto " + ha(s.atualizado));
+      return h("tr", {}, td(e.nome), td(e.email || h("span", { class: "chip tom-critico" }, "sem e-mail: não entra na central")), td(situacao),
+        td(s && s.payload && s.payload.plugin ? s.payload.plugin : "–"),
+        h("td", { class: "n" }, e.ativo && [h("button", { class: "botao leve peq", onclick: () => { $("#ed-nome").value = e.nome; $("#ed-email").value = e.email || ""; $("#ed-email").focus(); } }, "Novo token"), " ",
+          h("button", { class: "botao perigo peq", onclick: () => { confirma.hidden = false; } }, "Desativar"), confirma]));
+    }) : vazioLinha(5, "Nenhum editor cadastrado ainda."));
+    encher($("#lista-gestores"), D.gestores.map((g) => h("tr", {}, td(g), h("td", { class: "n" },
+      g !== eu.email && h("button", { class: "botao perigo peq", onclick: async () => { const { error } = await db.rpc("cw_remover_gestor", { p_email: g }); erroGestao(error); if (!error) carregar(); } }, "Remover")))));
+  }
+  $("#form-editor").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const nome = $("#ed-nome").value.trim(), email = $("#ed-email").value.trim(), primeiro = nome.split(" ")[0];
+    const { data, error } = await db.rpc("cw_criar_editor", { p_nome: nome, p_email: email });
+    const alvo = $("#novo-token"); alvo.hidden = false;
+    if (error) { encher(alvo, h("div", { class: "aviso erro" }, error.message)); return; }
+    const frase = `Me conecta na central com o token ${data.token}`;
+    encher(alvo, h("p", { style: "margin:0 0 6px" }, h("b", {}, "Token de " + nome), " (copie agora, ele não aparece de novo):"),
+      h("div", { class: "token" }, data.token),
+      h("p", { style: "margin:10px 0 6px" }, `Mande para ${primeiro} por mensagem privada. No Claude, ${primeiro} diz:`),
+      h("div", { class: "token" }, frase),
+      h("button", { class: "botao leve peq", style: "margin-top:8px", type: "button", onclick: (e) => copiar(frase, e.currentTarget) }, "Copiar frase"),
+      h("p", { class: "nota" }, `${primeiro} também entra nesta página com ${email} e vê a visão de editor.`));
+    ev.target.reset(); carregar();
+  });
+  $("#form-gestor").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const { error } = await db.rpc("cw_add_gestor", { p_email: $("#gestor-email").value.trim() });
+    erroGestao(error); if (!error) { ev.target.reset(); carregar(); }
+  });
+
+  // ---------------------------------------------------------------- editor
+  const minhasEntregas = () => eu.papel === "editor" ? D.entregas : D.edicoes.filter((x) => x.editor_slug === visao.editor);  // prévia da gestão usa edicoes
+  function desenharMeuDia() {
+    const slug = visao.editor, ed = D.editores.find((e) => e.slug === slug);
+    $("#md-titulo").textContent = ed ? `Meu dia · ${ed.nome.split(" ")[0]}` : "Meu dia";
+    const minhas = (st) => D.demandas.filter((d) => d.editor_slug === slug && d.status === st);
+    const disponiveis = D.demandas.filter((d) => d.status === "nova" && !d.editor_slug).sort(ordenarFila);
+    const meusAbertos = linhasAoVivo().filter((l) => l.ed.slug === slug);
+    const semana = Date.now() - 7 * 864e5;
+    const semanaXs = minhasEntregas().filter((x) => x.status === "entregue" && x.fechado_em && new Date(x.fechado_em) > semana);
+    encher($("#md-numeros"), [[meusAbertos.length, "vídeos abertos comigo"], [minhas("refazer").length, "ajustes pedidos"], [minhas("nova").length, "atribuídas a mim"],
+      [semanaXs.length, "entregues em 7 dias"], [duracao(media(semanaXs.map((x) => x.segundos_ativos))), "meu tempo ativo médio (7 dias)"]].map(numero));
+    const dica = (d) => h("div", { class: "dica" }, "Diga ao Claude: ", h("code", {}, `pega a ${codigo(d)}`));
+    const ajuste = (d) => { const e = D.eventos[d.id]; return e ? h("div", { class: "sub" }, h("b", {}, "O que mudar: "), e.categoria ? `[${MOTIVOS[e.categoria]}] ` : "", e.detalhe || "") : null; };
+    const grupo = (titulo, itens, render, vazio) => [h("h3", { class: "grupo" }, `${titulo} (${itens.length})`),
+      itens.length ? h("div", { class: "grade-cartoes" }, itens.map(render)) : h("div", { class: "vazio" }, vazio)];
+    encher($("#md-conteudo"),
+      grupo("Ajustes pedidos", minhas("refazer"), (d) => cartao(d, [ajuste(d), dica(d)]), "Nenhum ajuste pendente."),
+      h("h3", { class: "grupo" }, `Editando (${meusAbertos.length})`),
+      meusAbertos.length ? h("div", { class: "aovivo" }, meusAbertos.map(blocoEdicao)) : h("div", { class: "vazio" }, "Nenhum vídeo aberto agora."),
+      grupo("Atribuídas a você", minhas("nova").sort(ordenarFila), (d) => cartao(d, dica(d)), "Nada atribuído a você."),
+      grupo("Disponíveis na fila", disponiveis.slice(0, 9), (d) => cartao(d, dica(d)), "Fila vazia."),
+      grupo("Esperando aprovação de quem pediu", minhas("em_revisao"), (d) => cartao(d), "Nada esperando aprovação."));
+  }
+  function desenharEntregas() {
+    const ent = minhasEntregas().filter((x) => x.status === "entregue" && x.fechado_em).sort((a, b) => b.fechado_em.localeCompare(a.fechado_em));
+    const desde = (dias) => ent.filter((x) => new Date(x.fechado_em) > Date.now() - dias * 864e5);
+    const mes = ent.filter((x) => x.fechado_em.slice(0, 7) === new Date().toISOString().slice(0, 7));
+    encher($("#me-numeros"), [[desde(7).length, "entregues em 7 dias"], [mes.length, "entregues no mês"],
+      [duracao(media(desde(30).map((x) => x.segundos_ativos))), "tempo ativo médio (30 dias)"],
+      [duracao(mediana(desde(30).map((x) => x.segundos_ativos))), "mediana (30 dias)"]].map(numero));
+    encher($("#me-videos"), ent.length ? ent.slice(0, 60).map((x) => h("tr", {}, td(dataBR(x.fechado_em)), td(x.titulo || x.id), h("td", {}, origemChip(x)),
+      td(TIPOS[x.tipo] || x.tipo || ""), td(duracao(x.segundos_ativos), 1), td(x.voltas || "", 1))) : vazioLinha(6, "Nenhuma entrega registrada ainda."));
   }
 
-  // ---- detalhe
-  async function abrir(id) {
-    const d = dados.demandas.find((x) => x.id === id);
-    if (!d) return;
-    const { data: eventos } = await db.from("demanda_eventos").select("*").eq("demanda_id", id).order("ts");
-    const dono = d.solicitante_email === eu.email;
-    const campos = [
-      ["Status", STATUS[d.status]], ["Tipo", TIPOS[d.tipo]], ["Publicação", d.perfil], ["Prioridade", d.prioridade],
-      ["Prazo", d.prazo && dataBR(d.prazo)], ["Pediu", `${d.solicitante_nome || ""} (${d.solicitante_email})`], ["Área", d.area],
-      ["Editor", d.editor_slug && nomeEditor(d.editor_slug)], ["Etapa", d.etapa],
-      ["Bruto", link(d.link_bruto)], ["Roteiro", d.link_roteiro && link(d.link_roteiro)],
-      ["Entrega", d.link_entrega && link(d.link_entrega)], ["Peças", d.pecas], ["Nota do editor", d.nota_entrega],
-      ["Pedido", d.descricao],
-    ].filter(([, v]) => v != null && v !== "");
-    const nota = h("textarea", { placeholder: "O que precisa mudar? (obrigatório para refazer)", style: "min-height:70px" });
-    const acao = async (tipo) => {
-      if (tipo === "cancelar" && !confirm("Cancelar esta demanda?")) return;
-      const { error } = await db.rpc("cw_decidir", { p_id: id, p_acao: tipo, p_nota: nota.value.trim() || null });
-      if (error) { alert(error.message); return; }
-      $("#detalhe").close(); carregar();
-    };
-    const podeDecidir = (dono || eu.gestor) && d.status === "em_revisao";
-    const podeCancelar = (eu.gestor && !["entregue", "cancelada"].includes(d.status)) || (dono && d.status === "nova");
-    encher($("#detalhe-corpo"),
-      h("div", { class: "cod", style: "color:var(--texto-2);font-weight:800" }, codigo(d)),
-      h("h2", {}, d.titulo),
-      h("dl", { class: "campos" }, campos.map(([k, v]) => [h("dt", {}, k), h("dd", { style: "white-space:pre-wrap" }, v)])),
-      h("h3", { style: "margin:6px 0 0;font-size:14px" }, "Histórico"),
-      h("div", { class: "historico" }, (eventos || []).map((e) => h("div", {}, h("time", {}, horaBR(e.ts)), h("b", {}, e.autor), " ", e.tipo, e.detalhe ? ": " + e.detalhe : ""))),
-      podeDecidir && nota,
-      h("div", { class: "acoes" },
-        podeDecidir && h("button", { class: "botao amarelo", onclick: () => acao("aprovar") }, "Aprovar entrega"),
-        podeDecidir && h("button", { class: "botao", onclick: () => acao("refazer") }, "Pedir ajuste"),
-        podeCancelar && h("button", { class: "botao perigo", onclick: () => acao("cancelar") }, "Cancelar demanda"),
-        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
-    $("#detalhe").showModal();
+  // ---------------------------------------------------------------- quem pede
+  const meusPedidos = () => D.demandas.filter((d) => d.solicitante_email === eu.email);
+  function desenharPedidos() {
+    const ordem = { em_revisao: 0, refazer: 1, em_edicao: 2, nova: 3, entregue: 4, cancelada: 5 };
+    const ps = meusPedidos().sort((a, b) => ordem[a.status] - ordem[b.status] || b.criado.localeCompare(a.criado));
+    const situacao = (d) => d.status === "nova" ? (D.posicoes[d.id] ? `${D.posicoes[d.id]}º na fila` : "Na fila") + (d.editor_slug ? ` · com ${nomeEditor(d.editor_slug)}` : "")
+      : d.status === "em_edicao" ? `${nomeEditor(d.editor_slug)} está editando${d.etapa ? " · " + d.etapa : ""}`
+      : d.status === "em_revisao" ? "Pronto. Abra para ver o link e aprovar."
+      : d.status === "refazer" ? `Ajuste com ${nomeEditor(d.editor_slug)}`
+      : d.status === "entregue" ? "Entregue em " + dataBR(d.concluido_em) : "Cancelado";
+    encher($("#pedidos"), ps.length ? ps.map((d) => h("button", { class: "cartao", onclick: () => abrir(d.id) },
+      h("div", { class: "chips" }, h("span", { class: "cod" }, codigo(d)), statusChip(d.status, d.status === "em_revisao" ? "Esperando sua aprovação" : null)),
+      h("div", { class: "tit" }, d.titulo), h("div", { class: "sub" }, situacao(d)),
+      d.prazo && h("div", { class: "sub" }, "Prazo " + dataBR(d.prazo))))
+      : h("div", { class: "vazio" }, "Você ainda não fez nenhum pedido. Use a aba Pedir edição."));
   }
-
-  // ---- formulários
   $("#form-pedido").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const f = ev.target, m = $("#msg-pedido"), botao = f.querySelector("button");
@@ -638,23 +906,9 @@
     botao.disabled = false; m.hidden = false;
     if (error) { m.className = "aviso erro"; m.textContent = "Não consegui enviar: " + error.message; return; }
     localSet("cw-nome", v.solicitante_nome || "");
-    m.className = "aviso"; m.textContent = `Demanda D-${String(data.id).padStart(4, "0")} na fila. Você acompanha tudo na aba Fila.`;
-    const nome = v.solicitante_nome; f.reset(); f.solicitante_nome.value = nome || "";
+    m.className = "aviso"; m.textContent = `Pedido D-${String(data.id).padStart(4, "0")} enviado. Acompanhe em ${eu.papel === "gestor" ? "Demandas" : "Meus pedidos"}.`;
+    const nome = v.solicitante_nome; f.reset(); $("#p-nome").value = nome || "";
     carregar();
-  });
-
-  $("#form-editor").addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const f = ev.target;
-    const { data, error } = await db.rpc("cw_criar_editor", { p_nome: f.nome.value.trim(), p_email: f.email.value.trim() || null });
-    const alvo = $("#novo-token"); alvo.hidden = false;
-    if (error) { alvo.replaceChildren(h("div", { class: "aviso erro" }, error.message)); return; }
-    alvo.replaceChildren(
-      h("p", { style: "margin:0 0 6px" }, h("b", {}, "Token de " + f.nome.value.trim()), " (copie agora, ele não aparece de novo):"),
-      h("div", { class: "token" }, data.token),
-      h("p", { style: "margin:10px 0 6px" }, "O editor abre o Claude Code e diz:"),
-      h("div", { class: "token" }, `Me conecta na central com o token ${data.token}`));
-    f.reset(); carregar();
   });
 
   iniciar();
