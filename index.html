@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Central CW Studios</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+  // ===== Configuração do time (URL e chave "anon public" do Supabase: Project Settings > API) =====
+  // A chave anon é pública por desenho; quem protege os dados é o login + as regras do banco.
+  window.CW_CENTRAL = {
+    url: "https://ukjlbkjqseamkswtzmfp.supabase.co",
+    chave: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVramxia2pxc2VhbWtzd3R6bWZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNzEwNDEsImV4cCI6MjEwNzg0NzA0MX0.l3RqaBjxvWP4y21Hy1wXdvqylY4GudWY1EB6vvH7viU",  // anon public (pública por desenho)
+    jira: "https://cardapio-web.atlassian.net",  // cards SCC-123 viram link
+  };
+</script>
+<style>
+  :root {
+    --roxo: #59327A; --roxo-vivo: #A543FA; --amarelo: #FFB600; --lilas: #F4EDF7; --vermelho: #FF5959;
+    --verde: #1F9D6B; --bg: #FBF8FD; --card: #FFFFFF; --texto: #22172B; --texto-2: rgba(34, 23, 43, .66);
+    --linha: #E6DCEE; --tag-texto: #59327A; --sombra: 0 1px 2px rgba(89, 50, 122, .08), 0 4px 14px rgba(89, 50, 122, .06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17111D; --card: #211829; --texto: #F4EDF7; --texto-2: rgba(244, 237, 247, .62); --linha: #3A2C47;
+      --lilas: #2C2036; --tag-texto: #E2C8FF; --sombra: none; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17111D; --card: #211829; --texto: #F4EDF7; --texto-2: rgba(244, 237, 247, .62); --linha: #3A2C47;
+    --lilas: #2C2036; --tag-texto: #E2C8FF; --sombra: none; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--texto); font: 500 15px/1.45 Nunito, system-ui, sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  a { color: var(--roxo-vivo); }
+  header { background: var(--roxo); color: #fff; padding-block: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-weight: 900; font-size: 20px; letter-spacing: .2px; }
+  header h1 span { background: var(--amarelo); color: var(--roxo); border-radius: 999px; padding: 1px 10px; margin-left: 6px; font-size: 13px; vertical-align: 3px; }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; max-width: 100%; }
+  nav button { background: transparent; border: 0; color: #fff; opacity: .75; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-weight: 800; }
+  nav button[aria-current="true"] { background: rgba(255, 255, 255, .16); opacity: 1; }
+  .quem { margin-left: auto; font-size: 13px; opacity: .85; display: flex; gap: 10px; align-items: center; }
+  .quem button { background: transparent; border: 1px solid rgba(255, 255, 255, .4); color: #fff; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+  main { max-width: 1280px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .numero { background: var(--card); border: 1px solid var(--linha); border-radius: 14px; padding: 12px 14px; box-shadow: var(--sombra); }
+  .numero b { display: block; font-size: 26px; font-weight: 900; }
+  .numero small { color: var(--texto-2); }
+  .quadro { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+  .coluna { background: var(--lilas); border-radius: 14px; padding: 10px; min-height: 120px; }
+  .coluna h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; margin: 2px 4px 10px; font-weight: 900; display: flex; justify-content: space-between; }
+  .cartao { background: var(--card); border: 1px solid var(--linha); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; box-shadow: var(--sombra); width: 100%; text-align: left; display: block; }
+  .cartao:hover { border-color: var(--roxo-vivo); }
+  .cartao .cod { font-size: 12px; color: var(--texto-2); font-weight: 700; }
+  .cartao .tit { font-weight: 800; margin: 2px 0 6px; }
+  .tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tag { font-size: 11.5px; font-weight: 800; border-radius: 999px; padding: 1px 8px; background: var(--lilas); color: var(--tag-texto); }
+  .tag.urgente { background: var(--vermelho); color: #fff; }
+  .tag.prazo-vencido { background: #FFE3E3; color: #B42323; }
+  .tag.editor { background: var(--amarelo); color: #3A2600; }
+  .cartao .etapa { font-size: 12.5px; color: var(--texto-2); margin-top: 6px; }
+  .time { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .editor { background: var(--card); border: 1px solid var(--linha); border-radius: 14px; padding: 14px; box-shadow: var(--sombra); }
+  .editor h3 { margin: 0 0 2px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
+  .bolinha { width: 10px; height: 10px; border-radius: 50%; background: #B9AFC2; display: inline-block; }
+  .bolinha.editando { background: var(--verde); box-shadow: 0 0 0 4px rgba(31, 157, 107, .18); }
+  .bolinha.conectado { background: var(--amarelo); }
+  .editor .meta { font-size: 12.5px; color: var(--texto-2); }
+  .editor ul { margin: 10px 0 0; padding-left: 18px; }
+  .editor li { margin-bottom: 4px; }
+  form.pedido { background: var(--card); border: 1px solid var(--linha); border-radius: 16px; padding: 20px; max-width: 720px; box-shadow: var(--sombra); display: grid; gap: 14px; }
+  .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  label { display: grid; gap: 4px; font-weight: 800; font-size: 13.5px; }
+  label small { font-weight: 500; color: var(--texto-2); }
+  input, select, textarea { background: var(--bg); border: 1px solid var(--linha); border-radius: 10px; padding: 9px 11px; width: 100%; }
+  textarea { min-height: 110px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--roxo-vivo); outline-offset: 0; }
+  .botao { background: var(--roxo); color: #fff; border: 0; border-radius: 999px; padding: 10px 20px; font-weight: 900; cursor: pointer; justify-self: start; }
+  .botao.amarelo { background: var(--amarelo); color: #3A2600; }
+  .botao.leve { background: transparent; color: var(--texto); border: 1px solid var(--linha); }
+  .botao.perigo { background: transparent; color: var(--vermelho); border: 1px solid var(--vermelho); }
+  .botao:disabled { opacity: .5; cursor: default; }
+  .aviso { padding: 10px 14px; border-radius: 10px; background: var(--lilas); }
+  .aviso.erro { background: #FFE3E3; color: #8A1C1C; }
+  .entrar { max-width: 420px; margin: 10vh auto; background: var(--card); border: 1px solid var(--linha); border-radius: 18px; padding: 28px; box-shadow: var(--sombra); display: grid; gap: 14px; }
+  .entrar h2 { margin: 0; font-weight: 900; }
+  dialog { border: 0; border-radius: 18px; padding: 0; width: min(680px, calc(100vw - 32px)); background: var(--card); color: var(--texto); }
+  dialog::backdrop { background: rgba(23, 17, 29, .5); }
+  .modal { padding: 22px; display: grid; gap: 12px; }
+  .modal h2 { margin: 0; font-weight: 900; }
+  .campos { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-size: 14px; }
+  .campos dt { color: var(--texto-2); font-weight: 700; }
+  .campos dd { margin: 0; word-break: break-word; }
+  .historico { border-left: 2px solid var(--linha); padding-left: 12px; display: grid; gap: 6px; font-size: 13.5px; max-height: 240px; overflow: auto; }
+  .historico time { color: var(--texto-2); font-size: 12px; margin-right: 6px; }
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .token { font-family: ui-monospace, Menlo, monospace; background: var(--lilas); padding: 10px; border-radius: 10px; word-break: break-all; user-select: all; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; }
+  td, th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--linha); font-size: 14px; }
+  .vazio { color: var(--texto-2); font-size: 13px; padding: 6px 4px; }
+  .aovivo { display: grid; gap: 12px; }
+  .aovivo h2.grupo { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; font-weight: 900; margin: 8px 0 0; color: var(--texto-2); }
+  .edicao { background: var(--card); border: 1px solid var(--linha); border-radius: 14px; padding: 14px 16px; box-shadow: var(--sombra); display: grid; gap: 10px; }
+  .edicao.viva { border-left: 5px solid var(--verde); }
+  .edicao .topo { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .edicao .topo b { font-size: 16px; font-weight: 900; }
+  .edicao .agora { font-size: 14px; }
+  .edicao .agora strong { color: var(--verde); }
+  .passos { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+  .aovivo > *, .edicao > * { min-width: 0; }
+  .passo { overflow-wrap: anywhere; font-size: 11px; font-weight: 800; text-align: center; color: var(--texto-2); }
+  .passo::before { content: ""; display: block; height: 6px; border-radius: 3px; background: var(--linha); margin-bottom: 4px; }
+  .passo.feito::before { background: var(--roxo-vivo); opacity: .45; }
+  .passo.atual { color: var(--texto); }
+  .passo.atual::before { background: var(--verde); }
+  details summary { cursor: pointer; font-size: 13px; color: var(--texto-2); font-weight: 700; }
+  .tag.sem-card { background: #FFF1CC; color: #6B4A00; }
+  @media (max-width: 640px) { .passos { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .controles { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 16px; }
+  .controles label { min-width: 180px; }
+  .rel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; font-weight: 900; margin: 22px 0 8px; color: var(--texto-2); }
+  .tabela { overflow-x: auto; border: 1px solid var(--linha); border-radius: 12px; }
+  .tabela table { border-radius: 0; }
+  .tabela th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--texto-2); white-space: nowrap; }
+  .tabela td.n, .tabela th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tabela tr.total td { font-weight: 900; }
+  .nota { font-size: 12.5px; color: var(--texto-2); margin-top: 8px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 640px) {
+    .duas { grid-template-columns: 1fr; }
+    .campos { grid-template-columns: 1fr; }
+    .campos dt { margin-top: 6px; }
+    .quem { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Central <span>CW Studios</span></h1>
+  <nav id="nav" hidden>
+    <button data-aba="aovivo">Ao vivo</button>
+    <button data-aba="fila" aria-current="true">Fila</button>
+    <button data-aba="pedir">Pedir edição</button>
+    <button data-aba="time">Time</button>
+    <button data-aba="relatorio">Relatório</button>
+    <button data-aba="gestao" hidden>Gestão</button>
+  </nav>
+  <div class="quem" id="quem" hidden><span id="quem-email"></span><button id="sair">Sair</button></div>
+</header>
+
+<main>
+  <div id="erro-config" class="aviso erro" hidden>
+    Falta configurar a URL e a chave do Supabase no início deste arquivo (<code>window.CW_CENTRAL</code>).
+  </div>
+
+  <section id="tela-entrar" class="entrar" hidden>
+    <h2>Entrar</h2>
+    <p style="margin:0">Use seu e-mail da Cardápio Web. Você recebe um link de acesso, sem senha.</p>
+    <form id="form-entrar" style="display:grid;gap:12px">
+      <input type="email" id="email" required placeholder="nome@cardapioweb.com" autocomplete="email">
+      <button class="botao">Receber link</button>
+    </form>
+    <div id="msg-entrar" class="aviso" hidden></div>
+  </section>
+
+  <section id="aba-aovivo" hidden>
+    <div class="aovivo" id="aovivo"></div>
+  </section>
+
+  <section id="aba-fila" hidden>
+    <div class="numeros" id="numeros"></div>
+    <div class="quadro" id="quadro"></div>
+  </section>
+
+  <section id="aba-pedir" hidden>
+    <form class="pedido" id="form-pedido">
+      <h2 style="margin:0;font-weight:900">Pedir uma edição</h2>
+      <label>Título <small>o que é o vídeo, em poucas palavras</small>
+        <input name="titulo" required minlength="3" maxlength="140" placeholder="Reel: novo painel de pedidos"></label>
+      <div class="duas">
+        <label>Tipo
+          <select name="tipo" required>
+            <option value="reel">Reel / Short roteirizado</option>
+            <option value="cortes">Cortes de podcast / entrevista</option>
+            <option value="tutorial">Tutorial do sistema (tela + câmera)</option>
+            <option value="youtube">Vídeo do YouTube</option>
+            <option value="anuncio">Anúncio (Growth)</option>
+            <option value="story">Story de evento</option>
+            <option value="outro">Outro</option>
+          </select></label>
+        <label>Onde vai ser publicado
+          <select name="perfil">
+            <option>Cardápio Web</option><option>CW Club</option><option>Growth / anúncios</option>
+            <option>YouTube</option><option>Interno</option><option>Outro</option>
+          </select></label>
+      </div>
+      <label>Link do material bruto <small>pasta ou arquivo no Google Drive, com acesso para o time</small>
+        <input name="link_bruto" type="url" required placeholder="https://drive.google.com/..."></label>
+      <label>Roteiro <small>opcional</small>
+        <input name="link_roteiro" type="url" placeholder="https://docs.google.com/..."></label>
+      <label>O que você precisa <small>CTA, nomes e grafias, referências, o que não pode faltar</small>
+        <textarea name="descricao" placeholder="CTA: Comente PAINEL. Mostrar a tela de pedidos aos 20s. Nome do convidado: ..."></textarea></label>
+      <div class="duas">
+        <label>Prazo <input name="prazo" type="date"></label>
+        <label>Prioridade
+          <select name="prioridade"><option value="normal">Normal</option><option value="urgente">Urgente</option></select></label>
+      </div>
+      <div class="duas">
+        <label>Seu nome <input name="solicitante_nome" required autocomplete="name"></label>
+        <label>Área <input name="area" placeholder="Marketing, Growth, CS..."></label>
+      </div>
+      <button class="botao amarelo">Enviar para a fila</button>
+      <div id="msg-pedido" class="aviso" hidden></div>
+    </form>
+  </section>
+
+  <section id="aba-time" hidden>
+    <div class="time" id="time"></div>
+  </section>
+
+  <section id="aba-relatorio" class="rel" hidden>
+    <div class="controles">
+      <label>Período
+        <select id="rel-periodo">
+          <option value="7">Últimos 7 dias</option>
+          <option value="30" selected>Últimos 30 dias</option>
+          <option value="mes">Este mês</option>
+          <option value="mes-passado">Mês passado</option>
+          <option value="90">Últimos 90 dias</option>
+        </select></label>
+      <label>Editor <select id="rel-editor"><option value="">Todo o time</option></select></label>
+      <button class="botao leve" id="rel-csv" type="button">Baixar CSV</button>
+    </div>
+    <div class="numeros" id="rel-numeros"></div>
+    <h3>Por editor</h3>
+    <div class="tabela"><table><thead><tr><th>Editor</th><th class="n">Finalizados</th><th class="n">Peças</th>
+      <th class="n">Tempo ativo médio</th><th class="n">Mediana</th><th class="n">Tempo ativo total</th>
+      <th class="n">Voltaram p/ ajuste</th><th class="n">Em andamento</th></tr></thead><tbody id="rel-editores"></tbody></table></div>
+    <h3>Por tipo de vídeo</h3>
+    <div class="tabela"><table><thead><tr><th>Tipo</th><th class="n">Finalizados</th><th class="n">Tempo ativo médio</th>
+      <th class="n">Mediana</th></tr></thead><tbody id="rel-tipos"></tbody></table></div>
+    <h3>Vídeos finalizados</h3>
+    <div class="tabela"><table><thead><tr><th>Entregue</th><th>Editor</th><th>Vídeo</th><th>Origem</th><th>Tipo</th>
+      <th class="n">Tempo ativo</th><th class="n">Peças</th><th class="n">Ajustes</th></tr></thead><tbody id="rel-videos"></tbody></table></div>
+    <p class="nota">Tempo ativo = minutos com o Claude trabalhando no vídeo, somando todas as sessões e as rodadas de ajuste;
+      pausas de mais de 5 min não contam. Só entram vídeos editados com o plugin e abertos no registro (o hub faz isso no começo).</p>
+  </section>
+
+  <section id="aba-gestao" hidden>
+    <form class="pedido" id="form-editor" style="margin-bottom:20px">
+      <h2 style="margin:0;font-weight:900">Cadastrar editor</h2>
+      <p style="margin:0;color:var(--texto-2)">Gera o token pessoal que conecta a máquina do editor à central. Ele aparece uma vez só; cadastrar de novo o mesmo nome gera um token novo e invalida o antigo.</p>
+      <div class="duas">
+        <label>Nome <input name="nome" required placeholder="Ana Souza"></label>
+        <label>E-mail <input name="email" type="email" placeholder="ana@cardapioweb.com"></label>
+      </div>
+      <button class="botao">Gerar token</button>
+      <div id="novo-token" hidden></div>
+    </form>
+    <table><thead><tr><th>Editor</th><th>E-mail</th><th>Situação</th><th></th></tr></thead><tbody id="lista-editores"></tbody></table>
+  </section>
+</main>
+
+<dialog id="detalhe"><div class="modal" id="detalhe-corpo"></div></dialog>
+
+<script>
+(() => {
+  const cfg = window.CW_CENTRAL || {};
+  const $ = (s) => document.querySelector(s);
+  if (!cfg.url || !cfg.chave) { $("#erro-config").hidden = false; return; }
+  const db = supabase.createClient(cfg.url, cfg.chave);
+
+  const STATUS = {
+    nova: "Na fila", em_edicao: "Em edição", em_revisao: "Esperando aprovação",
+    refazer: "Refazer", entregue: "Entregue", cancelada: "Cancelada",
+  };
+  const COLUNAS = ["nova", "em_edicao", "em_revisao", "refazer", "entregue"];
+  const TIPOS = { reel: "Reel", cortes: "Cortes", tutorial: "Tutorial", youtube: "YouTube", anuncio: "Anúncio", story: "Story", outro: "Outro" };
+  let eu = { email: "", gestor: false };
+  let dados = { demandas: [], editores: [], status: [], edicoes: [] };
+  let aba = "fila";
+  const ABAS = ["aovivo", "fila", "pedir", "time", "relatorio", "gestao"];
+  const ETAPAS_PADRAO = [["preparo", "Preparo"], ["transcricao", "Transcrição"], ["corte", "Corte e seleção"], ["montagem", "Montagem"],
+    ["motion", "Legenda e motion"], ["render", "Render"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
+
+  // ---- helpers de DOM (tudo vira texto; nada de innerHTML com dado de usuário)
+  function h(tag, attrs, ...filhos) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else if (k === "class") el.className = v;
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const f of filhos.flat()) if (f != null && f !== false) el.append(f instanceof Node ? f : String(f));
+    return el;
+  }
+  const encher = (el, ...filhos) => el.replaceChildren(...filhos.flat(3).filter((f) => f != null && f !== false));
+  const link = (url, texto) => /^https?:\/\//i.test(url || "") ? h("a", { href: url, target: "_blank", rel: "noopener" }, texto || url) : (url || "");
+  const codigo = (d) => "D-" + String(d.id).padStart(4, "0");
+  const dataBR = (iso) => iso ? new Date(iso.length === 10 ? iso + "T12:00:00" : iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "";
+  const horaBR = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  function ha(iso) {
+    const seg = Math.round((Date.now() - new Date(iso)) / 1000), min = Math.round(seg / 60);
+    if (seg < 60) return seg < 5 ? "agora" : `há ${seg} s`;
+    if (min < 60) return `há ${min} min`;
+    if (min < 60 * 24) return `há ${Math.round(min / 60)} h`;
+    return `há ${Math.round(min / 1440)} d`;
+  }
+  const nomeEditor = (slug) => (dados.editores.find((e) => e.slug === slug) || {}).nome || slug;
+  const hoje = () => new Date().toISOString().slice(0, 10);
+
+  // ---- sessão
+  async function iniciar() {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return mostrarEntrar();
+    eu.email = (session.user.email || "").toLowerCase();
+    if (!eu.email.endsWith("@cardapioweb.com")) {
+      await db.auth.signOut();
+      return mostrarEntrar("Use o e-mail @cardapioweb.com.");
+    }
+    $("#quem-email").textContent = eu.email;
+    $("#quem").hidden = false; $("#nav").hidden = false; $("#tela-entrar").hidden = true;
+    const { data: g } = await db.from("gestores").select("email").eq("email", eu.email);
+    eu.gestor = !!(g && g.length);
+    document.querySelector('[data-aba="gestao"]').hidden = !eu.gestor;
+    const nomeSalvo = localGet("cw-nome");
+    if (nomeSalvo) $("#form-pedido").solicitante_nome.value = nomeSalvo;
+    trocarAba(location.hash.slice(1) || (eu.gestor ? "aovivo" : "fila"));
+    await carregar();
+    setInterval(carregar, 20000);
+    setInterval(async () => {  // ao vivo: só o status dos editores, a cada 8 s
+      if (aba !== "aovivo" || document.hidden) return;
+      const { data } = await db.from("status_editores").select("*");
+      if (data) { dados.status = data; desenharAoVivo(); }
+    }, 8000);
+  }
+  function mostrarEntrar(msg) {
+    $("#tela-entrar").hidden = false;
+    if (msg) { const m = $("#msg-entrar"); m.hidden = false; m.className = "aviso erro"; m.textContent = msg; }
+  }
+  function localGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+  function localSet(k, v) { try { localStorage.setItem(k, v); } catch {} }
+
+  $("#form-entrar").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const email = $("#email").value.trim().toLowerCase();
+    const m = $("#msg-entrar"); m.hidden = false;
+    if (!email.endsWith("@cardapioweb.com")) { m.className = "aviso erro"; m.textContent = "Use o e-mail @cardapioweb.com."; return; }
+    const { error } = await db.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+    m.className = error ? "aviso erro" : "aviso";
+    m.textContent = error ? "Não consegui enviar: " + error.message : "Pronto. Abra o link que chegou no seu e-mail.";
+  });
+  $("#sair").addEventListener("click", async () => { await db.auth.signOut(); location.reload(); });
+
+  // ---- abas
+  function trocarAba(nova) {
+    if (!ABAS.includes(nova) || (nova === "gestao" && !eu.gestor)) nova = "fila";
+    aba = nova; history.replaceState(null, "", "#" + nova);
+    for (const b of document.querySelectorAll("nav button")) b.setAttribute("aria-current", String(b.dataset.aba === nova));
+    for (const s of ABAS) $("#aba-" + s).hidden = s !== nova;
+    desenhar();
+  }
+  $("#nav").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-aba]"); if (b) trocarAba(b.dataset.aba); });
+
+  // ---- dados
+  async function carregar() {
+    const limite = new Date(Date.now() - 30 * 864e5).toISOString();
+    const [d, e, s, ed] = await Promise.all([
+      db.from("demandas").select("*").or(`status.not.in.(entregue,cancelada),atualizado.gte."${limite}"`).order("criado", { ascending: false }).limit(500),
+      db.from("editores").select("slug,nome,email,ativo,criado").order("nome"),
+      db.from("status_editores").select("*"),
+      db.from("edicoes").select("*").gte("aberto_em", new Date(Date.now() - 400 * 864e5).toISOString()).order("aberto_em", { ascending: false }).limit(5000),
+    ]);
+    if (d.error) { console.error(d.error); return; }
+    dados = { demandas: d.data || [], editores: e.data || [], status: s.data || [], edicoes: (ed && ed.data) || [] };
+    desenhar();
+  }
+
+  function desenhar() {
+    if (aba === "aovivo") desenharAoVivo();
+    if (aba === "fila") desenharFila();
+    if (aba === "time") desenharTime();
+    if (aba === "relatorio") desenharRelatorio();
+    if (aba === "gestao") desenharGestao();
+  }
+
+  function cartao(d) {
+    const vencido = d.prazo && d.prazo < hoje() && !["entregue", "cancelada"].includes(d.status);
+    return h("button", { class: "cartao", onclick: () => abrir(d.id) },
+      h("div", { class: "cod" }, codigo(d), d.solicitante_nome ? " · " + d.solicitante_nome : ""),
+      h("div", { class: "tit" }, d.titulo),
+      h("div", { class: "tags" },
+        d.prioridade === "urgente" && h("span", { class: "tag urgente" }, "Urgente"),
+        h("span", { class: "tag" }, TIPOS[d.tipo] || d.tipo),
+        d.perfil && h("span", { class: "tag" }, d.perfil),
+        d.prazo && h("span", { class: "tag" + (vencido ? " prazo-vencido" : "") }, "Prazo " + dataBR(d.prazo)),
+        d.editor_slug && h("span", { class: "tag editor" }, nomeEditor(d.editor_slug)),
+        d.rodadas > 0 && h("span", { class: "tag" }, `Rodada ${d.rodadas + 1}`)),
+      d.etapa && h("div", { class: "etapa" }, d.etapa + " · " + ha(d.atualizado)));
+  }
+
+  function desenharFila() {
+    const ds = dados.demandas;
+    const mes = new Date().toISOString().slice(0, 7);
+    const online = dados.status.filter(online_).length;
+    const n = (st) => ds.filter((d) => d.status === st).length;
+    $("#numeros").replaceChildren(
+      ...[[n("nova"), "na fila"], [n("em_edicao"), "em edição"], [n("em_revisao"), "esperando aprovação"],
+          [ds.filter((d) => d.status === "entregue" && (d.concluido_em || "").startsWith(mes)).length, "entregues no mês"],
+          [online, "editores online"]]
+        .map(([v, t]) => h("div", { class: "numero" }, h("b", {}, v), h("small", {}, t))));
+    const entreguesRecentes = new Date(Date.now() - 14 * 864e5).toISOString();
+    $("#quadro").replaceChildren(...COLUNAS.map((st) => {
+      let itens = ds.filter((d) => d.status === st);
+      if (st === "entregue") itens = itens.filter((d) => (d.concluido_em || "") >= entreguesRecentes);
+      else itens.sort((a, b) => (b.prioridade === "urgente") - (a.prioridade === "urgente") || (a.prazo || "9999").localeCompare(b.prazo || "9999") || a.criado.localeCompare(b.criado));
+      return h("div", { class: "coluna" },
+        h("h2", {}, h("span", {}, STATUS[st]), h("span", {}, itens.length)),
+        itens.length ? itens.map(cartao) : h("div", { class: "vazio" }, st === "entregue" ? "Nada nos últimos 14 dias" : "Nada aqui"));
+    }));
+  }
+
+  function origem(t) {
+    if (t.jira) return h("a", { class: "tag", href: `${(cfg.jira || "").replace(/\/$/, "")}/browse/${encodeURIComponent(t.jira)}`, target: "_blank", rel: "noopener" }, "Jira " + t.jira);
+    if (t.demanda) {
+      const d = dados.demandas.find((x) => codigo(x) === t.demanda);
+      return h("a", { class: "tag", href: "#aovivo", onclick: (ev) => { ev.preventDefault(); if (d) abrir(d.id); } }, "Central " + t.demanda);
+    }
+    return h("span", { class: "tag sem-card", title: "Edição sem card do Jira nem demanda da central" }, t.status === "sem registro" ? "sem registro" : "sem card");
+  }
+
+  function desenharAoVivo() {
+    const linhas = [];
+    for (const s of dados.status) {
+      const ed = dados.editores.find((e) => e.slug === s.slug);
+      if (!ed || !ed.ativo) continue;
+      const p = s.payload || {}, on = online_(s);
+      for (const t of p.trabalhos || []) linhas.push({ t, ed, s, p, viva: on && t.agora });
+    }
+    const vivas = linhas.filter((l) => l.viva), paradas = linhas.filter((l) => !l.viva);
+    const semNada = dados.editores.filter((e) => e.ativo && !linhas.some((l) => l.ed.slug === e.slug));
+    const bloco = ({ t, ed, s, p, viva }) => {
+      const etapas = p.etapas || ETAPAS_PADRAO, idx = (k) => etapas.findIndex(([e]) => e === k);
+      const atual = idx(t.etapa), max = Math.max(idx(t.etapa_max), atual);
+      const af = t.agora_faz;
+      return h("div", { class: "edicao" + (viva ? " viva" : "") },
+        h("div", { class: "topo" },
+          h("span", { class: "bolinha " + (viva ? "editando" : online_(s) ? "conectado" : "") }),
+          h("b", {}, ed.nome), h("span", {}, "·"), h("span", { style: "font-weight:800" }, t.titulo), origem(t),
+          t.tipo && h("span", { class: "tag" }, TIPOS[t.tipo] || t.tipo),
+          h("span", { class: "meta", style: "margin-left:auto;color:var(--texto-2);font-size:12.5px" }, "começou " + ha(t.desde))),
+        h("div", { class: "passos" }, etapas.map(([k, nome], i) =>
+          h("div", { class: "passo" + (i === atual ? " atual" : i <= max ? " feito" : "") }, nome))),
+        h("div", { class: "agora" }, af
+          ? [viva ? h("strong", {}, "Agora: ") : "Último passo: ", af.rotulo, " · ", ha(af.ts)]
+          : (viva ? "Aberto nesta sessão, nenhum passo de edição ainda" : "Sem sessão do Claude aberta neste trabalho"),
+          !online_(s) ? h("span", { style: "color:var(--texto-2)" }, ` · ${ed.nome.split(" ")[0]} offline, visto ${ha(s.atualizado)}`) : null),
+        (t.historico || []).length > 1 && h("details", {}, h("summary", {}, "Passos desta edição"),
+          h("div", { class: "historico", style: "margin-top:8px" }, t.historico.slice().reverse().map((x) =>
+            h("div", {}, h("time", {}, horaBR(x.ts)), x.rotulo)))));
+    };
+    encher($("#aovivo"),
+      h("h2", { class: "grupo" }, `Editando agora (${vivas.length})`),
+      vivas.length ? vivas.map(bloco) : h("div", { class: "vazio" }, "Ninguém editando neste momento."),
+      paradas.length ? [h("h2", { class: "grupo" }, `Em aberto, parados (${paradas.length})`), paradas.map(bloco)] : null,
+      semNada.length ? h("div", { class: "vazio" }, "Sem edição aberta: " + semNada.map((e) => e.nome).join(", ")) : null);
+  }
+
+  function online_(s) { return Date.now() - new Date(s.atualizado) < 3 * 60000 && s.estado !== "desconectado"; }
+
+  function desenharTime() {
+    const ativos = dados.editores.filter((e) => e.ativo);
+    if (!ativos.length) { $("#time").replaceChildren(h("div", { class: "vazio" }, "Nenhum editor cadastrado ainda.")); return; }
+    $("#time").replaceChildren(...ativos.map((e) => {
+      const s = dados.status.find((x) => x.slug === e.slug);
+      const p = (s && s.payload) || {};
+      const on = s && online_(s);
+      const estado = !s ? "nunca conectou" : on ? (s.estado === "editando" ? "editando agora" : "Claude aberto") : "offline · visto " + ha(s.atualizado);
+      const minhas = dados.demandas.filter((d) => d.editor_slug === e.slug && ["em_edicao", "refazer"].includes(d.status));
+      const hj = p.hoje || {};
+      return h("div", { class: "editor" },
+        h("h3", {}, h("span", { class: "bolinha " + (on ? s.estado : "") }), e.nome),
+        h("div", { class: "meta" }, [estado, p.maquina, p.plugin && "plugin " + p.plugin, p.disco_livre_gb != null && p.disco_livre_gb + " GB livres"].filter(Boolean).join(" · ")),
+        h("div", { class: "meta", style: "margin-top:4px" },
+          `Hoje: ${hj.entregues || 0} entregue(s), ${hj.pecas || 0} peça(s), ${hj.minutos_ativos || 0} min ativos` +
+          (hj.custo_estimado_usd ? `, ~US$ ${Number(hj.custo_estimado_usd).toFixed(2)} (equivalente API)` : "")),
+        (minhas.length || (p.trabalhos || []).length) ? h("ul", {},
+          minhas.map((d) => h("li", {}, h("a", { href: "#fila", onclick: (ev) => { ev.preventDefault(); abrir(d.id); } }, codigo(d)), " ", d.titulo, d.etapa ? " · " + d.etapa : "")),
+          (p.trabalhos || []).filter((t) => !t.demanda || !minhas.some((d) => codigo(d) === t.demanda))
+            .map((t) => h("li", {}, t.titulo, " ", h("span", { class: "meta" }, `(fora da central${t.agora ? ", nesta sessão" : ""})`)))) : null);
+    }));
+  }
+
+  // ---- relatório
+  function duracao(seg) {
+    if (seg == null || isNaN(seg)) return "–";
+    const min = Math.round(seg / 60);
+    if (min < 1) return "< 1 min";
+    if (min < 60) return `${min} min`;
+    return `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
+  }
+  const media = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+  function mediana(xs) {
+    if (!xs.length) return null;
+    const o = [...xs].sort((a, b) => a - b), m = Math.floor(o.length / 2);
+    return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2;
+  }
+  function intervalo(v) {
+    const agora = new Date();
+    if (v === "mes") return [new Date(agora.getFullYear(), agora.getMonth(), 1), agora];
+    if (v === "mes-passado") return [new Date(agora.getFullYear(), agora.getMonth() - 1, 1), new Date(agora.getFullYear(), agora.getMonth(), 1)];
+    return [new Date(Date.now() - Number(v) * 864e5), agora];
+  }
+  function relatorioFiltrado() {
+    const [ini, fim] = intervalo($("#rel-periodo").value), ed = $("#rel-editor").value;
+    const doEditor = dados.edicoes.filter((x) => !ed || x.editor_slug === ed);
+    const finalizados = doEditor.filter((x) => x.status === "entregue" && x.fechado_em && new Date(x.fechado_em) >= ini && new Date(x.fechado_em) < fim)
+      .sort((a, b) => b.fechado_em.localeCompare(a.fechado_em));
+    const andamento = doEditor.filter((x) => !x.status || x.status === "refazer");
+    return { finalizados, andamento };
+  }
+  const td = (v, n) => h("td", { class: n ? "n" : null }, v);
+  function linhaGrupo(nome, fin, and) {
+    const t = fin.map((x) => x.segundos_ativos);
+    const voltas = fin.filter((x) => x.voltas > 0).length;
+    return [td(nome), td(fin.length, 1), td(fin.reduce((a, x) => a + (x.pecas || 0), 0), 1), td(duracao(media(t)), 1),
+      td(duracao(mediana(t)), 1), td(duracao(t.reduce((a, b) => a + b, 0)), 1),
+      td(fin.length ? `${voltas} (${Math.round(100 * voltas / fin.length)}%)` : "–", 1), td(and.length, 1)];
+  }
+  function origemTexto(x) { return x.jira ? "Jira " + x.jira : x.demanda ? "Central " + x.demanda : "sem card"; }
+  function desenharRelatorio() {
+    const sel = $("#rel-editor"), atual = sel.value;
+    const opcoes = dados.editores.map((e) => h("option", { value: e.slug }, e.nome));
+    sel.replaceChildren(h("option", { value: "" }, "Todo o time"), ...opcoes); sel.value = atual;
+    const { finalizados, andamento } = relatorioFiltrado();
+    const tempos = finalizados.map((x) => x.segundos_ativos);
+    const voltas = finalizados.filter((x) => x.voltas > 0).length;
+    $("#rel-numeros").replaceChildren(...[
+      [finalizados.length, "vídeos finalizados"], [finalizados.reduce((a, x) => a + (x.pecas || 0), 0), "peças entregues"],
+      [duracao(media(tempos)), "tempo ativo médio por vídeo"], [duracao(tempos.reduce((a, b) => a + b, 0)), "tempo ativo total"],
+      [finalizados.length ? Math.round(100 * voltas / finalizados.length) + "%" : "–", "voltaram para ajuste"], [andamento.length, "em andamento agora"],
+    ].map(([v, t]) => h("div", { class: "numero" }, h("b", {}, v), h("small", {}, t))));
+
+    const slugs = [...new Set([...finalizados, ...andamento].map((x) => x.editor_slug))];
+    const linhas = slugs.map((sl) => ({ nome: nomeEditor(sl), fin: finalizados.filter((x) => x.editor_slug === sl), and: andamento.filter((x) => x.editor_slug === sl) }))
+      .sort((a, b) => b.fin.length - a.fin.length || a.nome.localeCompare(b.nome));
+    const corpo = linhas.map((l) => h("tr", {}, linhaGrupo(l.nome, l.fin, l.and)));
+    if (linhas.length > 1) corpo.push(h("tr", { class: "total" }, linhaGrupo("Time", finalizados, andamento)));
+    $("#rel-editores").replaceChildren(...(corpo.length ? corpo : [h("tr", {}, h("td", { colspan: 8, class: "vazio" }, "Nada no período."))]));
+
+    const tipos = [...new Set(finalizados.map((x) => x.tipo || "outro"))].map((tp) => {
+      const t = finalizados.filter((x) => (x.tipo || "outro") === tp).map((x) => x.segundos_ativos);
+      return { tp, n: t.length, med: media(t), mdn: mediana(t) };
+    }).sort((a, b) => b.n - a.n);
+    $("#rel-tipos").replaceChildren(...(tipos.length ? tipos.map((x) => h("tr", {}, td(TIPOS[x.tp] || x.tp), td(x.n, 1), td(duracao(x.med), 1), td(duracao(x.mdn), 1)))
+      : [h("tr", {}, h("td", { colspan: 4, class: "vazio" }, "Nada no período."))]));
+
+    $("#rel-videos").replaceChildren(...(finalizados.length ? finalizados.map((x) => h("tr", {},
+      td(dataBR(x.fechado_em)), td(nomeEditor(x.editor_slug)), td(x.titulo || x.id), h("td", {}, origem({ jira: x.jira, demanda: x.demanda })),
+      td(TIPOS[x.tipo] || x.tipo || ""), td(duracao(x.segundos_ativos), 1), td(x.pecas ?? "", 1), td(x.voltas || "", 1)))
+      : [h("tr", {}, h("td", { colspan: 8, class: "vazio" }, "Nenhum vídeo finalizado no período."))]));
+  }
+  $("#rel-periodo").addEventListener("change", desenharRelatorio);
+  $("#rel-editor").addEventListener("change", desenharRelatorio);
+  $("#rel-csv").addEventListener("click", () => {
+    const { finalizados } = relatorioFiltrado();
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const linhas = [["entregue_em", "editor", "video", "origem", "tipo", "tempo_ativo_min", "pecas", "ajustes", "custo_estimado_usd"],
+      ...finalizados.map((x) => [x.fechado_em, nomeEditor(x.editor_slug), x.titulo, origemTexto(x), x.tipo,
+        Math.round(x.segundos_ativos / 60), x.pecas, x.voltas, x.custo_usd])];
+    const blob = new Blob(["\ufeff" + linhas.map((l) => l.map(esc).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = h("a", { href: URL.createObjectURL(blob), download: `cw-studios-relatorio-${hoje()}.csv` });
+    document.body.append(a); a.click(); a.remove();
+  });
+
+  function desenharGestao() {
+    $("#lista-editores").replaceChildren(...dados.editores.map((e) => h("tr", {},
+      h("td", {}, e.nome), h("td", {}, e.email || ""), h("td", {}, e.ativo ? "Ativo" : "Desativado"),
+      h("td", {}, e.ativo && h("button", { class: "botao perigo", onclick: async () => {
+        if (!confirm(`Desativar ${e.nome}? O token dele para de funcionar.`)) return;
+        const { error } = await db.rpc("cw_desativar_editor", { p_slug: e.slug });
+        if (error) alert(error.message); else carregar();
+      } }, "Desativar")))));
+  }
+
+  // ---- detalhe
+  async function abrir(id) {
+    const d = dados.demandas.find((x) => x.id === id);
+    if (!d) return;
+    const { data: eventos } = await db.from("demanda_eventos").select("*").eq("demanda_id", id).order("ts");
+    const dono = d.solicitante_email === eu.email;
+    const campos = [
+      ["Status", STATUS[d.status]], ["Tipo", TIPOS[d.tipo]], ["Publicação", d.perfil], ["Prioridade", d.prioridade],
+      ["Prazo", d.prazo && dataBR(d.prazo)], ["Pediu", `${d.solicitante_nome || ""} (${d.solicitante_email})`], ["Área", d.area],
+      ["Editor", d.editor_slug && nomeEditor(d.editor_slug)], ["Etapa", d.etapa],
+      ["Bruto", link(d.link_bruto)], ["Roteiro", d.link_roteiro && link(d.link_roteiro)],
+      ["Entrega", d.link_entrega && link(d.link_entrega)], ["Peças", d.pecas], ["Nota do editor", d.nota_entrega],
+      ["Pedido", d.descricao],
+    ].filter(([, v]) => v != null && v !== "");
+    const nota = h("textarea", { placeholder: "O que precisa mudar? (obrigatório para refazer)", style: "min-height:70px" });
+    const acao = async (tipo) => {
+      if (tipo === "cancelar" && !confirm("Cancelar esta demanda?")) return;
+      const { error } = await db.rpc("cw_decidir", { p_id: id, p_acao: tipo, p_nota: nota.value.trim() || null });
+      if (error) { alert(error.message); return; }
+      $("#detalhe").close(); carregar();
+    };
+    const podeDecidir = (dono || eu.gestor) && d.status === "em_revisao";
+    const podeCancelar = (eu.gestor && !["entregue", "cancelada"].includes(d.status)) || (dono && d.status === "nova");
+    encher($("#detalhe-corpo"),
+      h("div", { class: "cod", style: "color:var(--texto-2);font-weight:800" }, codigo(d)),
+      h("h2", {}, d.titulo),
+      h("dl", { class: "campos" }, campos.map(([k, v]) => [h("dt", {}, k), h("dd", { style: "white-space:pre-wrap" }, v)])),
+      h("h3", { style: "margin:6px 0 0;font-size:14px" }, "Histórico"),
+      h("div", { class: "historico" }, (eventos || []).map((e) => h("div", {}, h("time", {}, horaBR(e.ts)), h("b", {}, e.autor), " ", e.tipo, e.detalhe ? ": " + e.detalhe : ""))),
+      podeDecidir && nota,
+      h("div", { class: "acoes" },
+        podeDecidir && h("button", { class: "botao amarelo", onclick: () => acao("aprovar") }, "Aprovar entrega"),
+        podeDecidir && h("button", { class: "botao", onclick: () => acao("refazer") }, "Pedir ajuste"),
+        podeCancelar && h("button", { class: "botao perigo", onclick: () => acao("cancelar") }, "Cancelar demanda"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
+
+  // ---- formulários
+  $("#form-pedido").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const f = ev.target, m = $("#msg-pedido"), botao = f.querySelector("button");
+    const v = Object.fromEntries(new FormData(f));
+    for (const k of Object.keys(v)) if (typeof v[k] === "string") v[k] = v[k].trim() || null;
+    v.solicitante_email = eu.email;
+    botao.disabled = true;
+    const { data, error } = await db.from("demandas").insert(v).select("id").single();
+    botao.disabled = false; m.hidden = false;
+    if (error) { m.className = "aviso erro"; m.textContent = "Não consegui enviar: " + error.message; return; }
+    localSet("cw-nome", v.solicitante_nome || "");
+    m.className = "aviso"; m.textContent = `Demanda D-${String(data.id).padStart(4, "0")} na fila. Você acompanha tudo na aba Fila.`;
+    const nome = v.solicitante_nome; f.reset(); f.solicitante_nome.value = nome || "";
+    carregar();
+  });
+
+  $("#form-editor").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const f = ev.target;
+    const { data, error } = await db.rpc("cw_criar_editor", { p_nome: f.nome.value.trim(), p_email: f.email.value.trim() || null });
+    const alvo = $("#novo-token"); alvo.hidden = false;
+    if (error) { alvo.replaceChildren(h("div", { class: "aviso erro" }, error.message)); return; }
+    alvo.replaceChildren(
+      h("p", { style: "margin:0 0 6px" }, h("b", {}, "Token de " + f.nome.value.trim()), " (copie agora, ele não aparece de novo):"),
+      h("div", { class: "token" }, data.token),
+      h("p", { style: "margin:10px 0 6px" }, "O editor abre o Claude Code e diz:"),
+      h("div", { class: "token" }, `Me conecta na central com o token ${data.token}`));
+    f.reset(); carregar();
+  });
+
+  iniciar();
+})();
+</script>
+</body>
+</html>
