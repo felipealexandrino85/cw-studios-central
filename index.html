@@ -503,7 +503,9 @@
   const cfg = window.CW_CENTRAL || {};
   const $ = (s) => document.querySelector(s);
   if (!cfg.url || !cfg.chave || !window.supabase) { $("#erro-config").hidden = false; return; }
-  const db = supabase.createClient(cfg.url, cfg.chave);
+  // trava própria em vez de navigator.locks: a padrão às vezes nunca libera (várias abas, navegador em segundo plano)
+  // e a página fica em branco esperando a sessão
+  const db = supabase.createClient(cfg.url, cfg.chave, { auth: { lock: async (_nome, _espera, fn) => await fn() } });
 
   // ---------------------------------------------------------------- vocabulário
   const STATUS = { nova: "Na fila", em_edicao: "Em edição", em_revisao: "Esperando aprovação", refazer: "Ajuste pedido", entregue: "Entregue", cancelada: "Cancelada" };
