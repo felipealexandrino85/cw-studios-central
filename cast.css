@@ -304,3 +304,6 @@
 #cast-root input[type="checkbox"], #cast-root input[type="radio"] { width: auto; padding: 0; margin: 0; background: none; border: 0; box-shadow: none; }
 #cast-root .toolbar select, #cast-root .toolbar input { width: auto; }
 #cast-root input:focus, #cast-root select:focus, #cast-root textarea:focus { box-shadow: 0 0 0 3px rgba(165, 67, 250, .16); }
+
+/* as seções do CW Cast ficam no menu lateral da Central */
+#cast-root #cast-tabs { display: none; }

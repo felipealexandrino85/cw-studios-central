@@ -756,6 +756,7 @@ window.iniciarCast = function (CTX) {
       }).join("") + "</div>";
     }).join("");
     pageHead();
+    if (CTX.aoMudarSecao) CTX.aoMudarSecao(act, B);
   }
 
   function viewConf() {
@@ -945,6 +946,9 @@ window.iniciarCast = function (CTX) {
     }
     return false;
   }
+
+  /* navegação pelo menu lateral da Central */
+  window.castIrPara = function (t) { st.tab = t; st.panel = undefined; renderPanel(); render(); };
 
   /* ---------- inicialização ---------- */
   render();

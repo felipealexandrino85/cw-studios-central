@@ -92,6 +92,14 @@
   .sb-count { font-style: normal; font-family: var(--font-body); font-size: 11.5px; font-weight: 700; color: #8a5a00; background: #ffe5b0; padding: 2px 9px; border-radius: 99px; }
   .sb-caret { color: #beafdb; width: 16px; height: 16px; }
   .sb-item.is-active .sb-caret { display: none; }
+  .sb-sub { display: grid; gap: 1px; margin: 2px 0 8px 29px; padding-left: 14px; border-left: 2px solid #e3d5f8; }
+  .sb-sub p { margin: 8px 0 2px; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #b2a3cf; }
+  .sb-subitem { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer;
+                padding: 6px 10px; border-radius: 10px; font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--text-dim); }
+  .sb-subitem:hover { color: var(--brand-ink); background: rgba(236, 225, 251, .6); }
+  .sb-subitem.is-active { background: #ece1fb; color: var(--brand-ink); font-weight: 800; }
+  .sb-subitem .sb-label { flex: 1; }
+  .sb-item .sb-caret.aberto { transform: rotate(90deg); }
   .sb-footer { position: relative; height: 128px; flex: none; }
   .sb-footer svg { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 70px; }
   .sb-mascote { position: absolute; right: 18px; bottom: 4px; width: 122px; z-index: 2; filter: drop-shadow(0 10px 18px rgba(30, 10, 60, .35)); }
@@ -619,10 +627,10 @@
       else if (k === "class") el.className = v;
       else el.setAttribute(k, v === true ? "" : v);
     }
-    for (const f of filhos.flat(3)) if (f != null && f !== false) el.append(f instanceof Node ? f : String(f));
+    for (const f of filhos.flat(Infinity)) if (f != null && f !== false) el.append(f instanceof Node ? f : String(f));
     return el;
   }
-  const encher = (el, ...filhos) => el.replaceChildren(...filhos.flat(3).filter((f) => f != null && f !== false));
+  const encher = (el, ...filhos) => el.replaceChildren(...filhos.flat(Infinity).filter((f) => f != null && f !== false));
   const link = (url, texto) => /^https?:\/\//i.test(url || "") ? h("a", { href: url, target: "_blank", rel: "noopener" }, texto || url) : (url || "");
   const codigo = (d) => "D-" + String(d.id).padStart(4, "0");
   const dataBR = (iso) => iso ? new Date(iso.length === 10 ? iso + "T12:00:00" : iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "";
@@ -725,10 +733,28 @@
     };
   }
 
+  // seções do CW Cast, abertas por baixo do item no menu lateral
+  const CAST_SECOES = [[null, [["painel", "Painel"]]], ["Produção", [["mes", "Calendário"], ["conf", "Conferência"], ["alertas", "Pendências"]]],
+    ["Resultados", [["meta", "Meta de seguidores"], ["eps", "Episódios e vídeos"], ["metricas", "Métricas"]]],
+    ["Gestão", [["riscos", "Riscos"], ["melhorias", "Melhorias"], ["reuniao", "Reunião"], ["equipe", "Equipe"]]]];
+  let castSecao = "painel", castCont = {}, castMenuAberto = false;
+  function subCast() {
+    return h("div", { class: "sb-sub", id: "sb-sub-cast", hidden: !castMenuAberto }, CAST_SECOES.map(([grupo, itens]) => [grupo && h("p", {}, grupo),
+      itens.map(([id, nome]) => h("button", { class: "sb-subitem" + (aba === "cast" && castSecao === id ? " is-active" : ""), "data-cast": id,
+        onclick: () => { castSecao = id; if (aba !== "cast") trocarAba("cast"); else fecharMenu(); if (window.castIrPara) window.castIrPara(id); window.scrollTo(0, 0); } },
+        h("span", { class: "sb-label" }, nome), castCont[id] ? h("em", { class: "sb-count" }, castCont[id]) : null))]));
+  }
+  function atualizarSubCast() {
+    for (const b of document.querySelectorAll(".sb-subitem")) b.classList.toggle("is-active", aba === "cast" && b.dataset.cast === castSecao);
+    const sub = $("#sb-sub-cast"); if (sub) sub.hidden = !castMenuAberto;
+    const caret = document.querySelector('.sb-item[data-aba="cast"] .sb-caret'); if (caret) caret.classList.toggle("aberto", castMenuAberto);
+  }
   function montarNav(pedida) {
     encher($("#nav"), (MENU[visao.papel] || []).map(([secao, itens]) => [h("p", { class: "sb-section" }, secao),
-      itens.map(([id, nome]) => h("button", { class: "sb-item", "data-aba": id, onclick: () => trocarAba(id) },
-        h("span", { class: "sb-ico" }, icone(ICONES[id])), h("span", { class: "sb-label" }, nome), contador(id), icone("M9 18l6-6-6-6", "sb-caret")))]));
+      itens.map(([id, nome]) => [h("button", { class: "sb-item", "data-aba": id, "aria-expanded": id === "cast" ? String(castMenuAberto) : null,
+        onclick: () => { if (id === "cast") { castMenuAberto = aba === "cast" ? !castMenuAberto : true; atualizarSubCast(); if (aba === "cast") return; } trocarAba(id); } },
+        h("span", { class: "sb-ico" }, icone(ICONES[id])), h("span", { class: "sb-label" }, nome), contador(id), icone("M9 18l6-6-6-6", "sb-caret")),
+        id === "cast" ? subCast() : null])]));
     $("#btn-pedir").hidden = !(abasDe(visao.papel).includes("pedir") && visao.papel !== "solicitante");
     const abas = abasDe(visao.papel);
     trocarAba(abas.includes(pedida) ? pedida : abas[0]);
@@ -738,6 +764,7 @@
     if (id === "inicio") n = alertas().filter((a) => a.tom !== "neutro").length;
     if (id === "pedidos") n = meusPedidos().filter((d) => d.status === "em_revisao").length;
     if (id === "meudia") n = D.demandas.filter((d) => d.editor_slug === visao.editor && d.status === "refazer").length;
+    if (id === "cast") n = (castCont.alertas || 0) + (castCont.conf || 0);
     return n ? h("em", { class: "sb-count" }, n) : null;
   }
   function trocarAba(nova) {
@@ -747,6 +774,8 @@
       b.classList.toggle("is-active", b.dataset.aba === nova);
       b.setAttribute("aria-current", b.dataset.aba === nova ? "page" : "false");
     }
+    if (nova === "cast") castMenuAberto = true;
+    atualizarSubCast();
     fecharMenu();
     if (aba !== nova || !document.querySelector("main > section:not([hidden])")) window.scrollTo(0, 0);
     for (const s of document.querySelectorAll("main > section[id^='aba-']")) s.hidden = s.id !== "aba-" + nova;
@@ -1289,7 +1318,15 @@
     castDb = criarCastDb();
     const podeEditar = ["gestor", "producao"].includes(eu.papel);
     $("#cast-importar").hidden = !podeEditar;
-    window.iniciarCast({ db: castDb, user: { can: () => Promise.resolve(podeEditar) }, ajustarCard: ajustarCardCast });
+    window.iniciarCast({ db: castDb, user: { can: () => Promise.resolve(podeEditar) }, ajustarCard: ajustarCardCast,
+      aoMudarSecao: (secao, contadores) => {
+        castSecao = secao === "30" ? "mes" : secao;
+        const novos = JSON.stringify(contadores || {}), mudou = novos !== JSON.stringify(castCont);
+        castCont = contadores || {};
+        if (mudou) { const sub = $("#sb-sub-cast"); if (sub) sub.replaceWith(subCast()); }
+        atualizarSubCast();
+      } });
+    if (castSecao !== "painel") window.castIrPara(castSecao);
     castDb.puxar();
     setInterval(() => { if (aba === "cast" && !document.hidden) castDb.puxar(); }, 20000);
   }
