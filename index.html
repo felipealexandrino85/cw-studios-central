@@ -471,6 +471,20 @@
       <th class="n">Tempo ativo médio</th><th class="n">Atenção humana média</th><th class="n">Aprovação de 1ª</th></tr></thead><tbody id="fluxos"></tbody></table></div>
   </section>
 
+  <section id="aba-kit" hidden>
+    <header class="cabeca"><p class="kicker">Gestão</p><h1>Kit do time</h1>
+      <p class="sub">Os agentes e skills que viram o jeito oficial de editar. O que está no kit chega sozinho ao Claude de todos os editores, com o prefixo cw-kit-.</p></header>
+    <div class="caixa" style="background:#fff">
+      <b>Como os editores compartilham</b>
+      <span class="nota">Cada editor diz ao Claude dele: <i>"compartilha meus agentes com a central"</i>. O Claude mostra a lista, ele confirma, e os itens aparecem aqui em Recebidos. Vão só os arquivos de instrução; tokens e chaves são trocados por •••.</span>
+    </div>
+    <h3 class="grupo" id="kit-tit-oficial">No kit</h3>
+    <div class="tabela"><table><thead><tr><th>Item</th><th>Tipo</th><th>Veio de</th><th class="n">Versão</th><th class="n">Vídeos com ele</th><th></th></tr></thead><tbody id="kit-oficial"></tbody></table></div>
+    <h3 class="grupo" id="kit-tit-recebidos">Recebidos</h3>
+    <p class="nota" style="margin:0">Compare pelo uso: quantos vídeos aquele editor fez com o item, o tempo ativo médio e a aprovação de primeira desses vídeos.</p>
+    <div class="grade-cartoes" id="kit-recebidos"></div>
+  </section>
+
   <section id="aba-cast" hidden>
     <div class="cast-topo">
       <header class="cabeca"><p class="kicker">CW Cast</p><h1 id="cast-ptitle">Painel</h1><p class="sub" id="cast-psub"></p></header>
@@ -605,7 +619,7 @@
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
     gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"]]],
-             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["gestao", "Pessoas"]]]],
+             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["gestao", "Pessoas"]]]],
     producao: [["Programas", [["cast", "CW Cast"]]], ["Operação", [["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
     editor: [["Meu trabalho", [["meudia", "Meu dia"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
@@ -624,6 +638,7 @@
     pedidos: "M22 12h-6l-2 3h-4l-2-3H2M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z",
     pedir: "M12 8v8M8 12h8M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
     cast: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8",
+    kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
   };
   function icone(d, cls) {
     const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), path = document.createElementNS(ns, "path");
@@ -633,7 +648,7 @@
 
   let eu = { email: "", papel: null, editor: null };   // quem está logado (papel real, decidido pelo banco)
   let visao = { papel: null, editor: null };           // como a página está sendo vista (gestão pode simular)
-  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], producao: [], ajustes: [], regras: [], posicoes: {}, eventos: {}, jira: [], jiraSync: null, previas: {} };
+  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], producao: [], ajustes: [], regras: [], posicoes: {}, eventos: {}, jira: [], jiraSync: null, previas: {}, kit: [] };
   const TRABALHOS = { edicao: "Edição", cortes: "Cortes", capa: "Capa", foto: "Foto", copy: "Copy", roteiro: "Roteiro", outro: "Outros" };
   const CANAIS = { CWIG: "IG Cardápio Web", CHEFSIG: "IG Chefs", CWCAST: "CW Cast", YT: "YouTube", GROWTH: "Growth", CWCREATORS: "CW Creators", CWSTUDIO: "CW Studio" };
   let segmento = "sprint", filtroTrab = new Set(["edicao", "cortes"]), filtroPessoa = "", mostrarConcluidos = false;
@@ -821,7 +836,8 @@
       pedidos.push(db.rpc("cw_ao_vivo"), db.from("edicoes").select("*").gte("aberto_em", desde).order("aberto_em", { ascending: false }).limit(5000),
         db.from("gestores").select("email").order("email"),
         db.from("demanda_eventos").select("demanda_id,ts,categoria,detalhe").eq("tipo", "refazer").gte("ts", desde), db.rpc("cw_posicoes"),
-        db.from("regras").select("*").order("id"), db.from("producao").select("email").order("email"));
+        db.from("regras").select("*").order("id"), db.from("producao").select("email").order("email"),
+        db.from("kit_itens").select("*").order("enviado_em", { ascending: false }).limit(500));
     } else if (p === "producao") {
       pedidos.push(db.rpc("cw_ao_vivo"));
     } else if (p === "editor") {
@@ -834,7 +850,7 @@
     D.demandas = r[0].data || []; D.editores = r[1].data || [];
     if (p === "gestor") {
       D.aovivo = r[2].data || []; D.edicoes = r[3].data || []; D.gestores = (r[4].data || []).map((g) => g.email);
-      D.ajustes = r[5].data || []; D.posicoes = Object.fromEntries((r[6].data || []).map((x) => [x.id, x.posicao])); D.regras = r[7].data || []; D.producao = (r[8].data || []).map((x) => x.email);
+      D.ajustes = r[5].data || []; D.posicoes = Object.fromEntries((r[6].data || []).map((x) => [x.id, x.posicao])); D.regras = r[7].data || []; D.producao = (r[8].data || []).map((x) => x.email); D.kit = r[9].data || [];
     } else if (p === "producao") {
       D.aovivo = r[2].data || [];
     } else if (p === "editor") {
@@ -864,7 +880,7 @@
   }
 
   function desenhar() {
-    ({ inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
+    ({ kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1421,6 +1437,58 @@
     m.textContent = `Importado: ${linhas.length} registros (${Object.entries(porCol).map(([c, n]) => `${c}: ${n}`).join(", ")}).`;
     castDb && castDb.puxar();
   });
+
+  // ---------------------------------------------------------------- kit do time (gestão)
+  // vídeos em que o item aparece no fluxo (skills/agentes usados), opcionalmente só de um editor
+  function usoKit(nome, slug) {
+    const n = semAcento(nome);
+    const xs = D.edicoes.filter((x) => (!slug || x.editor_slug === slug) && Object.keys(x.fluxo || {}).some((k) => semAcento(k.split(":").pop()) === n));
+    const fin = xs.filter((x) => x.status === "entregue");
+    return { n: xs.length, tempo: media(fin.map((x) => x.segundos_ativos).filter((v) => v > 0)), primeira: fin.length ? primeira(fin) : "–" };
+  }
+  function abrirItemKit(item) {
+    const area = h("textarea", { id: "kit-conteudo", style: "min-height:320px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px" });
+    area.value = item.no_kit && item.conteudo_kit ? item.conteudo_kit : item.conteudo;
+    const nome = h("input", { id: "kit-nome", value: item.nome_kit || item.nome });
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    const extras = Object.keys(item.arquivos || {});
+    encher($("#detalhe-corpo"),
+      h("div", { class: "chips" }, h("span", { class: "chip" }, item.tipo === "agente" ? "Agente" : "Skill"), item.no_kit && h("span", { class: "chip tom-ok" }, `No kit · v${item.versao_kit}`)),
+      h("h2", {}, item.nome), h("p", { class: "nota", style: "margin:0" }, `Enviado por ${nomeEditor(item.editor_slug)} ${ha(item.enviado_em)}${extras.length ? " · arquivos junto: " + extras.join(", ") : ""}`),
+      item.descricao && h("p", { style: "margin:0;color:var(--text-dim)" }, item.descricao),
+      h("label", { for: "kit-conteudo" }, "Conteúdo (pode editar antes de pôr no kit)", area),
+      h("label", { for: "kit-nome" }, "Nome no kit (vira cw-kit-…)", nome), msg,
+      h("div", { class: "acoes" },
+        h("button", { class: "botao amarelo", onclick: async () => {
+          const { error } = await db.rpc("cw_kit_aprovar", { p_id: item.id, p_nome_kit: nome.value, p_conteudo: area.value });
+          if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+          $("#detalhe").close(); carregar();
+        } }, item.no_kit ? "Salvar nova versão do kit" : "Pôr no kit"),
+        !item.no_kit && h("button", { class: "botao perigo peq", onclick: async () => { await db.rpc("cw_kit_tirar", { p_id: item.id, p_descartar: true }); $("#detalhe").close(); carregar(); } }, "Descartar"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
+  function desenharKit() {
+    const oficial = D.kit.filter((k) => k.no_kit).sort((a, b) => a.nome_kit.localeCompare(b.nome_kit));
+    $("#kit-tit-oficial").textContent = `No kit (${oficial.length})`;
+    encher($("#kit-oficial"), oficial.length ? oficial.map((k) => {
+      const u = usoKit("cw-kit-" + k.nome_kit);
+      return h("tr", {}, td(h("b", {}, "cw-kit-" + k.nome_kit)), td(k.tipo === "agente" ? "Agente" : "Skill"), td(`${nomeEditor(k.editor_slug)} (${k.nome})`), td("v" + k.versao_kit, 1), td(u.n || "–", 1),
+        h("td", { class: "n" }, h("button", { class: "botao leve peq", onclick: () => abrirItemKit(k) }, "Ver"), " ",
+          h("button", { class: "botao perigo peq", onclick: async () => { await db.rpc("cw_kit_tirar", { p_id: k.id, p_descartar: false }); carregar(); } }, "Tirar do kit")));
+    }) : vazioLinha(6, "O kit ainda está vazio. Escolha entre os itens recebidos abaixo."));
+    const recebidos = D.kit.filter((k) => !k.no_kit && !k.descartado).sort((a, b) => a.nome.localeCompare(b.nome) || a.editor_slug.localeCompare(b.editor_slug));
+    $("#kit-tit-recebidos").textContent = `Recebidos (${recebidos.length})`;
+    encher($("#kit-recebidos"), recebidos.length ? recebidos.map((k) => {
+      const u = usoKit(k.nome, k.editor_slug);
+      return h("button", { class: "cartao", onclick: () => abrirItemKit(k) },
+        h("div", { class: "cod" }, `${k.tipo === "agente" ? "Agente" : "Skill"} · de ${nomeEditor(k.editor_slug)} · ${ha(k.enviado_em)}`),
+        h("div", { class: "tit" }, k.nome),
+        k.descricao && h("div", { class: "sub" }, k.descricao.slice(0, 160)),
+        h("div", { class: "chips" }, h("span", { class: "chip" }, `${u.n} vídeo(s)`), u.tempo != null && h("span", { class: "chip tom-neutro" }, `tempo médio ${duracao(u.tempo)}`),
+          u.primeira !== "–" && h("span", { class: "chip tom-ok" }, `1ª aprovação ${u.primeira}`)));
+    }) : h("div", { class: "vazio" }, "Nada recebido ainda. Peça aos editores para compartilhar os agentes."));
+  }
 
   // ---------------------------------------------------------------- pessoas (gestão)
   function erroGestao(e) { const m = $("#msg-gestao"); m.hidden = !e; m.textContent = e ? e.message : ""; }
