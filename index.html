@@ -959,6 +959,7 @@
         h("div", { class: "topo" },
           h("span", { class: "bolinha " + (viva && recente ? "editando" : online(s) ? "conectado" : "") }),
           h("b", {}, ed.nome), h("span", { class: "titulo-video" }, "· " + t.titulo), origemChip(t),
+          t.maquina && (p.maquinas || []).length > 1 && h("span", { class: "chip tom-neutro", title: "Computador" }, "💻 " + t.maquina),
           t.tipo && t.tipo !== "outro" && h("span", { class: "chip" }, TIPOS[t.tipo] || t.tipo),
           h("span", { class: "desde" }, "começou " + ha(t.desde)),
           (eu.papel === "gestor" || (eu.editor && eu.editor.slug === ed.slug)) && t.id && h("button", { class: "botao leve peq",
@@ -1491,7 +1492,7 @@
 
   // ---------------------------------------------------------------- escritório virtual
   // O editor escreve; a estação (Claude na máquina dele) executa. Só o próprio editor manda e aprova: a gestão acompanha.
-  const ESC = { slug: null, conversas: [], msgs: {}, ultimo: {}, sel: null, estacao: null, timer: null, ocupado: false };
+  const ESC = { slug: null, conversas: [], msgs: {}, ultimo: {}, sel: null, estacoes: [], timer: null, ocupado: false };
   const escPodeMandar = () => eu.papel === "editor" && eu.editor && ESC.slug === eu.editor.slug;
   const ESTADO_CONV = { parada: ["Parada", "tom-neutro"], na_fila: ["Na fila", "tom-aviso"], rodando: ["Trabalhando", "tom-ok"],
                         esperando_ok: ["Esperando seu OK", "tom-aviso"], erro: ["Erro", "tom-critico"] };
@@ -1506,8 +1507,8 @@
     if (!soMsgs) {
       const [c, e] = await Promise.all([
         db.from("esc_conversas").select("*").eq("editor_slug", ESC.slug).eq("arquivada", false).order("atualizada", { ascending: false }).limit(60),
-        db.from("estacoes").select("*").eq("editor_slug", ESC.slug).maybeSingle()]);
-      ESC.conversas = c.data || []; ESC.estacao = e.data || null;
+        db.from("estacoes").select("*").eq("editor_slug", ESC.slug).order("visto", { ascending: false })]);
+      ESC.conversas = c.data || []; ESC.estacoes = e.data || [];
       if (ESC.sel && !ESC.conversas.some((x) => x.id === ESC.sel)) ESC.sel = null;
       if (!ESC.sel && ESC.conversas.length) ESC.sel = ESC.conversas[0].id;
     }
@@ -1523,7 +1524,9 @@
     }
     return false;
   }
-  function estacaoOnline() { return ESC.estacao && ESC.estacao.visto && Date.now() - new Date(ESC.estacao.visto) < 30000; }
+  const estacaoViva = (e) => e && e.visto && Date.now() - new Date(e.visto) < 30000;
+  // com computador definido, olha a estação dele; sem, qualquer estação ligada serve
+  function estacaoOnline(maquina) { return ESC.estacoes.some((e) => estacaoViva(e) && (!maquina || e.maquina === maquina)); }
   async function desenharEscritorio() {
     const sel = $("#esc-editor");
     const gestaoOlhando = eu.papel === "gestor" && visao.papel === "gestor";
@@ -1558,10 +1561,13 @@
   }
   function escDesenharTudo() { escDesenharEstacao(); escDesenharLista(); escDesenharPainel(true); }
   function escDesenharEstacao() {
-    const e = ESC.estacao, on = estacaoOnline();
-    encher($("#esc-estacao"), h("span", { class: "bolinha" + (on ? " on" : "") }),
-      h("b", {}, on ? "Estação ligada" : "Estação desligada"),
-      e && e.maquina ? h("span", { class: "nota" }, `${e.maquina} · visto ${ha(e.visto)}`) : null,
+    const on = estacaoOnline(), varias = ESC.estacoes.length > 1;
+    encher($("#esc-estacao"),
+      varias ? ESC.estacoes.map((e) => h("span", { style: "display:inline-flex;gap:6px;align-items:center" },
+        h("span", { class: "bolinha" + (estacaoViva(e) ? " on" : "") }), h("b", {}, e.maquina || "Computador"),
+        h("span", { class: "nota" }, estacaoViva(e) ? "ligada" : `desligada · visto ${ha(e.visto)}`)))
+      : [h("span", { class: "bolinha" + (on ? " on" : "") }), h("b", {}, on ? "Estação ligada" : "Estação desligada"),
+         ESC.estacoes[0] && ESC.estacoes[0].maquina ? h("span", { class: "nota" }, `${ESC.estacoes[0].maquina} · visto ${ha(ESC.estacoes[0].visto)}`) : null],
       !on ? h("span", { class: "nota" }, escPodeMandar()
         ? 'Para ligar, peça ao Claude no seu computador: "liga minha estação do escritório". Ela continua ligada depois, sozinha.'
         : "A estação deste editor não está ligada agora.") : null);
@@ -1570,7 +1576,7 @@
     encher($("#esc-conversas"), ESC.conversas.length ? ESC.conversas.map((c) => {
       const [rot, tom] = ESTADO_CONV[c.estado] || [c.estado, "tom-neutro"];
       return h("button", { class: "esc-conv" + (c.id === ESC.sel ? " is-active" : ""), onclick: async () => { ESC.sel = c.id; await escCarregar(true); escDesenharLista(); escDesenharPainel(true); } },
-        h("b", {}, c.titulo), h("small", {}, [c.trabalho, ha(c.atualizada)].filter(Boolean).join(" · ")),
+        h("b", {}, c.titulo), h("small", {}, [c.trabalho, ESC.estacoes.length > 1 ? c.maquina : null, ha(c.atualizada)].filter(Boolean).join(" · ")),
         c.estado !== "parada" ? h("span", {}, h("span", { class: "chip " + tom }, rot)) : null);
     }) : h("div", { class: "vazio" }, escPodeMandar() ? "Nenhuma conversa ainda. Comece uma nova." : "Nenhuma conversa."));
   }
@@ -1604,11 +1610,13 @@
     const pode = escPodeMandar(), ativa = ["rodando", "esperando_ok", "na_fila"].includes(c.estado);
     const msgs = h("div", { class: "esc-msgs" }, (ESC.msgs[c.id] || []).map((m) => msgEl(m, pode)),
       c.estado === "rodando" ? h("div", { class: "msg-sis" }, "Trabalhando…") : null);
-    const area = h("textarea", { placeholder: estacaoOnline() ? "O que o Claude deve fazer neste vídeo?" : "A estação está desligada: o pedido fica na fila até ela ligar.",
+    const area = h("textarea", { placeholder: estacaoOnline(c.maquina) ? "O que o Claude deve fazer neste vídeo?"
+      : `A estação${c.maquina ? " do " + c.maquina : ""} está desligada: o pedido fica na fila até ela ligar.`,
       onkeydown: (ev) => { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); escEnviar(c, area); } } });
     area.value = textoAntes;
     encher(painel,
       h("div", { class: "esc-topo" }, h("h2", {}, c.titulo), c.trabalho ? h("span", { class: "chip" }, c.trabalho) : null,
+        c.maquina && ESC.estacoes.length > 1 ? h("span", { class: "chip tom-neutro" }, "💻 " + c.maquina) : null,
         h("span", { class: "chip " + tom }, rot),
         pode && ativa ? h("button", { class: "botao perigo peq", onclick: () => escParar(c) }, "Parar") : null,
         pode && !ativa ? h("button", { class: "botao leve peq", onclick: () => escArquivar(c) }, "Arquivar") : null,
@@ -1650,8 +1658,12 @@
     const pasta = h("input", { id: "esc-pasta", placeholder: "~/CW-Work/escritorio/<card> (padrão)" });
     const primeiro = h("textarea", { id: "esc-primeiro", placeholder: "Ex.: Edita o reel no padrão Reels-CW-01 a partir do bruto que está em Downloads." });
     const msg = h("div", { class: "aviso erro", hidden: true });
+    // mais de um computador: a conversa fica presa ao escolhido (a sessão do Claude e a pasta ficam nele)
+    const maqs = ESC.estacoes.slice().sort((a, b) => estacaoViva(b) - estacaoViva(a));
+    const maquina = h("select", { id: "esc-maquina" }, maqs.map((e) => h("option", { value: e.maquina }, `${e.maquina}${estacaoViva(e) ? " (ligada)" : " (desligada)"}`)));
     encher($("#detalhe-corpo"), h("h2", {}, "Nova conversa"),
       h("label", { for: "esc-trab" }, "Trabalho", trab), h("label", { for: "esc-titulo" }, "Título", titulo),
+      maqs.length > 1 ? h("label", { for: "esc-maquina" }, "Em qual computador", maquina) : null,
       h("label", { for: "esc-primeiro" }, "Primeiro pedido", primeiro),
       h("details", {}, h("summary", { class: "nota" }, "Pasta do trabalho (opcional)"),
         h("label", { for: "esc-pasta" }, "Pasta na sua máquina (dentro da sua pasta de usuário)", pasta),
@@ -1659,7 +1671,8 @@
       msg,
       h("div", { class: "acoes" },
         h("button", { class: "botao amarelo", onclick: async () => {
-          const { data, error } = await db.rpc("cw_esc_nova", { p_titulo: titulo.value || (trab.value || "Conversa"), p_trabalho: trab.value, p_pasta: pasta.value });
+          const { data, error } = await db.rpc("cw_esc_nova", { p_titulo: titulo.value || (trab.value || "Conversa"), p_trabalho: trab.value, p_pasta: pasta.value,
+            p_maquina: maqs.length ? (maqs.length > 1 ? maquina.value : maqs[0].maquina) : null });
           if (error) { msg.hidden = false; msg.textContent = error.message; return; }
           if (primeiro.value.trim()) await db.rpc("cw_esc_enviar", { p_conversa: data, p_texto: primeiro.value.trim() });
           $("#detalhe").close(); ESC.sel = data; await escCarregar(); escDesenharTudo();
