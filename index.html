@@ -1387,6 +1387,18 @@
     encher($("#lista-gestores"), D.gestores.map((g) => h("tr", {}, td(g), h("td", { class: "n" },
       g !== eu.email && h("button", { class: "botao perigo peq", onclick: async () => { const { error } = await db.rpc("cw_remover_gestor", { p_email: g }); erroGestao(error); if (!error) carregar(); } }, "Remover")))));
   }
+  const mensagemEditor = (primeiro, frase, email) => `Oi, ${primeiro}! Para ligar o seu Claude à Central CW Studios:
+
+1. Abra o Claude Code (aba Code do app do Claude, VS Code ou terminal) e digite, um de cada vez:
+/plugin marketplace add felipealexandrino85/cw-central
+/plugin install cw-central@cw-studios
+
+2. Abra uma sessão nova e diga:
+${frase}
+
+3. Para ver o seu dia: ${location.origin + location.pathname} (entre com ${email}).
+
+O token é pessoal: não compartilhe.`;
   $("#form-editor").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const nome = $("#ed-nome").value.trim(), email = $("#ed-email").value.trim(), primeiro = nome.split(" ")[0];
@@ -1396,9 +1408,9 @@
     const frase = `Me conecta na central com o token ${data.token}`;
     encher(alvo, h("p", { style: "margin:0 0 6px" }, h("b", {}, "Token de " + nome), " (copie agora, ele não aparece de novo):"),
       h("div", { class: "token" }, data.token),
-      h("p", { style: "margin:10px 0 6px" }, `Mande para ${primeiro} por mensagem privada. No Claude, ${primeiro} diz:`),
-      h("div", { class: "token" }, frase),
-      h("button", { class: "botao leve peq", style: "margin-top:8px", type: "button", onclick: (e) => copiar(frase, e.currentTarget) }, "Copiar frase"),
+      h("p", { style: "margin:10px 0 6px" }, `Mande a mensagem abaixo para ${primeiro} por mensagem privada:`),
+      h("div", { class: "token", style: "white-space:pre-wrap" }, mensagemEditor(primeiro, frase, email)),
+      h("button", { class: "botao leve peq", style: "margin-top:8px", type: "button", onclick: (e) => copiar(mensagemEditor(primeiro, frase, email), e.currentTarget) }, "Copiar mensagem"),
       h("p", { class: "nota" }, `${primeiro} também entra nesta página com ${email} e vê a visão de editor.`));
     ev.target.reset(); carregar();
   });
