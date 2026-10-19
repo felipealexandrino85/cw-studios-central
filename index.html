@@ -214,7 +214,9 @@
   .bolinha.conectado { background: var(--amber); }
   .agora { color: var(--text-dim); }
   .agora strong { color: var(--green); }
-  .passos { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; }
+  .passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); grid-auto-flow: column; gap: 5px; }
+  .premiere { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 13px; color: var(--text-dim); }
+  .premiere .pr { font: 800 11px var(--font-body); color: #fff; background: #2a1a5e; border-radius: 6px; padding: 2px 6px; letter-spacing: .5px; }
   .passo { overflow-wrap: anywhere; font-size: 11px; font-weight: 700; text-align: center; color: var(--text-faint); }
   .passo::before { content: ""; display: block; height: 7px; border-radius: 4px; background: var(--surface-3); margin-bottom: 5px; }
   .passo.feito::before { background: linear-gradient(90deg, #c9a6f5, #b98af2); }
@@ -422,7 +424,7 @@
     <div class="numeros" id="rel-numeros"></div>
     <h3 class="grupo">Por editor</h3>
     <div class="tabela"><table><thead><tr><th>Editor</th><th class="n">Finalizados</th><th class="n">Peças</th>
-      <th class="n">Tempo ativo médio</th><th class="n">Mediana</th><th class="n">Atenção humana média</th><th class="n">Vídeos por semana</th>
+      <th class="n">Tempo ativo médio</th><th class="n">Mediana</th><th class="n">Atenção humana média</th><th class="n">Acabamento no Premiere</th><th class="n">Vídeos por semana</th>
       <th class="n">Aprovação de 1ª</th><th class="n">Em andamento</th></tr></thead><tbody id="rel-editores"></tbody></table></div>
     <div class="duas-col">
       <div><h3 class="grupo">Onde o tempo vai (por etapa)</h3>
@@ -438,6 +440,7 @@
     <div class="tabela"><table><thead><tr><th>Entregue</th><th>Editor</th><th>Vídeo</th><th>Origem</th><th>Tipo</th>
       <th class="n">Tempo ativo</th><th class="n">Peças</th><th class="n">Ajustes</th></tr></thead><tbody id="rel-videos"></tbody></table></div>
     <p class="nota">Tempo ativo = minutos com o Claude trabalhando no vídeo, somando todas as sessões e rodadas de ajuste; pausa de mais de 5 min não conta.
+      Acabamento no Premiere = minutos com o Premiere em primeiro plano depois que o vídeo saiu do Claude (média entre os vídeos que passaram pelo Premiere; entre parênteses, quantos).
       Atenção humana = tempo do editor lendo e decidindo (da resposta do Claude até a próxima mensagem dele, até 5 min cada); o resto é máquina.
       Rendimento = minutos de máquina para cada minuto de atenção: quanto maior, mais escala.
       Só entram vídeos editados com o plugin. "Por etapa" só existe para vídeos editados a partir da versão 0.12 do plugin.</p>
@@ -598,7 +601,7 @@
   const TIPOS = { reel: "Reel", cortes: "Cortes", tutorial: "Tutorial", youtube: "YouTube", anuncio: "Anúncio", story: "Story", outro: "Outro" };
   const MOTIVOS = { corte: "Corte e ritmo", legenda: "Legenda", visual: "Motion e visual", audio: "Áudio", conteudo: "Conteúdo / fala", marca: "Marca e CTA", outro: "Outro" };
   const ETAPAS = [["preparo", "Preparo"], ["transcricao", "Transcrição"], ["corte", "Corte e seleção"], ["montagem", "Montagem"],
-    ["motion", "Legenda e motion"], ["render", "Render"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
+    ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
     gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"]]],
@@ -879,10 +882,12 @@
     const etapas = p.etapas || ETAPAS, idx = (k) => etapas.findIndex(([e]) => e === k);
     const atual = idx(t.etapa), max = Math.max(idx(t.etapa_max), atual), af = t.agora_faz;
     const prev = D.previas[ed.slug + "/" + t.id];
-    const recente = af && minutosDesde(af.ts) <= 5;
+    const pr = t.premiere, premiereAtivo = pr && pr.ultimo_ativo && minutosDesde(pr.ultimo_ativo) <= 3;
+    const recente = (af && minutosDesde(af.ts) <= 5) || premiereAtivo;
     const nomeEtapa = (k) => (etapas.find(([e]) => e === k) || [null, ""])[1];
     const passo = (x) => [x.rotulo, x.detalhe && !(x.rotulo || "").includes(x.detalhe) ? h("span", { class: "detalhe" }, " · " + x.detalhe) : null];
-    const status = !af ? h("div", { class: "estado" }, viva ? "Aberto nesta sessão, nenhum passo de edição ainda" : "Sem sessão do Claude aberta neste vídeo")
+    const status = premiereAtivo ? h("div", { class: "estado agora" }, h("strong", {}, "Agora: "), "acabamento no Premiere")
+      : !af ? h("div", { class: "estado" }, viva ? "Aberto nesta sessão, nenhum passo de edição ainda" : "Sem sessão do Claude aberta neste vídeo")
       : viva && recente ? h("div", { class: "estado agora" }, h("strong", {}, "Agora: "), passo(af), h("span", { class: "quando" }, " · " + ha(af.ts)))
       : h("div", { class: "estado parado" }, h("strong", {}, viva ? `Parado há ${ha(af.ts).replace("há ", "")}` : `Sem sessão aberta`),
           viva ? " · Claude aberto" : ` · ${ed.nome.split(" ")[0]} ${online(s) ? "com o Claude aberto em outro trabalho" : "offline, visto " + ha(s.atualizado)}`,
@@ -901,6 +906,11 @@
           h("span", { class: "desde" }, "começou " + ha(t.desde))),
         h("div", { class: "passos" }, etapas.map(([k, nome], i) => h("div", { class: "passo" + (i === atual ? " atual" : i <= max ? " feito" : "") }, nome))),
         status,
+        pr && h("div", { class: "premiere" }, h("span", { class: "pr" }, "Pr"),
+          h("span", {}, premiereAtivo ? "Premiere em uso agora" : pr.rodando ? `Premiere aberto, sem uso ${pr.ultimo_ativo ? ha(pr.ultimo_ativo) : "ainda"}` : "Premiere fechado"),
+          h("span", {}, `· ${duracao(pr.segundos || 0)} de acabamento desde ${horaBR(pr.desde).slice(-5)}`),
+          pr.ultimo_export && h("span", {}, `· exportou ${pr.ultimo_export.arquivo} ${ha(pr.ultimo_export.ts)}`),
+          pr.projeto_salvo && h("span", { class: "nota" }, `· projeto salvo ${ha(pr.projeto_salvo)}`)),
         t.pedido && h("div", { class: "pedido" }, h("span", { class: "nota" }, `Último pedido ao Claude · ${t.pedido_ts ? ha(t.pedido_ts) : ""}`), h("q", {}, t.pedido)),
         !t.jira && !t.demanda && eu.papel === "gestor" && h("div", { class: "nota" }, "Sem card: peça para citar o card do Jira (SCC-…) na conversa com o Claude, que o vídeo se liga sozinho."),
         hist.length > 0 && h("ol", { class: "linha-tempo" }, hist.slice(0, 5).map((x) => h("li", {}, h("time", {}, horaBR(x.ts).slice(-5)),
@@ -944,7 +954,8 @@
       const p = s.payload || {};
       for (const t of p.trabalhos || []) {
         const nomeEtapa = (ETAPAS.find(([k]) => k === t.etapa) || [null, "sem etapa"])[1];
-        if (online(s) && t.agora && t.agora_faz && minutosDesde(t.agora_faz.ts) > 60) out.push({ tom: "aviso", rotulo: "Parado", texto: `${ed.nome}: "${t.titulo}" sem passo de edição ${ha(t.agora_faz.ts)} (${nomeEtapa})` });
+        const prAtivo = t.premiere && t.premiere.ultimo_ativo && minutosDesde(t.premiere.ultimo_ativo) <= 10;
+        if (online(s) && t.agora && !prAtivo && t.agora_faz && minutosDesde(t.agora_faz.ts) > 60) out.push({ tom: "aviso", rotulo: "Parado", texto: `${ed.nome}: "${t.titulo}" sem passo de edição ${ha(t.agora_faz.ts)} (${nomeEtapa})` });
         if (!t.agora && minutosDesde(t.desde) > 3 * 24 * 60) out.push({ tom: "aviso", rotulo: "Esquecido?", texto: `${ed.nome}: "${t.titulo}" aberto ${ha(t.desde)} sem entrega` });
         if (!t.jira && !t.demanda) out.push({ tom: "neutro", rotulo: t.status === "sem registro" ? "Sem registro" : "Sem card", texto: `${ed.nome}: "${t.titulo}" ${t.status === "sem registro" ? "editado sem abrir registro" : "sem card do Jira"}` });
       }
@@ -1193,7 +1204,9 @@
   function linhaGrupo(nome, fin, and, semanas) {
     const t = fin.map((x) => x.segundos_ativos);
     return [td(nome), td(fin.length, 1), td(fin.reduce((a, x) => a + (x.pecas || 0), 0), 1), td(duracao(media(t)), 1), td(duracao(mediana(t)), 1),
-      td(duracao(media(comAtencao(fin).map((x) => x.segundos_humanos))), 1), td((fin.length / semanas).toFixed(1).replace(".", ","), 1),
+      td(duracao(media(comAtencao(fin).map((x) => x.segundos_humanos))), 1),
+      td((() => { const c = fin.filter((x) => x.segundos_premiere > 0); return c.length ? `${duracao(media(c.map((x) => x.segundos_premiere)))} (${c.length})` : "–"; })(), 1),
+      td((fin.length / semanas).toFixed(1).replace(".", ","), 1),
       td(primeira(fin), 1), td(and.length, 1)];
   }
   const origemTexto = (x) => x.jira ? "Jira " + x.jira : x.demanda ? "Central " + x.demanda : "sem card";
@@ -1211,6 +1224,8 @@
       [duracao(media(tempos)), "tempo ativo médio por vídeo"],
       [duracao(medidos.length ? humano / medidos.length : null), "atenção humana média por vídeo"],
       [humano ? (maquina / humano).toFixed(1).replace(".", ",") + "×" : "–", "rendimento (máquina por minuto humano)"],
+      [(() => { const ia = finalizados.reduce((a, x) => a + (x.segundos_ativos || 0), 0), pr = finalizados.reduce((a, x) => a + (x.segundos_premiere || 0), 0);
+          return ia + pr ? Math.round(100 * ia / (ia + pr)) + "%" : "–"; })(), "do tempo de edição feito com a IA (o resto é Premiere)"],
       [primeira(finalizados), "aprovados de primeira"], [andamento.length, "em andamento agora"]].map(numero));
 
     const slugs = [...new Set([...finalizados, ...andamento].map((x) => x.editor_slug))];
@@ -1218,7 +1233,7 @@
       .sort((a, b) => b.fin.length - a.fin.length || a.nome.localeCompare(b.nome));
     const corpo = linhas.map((l) => h("tr", {}, linhaGrupo(l.nome, l.fin, l.and, semanas)));
     if (linhas.length > 1) corpo.push(h("tr", { class: "total" }, linhaGrupo("Time", finalizados, andamento, semanas)));
-    encher($("#rel-editores"), corpo.length ? corpo : vazioLinha(9));
+    encher($("#rel-editores"), corpo.length ? corpo : vazioLinha(10));
 
     const comEtapas = finalizados.filter((x) => x.etapas && Object.keys(x.etapas).length);
     const totEtapa = Object.fromEntries(ETAPAS.map(([k]) => [k, comEtapas.reduce((a, x) => a + (x.etapas[k] || 0), 0)]));
@@ -1254,8 +1269,8 @@
   $("#rel-csv").addEventListener("click", () => {
     const { finalizados } = relatorioFiltrado();
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const linhas = [["entregue_em", "editor", "video", "origem", "tipo", "tempo_ativo_min", "atencao_humana_min", "mensagens_do_editor", "pecas", "ajustes", "custo_estimado_usd", ...ETAPAS.map(([k]) => "min_" + k)],
-      ...finalizados.map((x) => [x.fechado_em, nomeEditor(x.editor_slug), x.titulo, origemTexto(x), x.tipo, Math.round(x.segundos_ativos / 60), Math.round((x.segundos_humanos || 0) / 60), x.interacoes || 0, x.pecas, x.voltas, x.custo_usd,
+    const linhas = [["entregue_em", "editor", "video", "origem", "tipo", "tempo_ativo_min", "premiere_min", "atencao_humana_min", "mensagens_do_editor", "pecas", "ajustes", "custo_estimado_usd", ...ETAPAS.map(([k]) => "min_" + k)],
+      ...finalizados.map((x) => [x.fechado_em, nomeEditor(x.editor_slug), x.titulo, origemTexto(x), x.tipo, Math.round(x.segundos_ativos / 60), Math.round((x.segundos_premiere || 0) / 60), Math.round((x.segundos_humanos || 0) / 60), x.interacoes || 0, x.pecas, x.voltas, x.custo_usd,
         ...ETAPAS.map(([k]) => Math.round(((x.etapas || {})[k] || 0) / 60))])];
     const blob = new Blob(["﻿" + linhas.map((l) => l.map(esc).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
     const a = h("a", { href: URL.createObjectURL(blob), download: `cw-studios-relatorio-${hojeISO()}.csv` });
