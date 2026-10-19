@@ -192,6 +192,23 @@
   .edicao .topo b { font-family: var(--font-display); font-size: 16px; font-weight: 900; }
   .edicao .topo .titulo-video { font-family: var(--font-display); font-weight: 800; color: var(--text-dim); }
   .edicao .desde { margin-left: auto; color: var(--text-faint); font-size: 12.5px; }
+  .edicao.com-previa { grid-template-columns: minmax(220px, 330px) minmax(0, 1fr); align-items: start; gap: 18px; }
+  .edicao-info { display: grid; gap: 10px; min-width: 0; }
+  .previa-col { display: grid; gap: 6px; min-width: 0; }
+  .previa-img { padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #111; cursor: zoom-in; }
+  .previa-img img { display: block; width: 100%; height: auto; }
+  .estado { color: var(--text-dim); }
+  .estado.agora strong { color: var(--green); }
+  .estado.parado strong { color: var(--aviso-tx); }
+  .estado .detalhe, .linha-tempo .detalhe { color: var(--text-faint); }
+  .estado .quando { color: var(--text-faint); font-size: 13px; }
+  .pedido { display: grid; gap: 2px; background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 12px; padding: 8px 12px; }
+  .pedido q { font-style: italic; color: var(--text); }
+  .linha-tempo { list-style: none; margin: 0; padding: 0 0 0 12px; border-left: 2px solid var(--line); display: grid; gap: 4px; font-size: 13px; color: var(--text-dim); }
+  .linha-tempo li { display: flex; gap: 8px; min-width: 0; }
+  .linha-tempo time { color: var(--text-faint); font-variant-numeric: tabular-nums; flex: none; }
+  .linha-tempo b { font-weight: 700; color: var(--brand-ink); }
+  @media (max-width: 760px) { .edicao.com-previa { grid-template-columns: minmax(0, 1fr); } }
   .bolinha { width: 10px; height: 10px; border-radius: 50%; background: #c9bedb; display: inline-block; flex: none; }
   .bolinha.editando { background: var(--green); box-shadow: 0 0 0 4px rgba(23, 162, 107, .18); }
   .bolinha.conectado { background: var(--amber); }
@@ -613,7 +630,7 @@
 
   let eu = { email: "", papel: null, editor: null };   // quem está logado (papel real, decidido pelo banco)
   let visao = { papel: null, editor: null };           // como a página está sendo vista (gestão pode simular)
-  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], producao: [], ajustes: [], regras: [], posicoes: {}, eventos: {}, jira: [], jiraSync: null };
+  let D = { demandas: [], editores: [], aovivo: [], edicoes: [], entregas: [], gestores: [], producao: [], ajustes: [], regras: [], posicoes: {}, eventos: {}, jira: [], jiraSync: null, previas: {} };
   const TRABALHOS = { edicao: "Edição", cortes: "Cortes", capa: "Capa", foto: "Foto", copy: "Copy", roteiro: "Roteiro", outro: "Outros" };
   const CANAIS = { CWIG: "IG Cardápio Web", CHEFSIG: "IG Chefs", CWCAST: "CW Cast", YT: "YouTube", GROWTH: "Growth", CWCREATORS: "CW Creators", CWSTUDIO: "CW Studio" };
   let segmento = "sprint", filtroTrab = new Set(["edicao", "cortes"]), filtroPessoa = "", mostrarConcluidos = false;
@@ -794,7 +811,8 @@
     const p = eu.papel;
     const pedidos = [db.from("demandas").select("*").order("criado", { ascending: false }).limit(1000), db.from("editores").select("slug,nome,email,ativo,criado,jira_id").order("nome")];
     const jiraPedido = p === "solicitante" ? null : Promise.all([db.from("jira_cards").select("*").eq("na_sprint", true).order("status_ordem").limit(1000),
-                                                                db.from("jira_sync").select("*").eq("id", 1).maybeSingle()]);
+                                                                db.from("jira_sync").select("*").eq("id", 1).maybeSingle(),
+                                                                db.from("previas").select("editor_slug,trabalho_id,arquivo,imagem,ts").gte("ts", new Date(Date.now() - 3 * 864e5).toISOString())]);
     if (p === "gestor") {
       const desde = new Date(Date.now() - 400 * 864e5).toISOString();
       pedidos.push(db.rpc("cw_ao_vivo"), db.from("edicoes").select("*").gte("aberto_em", desde).order("aberto_em", { ascending: false }).limit(5000),
@@ -821,7 +839,10 @@
     } else {
       D.posicoes = Object.fromEntries((r[2].data || []).map((x) => [x.id, x.posicao]));
     }
-    if (jiraPedido) { const [jc, js] = await jiraPedido; D.jira = jc.data || []; D.jiraSync = js.data || null; }
+    if (jiraPedido) {
+      const [jc, js, pv] = await jiraPedido; D.jira = jc.data || []; D.jiraSync = js.data || null;
+      D.previas = Object.fromEntries((pv.data || []).map((x) => [x.editor_slug + "/" + x.trabalho_id, x]));
+    }
     await carregarNotasDeAjuste();
     if ($("#nav").childElementCount) { montarVerComo(); montarNav(aba); }
   }
@@ -857,21 +878,45 @@
   function blocoEdicao({ t, ed, s, p, viva }) {
     const etapas = p.etapas || ETAPAS, idx = (k) => etapas.findIndex(([e]) => e === k);
     const atual = idx(t.etapa), max = Math.max(idx(t.etapa_max), atual), af = t.agora_faz;
-    return h("div", { class: "edicao" },
-      h("div", { class: "topo" },
-        h("span", { class: "bolinha " + (viva ? "editando" : online(s) ? "conectado" : "") }),
-        h("b", {}, ed.nome), h("span", { class: "titulo-video" }, "· " + t.titulo), origemChip(t),
-        t.tipo && h("span", { class: "chip" }, TIPOS[t.tipo] || t.tipo),
-        h("span", { class: "desde" }, "começou " + ha(t.desde))),
-      h("div", { class: "passos" }, etapas.map(([k, nome], i) => h("div", { class: "passo" + (i === atual ? " atual" : i <= max ? " feito" : "") }, nome))),
-      h("div", { class: "agora" }, af ? [viva ? h("strong", {}, "Agora: ") : "Último passo: ", af.rotulo, " · ", ha(af.ts)]
-        : (viva ? "Aberto nesta sessão, nenhum passo de edição ainda" : "Sem sessão do Claude aberta neste vídeo"),
-        !online(s) ? h("span", { class: "nota" }, ` · ${ed.nome.split(" ")[0]} offline, visto ${ha(s.atualizado)}`) : null),
-      (t.historico || []).length > 1 && h("details", {}, h("summary", {}, "Passos deste vídeo"),
-        h("div", { class: "historico", style: "margin-top:8px" }, t.historico.slice().reverse().map((x) => h("div", {}, h("time", {}, horaBR(x.ts)), x.rotulo)))));
+    const prev = D.previas[ed.slug + "/" + t.id];
+    const recente = af && minutosDesde(af.ts) <= 5;
+    const nomeEtapa = (k) => (etapas.find(([e]) => e === k) || [null, ""])[1];
+    const passo = (x) => [x.rotulo, x.detalhe && !(x.rotulo || "").includes(x.detalhe) ? h("span", { class: "detalhe" }, " · " + x.detalhe) : null];
+    const status = !af ? h("div", { class: "estado" }, viva ? "Aberto nesta sessão, nenhum passo de edição ainda" : "Sem sessão do Claude aberta neste vídeo")
+      : viva && recente ? h("div", { class: "estado agora" }, h("strong", {}, "Agora: "), passo(af), h("span", { class: "quando" }, " · " + ha(af.ts)))
+      : h("div", { class: "estado parado" }, h("strong", {}, viva ? `Parado há ${ha(af.ts).replace("há ", "")}` : `Sem sessão aberta`),
+          viva ? " · Claude aberto" : ` · ${ed.nome.split(" ")[0]} ${online(s) ? "com o Claude aberto em outro trabalho" : "offline, visto " + ha(s.atualizado)}`,
+          h("div", { class: "nota" }, "Último passo: ", passo(af), " · " + ha(af.ts)));
+    const hist = (t.historico || []).slice().reverse();
+    return h("div", { class: "edicao" + (prev ? " com-previa" : "") },
+      prev && h("div", { class: "previa-col" },
+        h("button", { class: "previa-img", title: "Ampliar a prévia", onclick: () => ampliarPrevia(prev, t, ed) },
+          h("img", { src: prev.imagem, alt: `Prévia de ${t.titulo}: início, meio e fim de ${prev.arquivo || "vídeo"}` })),
+        h("small", { class: "nota" }, `${prev.arquivo || "última versão"} · ${ha(prev.ts)}`)),
+      h("div", { class: "edicao-info" },
+        h("div", { class: "topo" },
+          h("span", { class: "bolinha " + (viva && recente ? "editando" : online(s) ? "conectado" : "") }),
+          h("b", {}, ed.nome), h("span", { class: "titulo-video" }, "· " + t.titulo), origemChip(t),
+          t.tipo && t.tipo !== "outro" && h("span", { class: "chip" }, TIPOS[t.tipo] || t.tipo),
+          h("span", { class: "desde" }, "começou " + ha(t.desde))),
+        h("div", { class: "passos" }, etapas.map(([k, nome], i) => h("div", { class: "passo" + (i === atual ? " atual" : i <= max ? " feito" : "") }, nome))),
+        status,
+        t.pedido && h("div", { class: "pedido" }, h("span", { class: "nota" }, `Último pedido ao Claude · ${t.pedido_ts ? ha(t.pedido_ts) : ""}`), h("q", {}, t.pedido)),
+        !t.jira && !t.demanda && eu.papel === "gestor" && h("div", { class: "nota" }, "Sem card: peça para citar o card do Jira (SCC-…) na conversa com o Claude, que o vídeo se liga sozinho."),
+        hist.length > 0 && h("ol", { class: "linha-tempo" }, hist.slice(0, 5).map((x) => h("li", {}, h("time", {}, horaBR(x.ts).slice(-5)),
+          h("span", {}, x.etapa ? h("b", {}, nomeEtapa(x.etapa) + " · ") : null, passo(x))))),
+        hist.length > 5 && h("details", {}, h("summary", {}, `Mais ${hist.length - 5} passos`),
+          h("ol", { class: "linha-tempo" }, hist.slice(5).map((x) => h("li", {}, h("time", {}, horaBR(x.ts).slice(-5)), h("span", {}, passo(x))))))));
+  }
+  function ampliarPrevia(prev, t, ed) {
+    encher($("#detalhe-corpo"), h("h2", {}, t.titulo), h("p", { class: "nota", style: "margin:0" }, `${ed.nome} · ${prev.arquivo || ""} · ${ha(prev.ts)} · início, meio e fim`),
+      h("img", { src: prev.imagem, alt: "Prévia ampliada", style: "width:100%;border-radius:14px;background:#111" }),
+      h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
   }
   function desenharAoVivo() {
-    const linhas = linhasAoVivo(), vivas = linhas.filter((l) => l.viva), paradas = linhas.filter((l) => !l.viva);
+    const recencia = (l) => (l.t.agora_faz && l.t.agora_faz.ts) || l.t.desde || "";
+    const linhas = linhasAoVivo().sort((a, b) => recencia(b).localeCompare(recencia(a))), vivas = linhas.filter((l) => l.viva), paradas = linhas.filter((l) => !l.viva);
     const semNada = D.editores.filter((e) => e.ativo && !linhas.some((l) => l.ed.slug === e.slug));
     encher($("#aovivo"),
       h("h3", { class: "grupo" }, `Editando agora (${vivas.length})`),
