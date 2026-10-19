@@ -960,7 +960,17 @@
           h("span", { class: "bolinha " + (viva && recente ? "editando" : online(s) ? "conectado" : "") }),
           h("b", {}, ed.nome), h("span", { class: "titulo-video" }, "· " + t.titulo), origemChip(t),
           t.tipo && t.tipo !== "outro" && h("span", { class: "chip" }, TIPOS[t.tipo] || t.tipo),
-          h("span", { class: "desde" }, "começou " + ha(t.desde))),
+          h("span", { class: "desde" }, "começou " + ha(t.desde)),
+          (eu.papel === "gestor" || (eu.editor && eu.editor.slug === ed.slug)) && t.id && h("button", { class: "botao leve peq",
+            title: "Era uma consulta (relatório, contagem, pesquisa), não um vídeo: some do ao vivo e do relatório",
+            onclick: async () => {
+              if (!confirm(`Marcar "${t.titulo}" de ${ed.nome.split(" ")[0]} como não sendo edição? Some do Ao vivo e do relatório.`)) return;
+              const { error } = await db.rpc("cw_descartar", { p_slug: ed.slug, p_trabalho: t.id });
+              if (error) return alert(error.message);
+              const st = D.aovivo.find((x) => x.slug === ed.slug);
+              if (st && st.payload) st.payload.trabalhos = (st.payload.trabalhos || []).filter((x) => x.id !== t.id);
+              desenhar();
+            } }, "Não é edição")),
         h("div", { class: "passos" }, etapas.map(([k, nome], i) => h("div", { class: "passo" + (i === atual ? " atual" : i <= max ? " feito" : "") }, nome))),
         status,
         pr && h("div", { class: "premiere" }, h("span", { class: "pr" }, "Pr"),
