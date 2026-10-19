@@ -143,6 +143,32 @@
   .cabeca { display: grid; gap: 6px; }
   .kicker { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--brand-soft); }
   .cabeca h1 { font-size: clamp(28px, 3.6vw, 40px); font-weight: 900; line-height: 1.12; letter-spacing: -.3px; }
+  .esc { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .esc { grid-template-columns: minmax(0, 1fr); } }
+  .esc-lista { display: grid; gap: 8px; }
+  .esc-conv { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 10px 12px; cursor: pointer; display: grid; gap: 3px; min-width: 0; font: inherit; color: var(--text); }
+  .esc-conv.is-active { border-color: var(--brand-soft); box-shadow: 0 0 0 3px rgba(124, 58, 237, .12); }
+  .esc-conv b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .esc-conv small { color: var(--text-faint); font-size: 12px; }
+  .esc-painel { border: 1px solid var(--line); background: var(--surface); border-radius: 18px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; min-height: 520px; max-height: calc(100vh - 170px); min-width: 0; }
+  .esc-topo { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .esc-topo h2 { margin: 0; font-size: 17px; flex: 1 1 200px; min-width: 0; }
+  .esc-topo .pasta { flex-basis: 100%; font: 12px ui-monospace, Menlo, monospace; color: var(--text-faint); word-break: break-all; }
+  .esc-msgs { overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: min(680px, 92%); border-radius: 16px; padding: 10px 14px; white-space: pre-wrap; word-break: break-word; font-size: 14.5px; line-height: 1.5; }
+  .msg.editor { align-self: flex-end; background: var(--brand-soft); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.ia { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg .quando { display: block; font-size: 11px; opacity: .7; margin-top: 4px; }
+  .msg-ferr { align-self: flex-start; font: 12.5px ui-monospace, Menlo, monospace; color: var(--text-faint); padding-left: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .msg-sis { align-self: center; font-size: 12.5px; color: var(--text-dim); background: var(--surface-3); border-radius: 99px; padding: 4px 12px; max-width: 100%; white-space: pre-wrap; text-align: center; }
+  .msg-ok { align-self: stretch; border: 1px solid #f5c542; background: #fff8e1; border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+  .msg-ok pre { margin: 0; font: 12px ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; background: #fff; border-radius: 8px; padding: 8px; max-height: 160px; overflow: auto; }
+  .esc-escrever { border-top: 1px solid var(--line); padding: 12px; display: grid; gap: 8px; }
+  .esc-escrever textarea { min-height: 70px; resize: vertical; }
+  .esc-escrever .acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .estacao { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 10px 14px; font-size: 14px; }
+  .bolinha { width: 10px; height: 10px; border-radius: 50%; background: #c9c2d8; flex: none; }
+  .bolinha.on { background: #22a06b; box-shadow: 0 0 0 4px rgba(34, 160, 107, .15); }
   .cabeca .sub { margin: 4px 0 0; color: var(--text-dim); max-width: 640px; }
   h3.grupo { font-family: var(--font-body); font-size: 12px; text-transform: uppercase; letter-spacing: 1.8px; font-weight: 800; margin: 12px 0 0; color: #8f7fb0; }
   .vazio { color: var(--text-faint); font-size: 14px; padding: 6px 2px; }
@@ -471,6 +497,20 @@
       <th class="n">Tempo ativo médio</th><th class="n">Atenção humana média</th><th class="n">Aprovação de 1ª</th></tr></thead><tbody id="fluxos"></tbody></table></div>
   </section>
 
+  <section id="aba-escritorio" hidden>
+    <header class="cabeca"><p class="kicker" id="esc-kicker">Meu trabalho</p><h1>Escritório</h1>
+      <p class="sub" id="esc-sub">Escreva aqui e o Claude da sua máquina edita. Ele age sozinho só dentro da pasta do vídeo; qualquer outra coisa pede o seu OK nesta página.</p></header>
+    <div class="estacao" id="esc-estacao"></div>
+    <div class="esc">
+      <div class="esc-lista">
+        <select id="esc-editor" class="pill" hidden aria-label="Editor"></select>
+        <button class="botao amarelo" id="esc-nova">Nova conversa</button>
+        <div class="esc-lista" id="esc-conversas"></div>
+      </div>
+      <div class="esc-painel" id="esc-painel"></div>
+    </div>
+  </section>
+
   <section id="aba-kit" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Kit do time</h1>
       <p class="sub">Os agentes e skills que viram o jeito oficial de editar. O que está no kit chega sozinho ao Claude de todos os editores, com o prefixo cw-kit-.</p></header>
@@ -618,10 +658,10 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["escritorio", "Escritório"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"]]],
              ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["gestao", "Pessoas"]]]],
     producao: [["Programas", [["cast", "CW Cast"]]], ["Operação", [["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
   };
   const EXTRAS = { gestor: ["pedir"], producao: ["pedir"], editor: [], solicitante: [] };
@@ -639,6 +679,7 @@
     pedir: "M12 8v8M8 12h8M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
     cast: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8",
     kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
+    escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
   };
   function icone(d, cls) {
     const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), path = document.createElementNS(ns, "path");
@@ -880,7 +921,7 @@
   }
 
   function desenhar() {
-    ({ kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
+    ({ escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1437,6 +1478,185 @@
     m.textContent = `Importado: ${linhas.length} registros (${Object.entries(porCol).map(([c, n]) => `${c}: ${n}`).join(", ")}).`;
     castDb && castDb.puxar();
   });
+
+  // ---------------------------------------------------------------- escritório virtual
+  // O editor escreve; a estação (Claude na máquina dele) executa. Só o próprio editor manda e aprova: a gestão acompanha.
+  const ESC = { slug: null, conversas: [], msgs: {}, ultimo: {}, sel: null, estacao: null, timer: null, ocupado: false };
+  const escPodeMandar = () => eu.papel === "editor" && eu.editor && ESC.slug === eu.editor.slug;
+  const ESTADO_CONV = { parada: ["Parada", "tom-neutro"], na_fila: ["Na fila", "tom-aviso"], rodando: ["Trabalhando", "tom-ok"],
+                        esperando_ok: ["Esperando seu OK", "tom-aviso"], erro: ["Erro", "tom-critico"] };
+  function escSlug() {
+    if (eu.papel === "editor" && eu.editor) return eu.editor.slug;
+    if (visao.papel === "editor" && visao.editor) return visao.editor;
+    const sel = $("#esc-editor");
+    return sel.value || (D.editores.find((e) => e.ativo) || {}).slug || null;
+  }
+  async function escCarregar(soMsgs) {
+    if (!ESC.slug) return;
+    if (!soMsgs) {
+      const [c, e] = await Promise.all([
+        db.from("esc_conversas").select("*").eq("editor_slug", ESC.slug).eq("arquivada", false).order("atualizada", { ascending: false }).limit(60),
+        db.from("estacoes").select("*").eq("editor_slug", ESC.slug).maybeSingle()]);
+      ESC.conversas = c.data || []; ESC.estacao = e.data || null;
+      if (ESC.sel && !ESC.conversas.some((x) => x.id === ESC.sel)) ESC.sel = null;
+      if (!ESC.sel && ESC.conversas.length) ESC.sel = ESC.conversas[0].id;
+    }
+    if (ESC.sel) {
+      const id = ESC.sel, desde = ESC.ultimo[id] || 0;
+      const { data } = await db.from("esc_msgs").select("*").eq("conversa_id", id).gt("id", desde).order("id").limit(500);
+      // pedidos de OK mudam de estado: relê os que ainda estavam aguardando
+      const aguardando = (ESC.msgs[id] || []).filter((m) => m.papel === "ok" && m.estado === "aguardando").map((m) => m.id);
+      const reler = aguardando.length ? (await db.from("esc_msgs").select("*").in("id", aguardando)).data || [] : [];
+      const lista = (ESC.msgs[id] || []).map((m) => reler.find((r) => r.id === m.id) || m).concat(data || []);
+      ESC.msgs[id] = lista; ESC.ultimo[id] = lista.length ? lista[lista.length - 1].id : 0;
+      return (data || []).length > 0 || reler.some((r) => r.estado !== "aguardando");
+    }
+    return false;
+  }
+  function estacaoOnline() { return ESC.estacao && ESC.estacao.visto && Date.now() - new Date(ESC.estacao.visto) < 30000; }
+  async function desenharEscritorio() {
+    const sel = $("#esc-editor");
+    const gestaoOlhando = eu.papel === "gestor" && visao.papel === "gestor";
+    sel.hidden = !gestaoOlhando;
+    if (gestaoOlhando && !sel.childElementCount) {
+      encher(sel, D.editores.filter((e) => e.ativo).map((e) => h("option", { value: e.slug }, e.nome)));
+      sel.onchange = () => { ESC.sel = null; ESC.msgs = {}; ESC.ultimo = {}; desenharEscritorio(); };
+    }
+    const slug = escSlug();
+    if (slug !== ESC.slug) { ESC.slug = slug; ESC.sel = null; ESC.msgs = {}; ESC.ultimo = {}; }
+    $("#esc-kicker").textContent = escPodeMandar() ? "Meu trabalho" : "Acompanhar";
+    $("#esc-sub").textContent = escPodeMandar()
+      ? "Escreva aqui e o Claude da sua máquina edita. Ele age sozinho só dentro da pasta do vídeo; qualquer outra coisa pede o seu OK nesta página."
+      : `Você está vendo o escritório de ${nomeEditor(slug) || "um editor"}. Só o próprio editor manda pedidos e aprova ações na máquina dele; aqui você acompanha.`;
+    $("#esc-nova").hidden = !escPodeMandar();
+    $("#esc-nova").onclick = novaConversa;
+    await escCarregar();
+    escDesenharTudo();
+    clearInterval(ESC.timer);
+    ESC.timer = setInterval(async () => {
+      if (aba !== "escritorio") return clearInterval(ESC.timer);
+      if (document.hidden || ESC.ocupado) return;
+      ESC.ocupado = true;
+      try {
+        ESC.tique = (ESC.tique || 0) + 1;
+        const lista = ESC.tique % 3 === 0;
+        const novo = await escCarregar(!lista);
+        if (lista) { escDesenharEstacao(); escDesenharLista(); }
+        if (novo || lista) escDesenharPainel(novo);
+      } finally { ESC.ocupado = false; }
+    }, 2500);
+  }
+  function escDesenharTudo() { escDesenharEstacao(); escDesenharLista(); escDesenharPainel(true); }
+  function escDesenharEstacao() {
+    const e = ESC.estacao, on = estacaoOnline();
+    encher($("#esc-estacao"), h("span", { class: "bolinha" + (on ? " on" : "") }),
+      h("b", {}, on ? "Estação ligada" : "Estação desligada"),
+      e && e.maquina ? h("span", { class: "nota" }, `${e.maquina} · visto ${ha(e.visto)}`) : null,
+      !on ? h("span", { class: "nota" }, escPodeMandar()
+        ? 'Para ligar, peça ao Claude no seu computador: "liga minha estação do escritório". Ela continua ligada depois, sozinha.'
+        : "A estação deste editor não está ligada agora.") : null);
+  }
+  function escDesenharLista() {
+    encher($("#esc-conversas"), ESC.conversas.length ? ESC.conversas.map((c) => {
+      const [rot, tom] = ESTADO_CONV[c.estado] || [c.estado, "tom-neutro"];
+      return h("button", { class: "esc-conv" + (c.id === ESC.sel ? " is-active" : ""), onclick: async () => { ESC.sel = c.id; await escCarregar(true); escDesenharLista(); escDesenharPainel(true); } },
+        h("b", {}, c.titulo), h("small", {}, [c.trabalho, ha(c.atualizada)].filter(Boolean).join(" · ")),
+        c.estado !== "parada" ? h("span", {}, h("span", { class: "chip " + tom }, rot)) : null);
+    }) : h("div", { class: "vazio" }, escPodeMandar() ? "Nenhuma conversa ainda. Comece uma nova." : "Nenhuma conversa."));
+  }
+  function msgEl(m, podeResponder) {
+    const quando = new Date(m.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    if (m.papel === "editor") return h("div", { class: "msg editor" }, m.texto, h("span", { class: "quando" }, quando + (m.estado === "pendente" ? " · na fila" : m.estado === "cancelado" ? " · cancelado" : "")));
+    if (m.papel === "ia") return h("div", { class: "msg ia" }, m.texto, h("span", { class: "quando" }, quando));
+    if (m.papel === "ferramenta") return h("div", { class: "msg-ferr", title: (m.dados && m.dados.comando) || m.texto }, "› " + m.texto);
+    if (m.papel === "sistema") return h("div", { class: "msg-sis" }, m.texto);
+    const d = m.dados || {};
+    const fim = { aprovado: ["Aprovado", "tom-ok"], negado: ["Negado", "tom-critico"], expirado: ["Sem resposta (negado)", "tom-neutro"] }[m.estado];
+    return h("div", { class: "msg-ok" }, h("b", {}, m.texto), d.detalhe ? h("pre", {}, d.detalhe) : null,
+      m.estado === "aguardando"
+        ? (podeResponder
+          ? h("div", { class: "acoes" },
+            h("button", { class: "botao amarelo peq", onclick: () => escResponder(m, true) }, "Aprovar"),
+            h("button", { class: "botao perigo peq", onclick: () => escResponder(m, false) }, "Negar"),
+            h("span", { class: "nota" }, "Aprovar vale só para esta ação."))
+          : h("span", { class: "nota" }, "Esperando o editor responder."))
+        : h("span", {}, h("span", { class: "chip " + fim[1] }, fim[0])));
+  }
+  function escDesenharPainel(rolar) {
+    const painel = $("#esc-painel"), c = ESC.conversas.find((x) => x.id === ESC.sel);
+    if (!c) return encher(painel, h("div", { class: "vazio", style: "grid-row: 1 / -1; align-self: center" },
+      escPodeMandar() ? "Comece uma conversa: escolha o card ou a demanda e diga ao Claude o que fazer." : "Escolha uma conversa."));
+    const caixa = painel.querySelector(".esc-msgs");
+    const noFim = !caixa || caixa.scrollHeight - caixa.scrollTop - caixa.clientHeight < 80;
+    const rascunho = painel.querySelector("textarea");
+    const textoAntes = rascunho ? rascunho.value : "", focado = rascunho && document.activeElement === rascunho;
+    const [rot, tom] = ESTADO_CONV[c.estado] || [c.estado, "tom-neutro"];
+    const pode = escPodeMandar(), ativa = ["rodando", "esperando_ok", "na_fila"].includes(c.estado);
+    const msgs = h("div", { class: "esc-msgs" }, (ESC.msgs[c.id] || []).map((m) => msgEl(m, pode)),
+      c.estado === "rodando" ? h("div", { class: "msg-sis" }, "Trabalhando…") : null);
+    const area = h("textarea", { placeholder: estacaoOnline() ? "O que o Claude deve fazer neste vídeo?" : "A estação está desligada: o pedido fica na fila até ela ligar.",
+      onkeydown: (ev) => { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); escEnviar(c, area); } } });
+    area.value = textoAntes;
+    encher(painel,
+      h("div", { class: "esc-topo" }, h("h2", {}, c.titulo), c.trabalho ? h("span", { class: "chip" }, c.trabalho) : null,
+        h("span", { class: "chip " + tom }, rot),
+        pode && ativa ? h("button", { class: "botao perigo peq", onclick: () => escParar(c) }, "Parar") : null,
+        pode && !ativa ? h("button", { class: "botao leve peq", onclick: () => escArquivar(c) }, "Arquivar") : null,
+        c.pasta ? h("span", { class: "pasta" }, c.pasta) : null),
+      msgs,
+      pode ? h("div", { class: "esc-escrever" }, area, h("div", { class: "acoes" },
+        h("button", { class: "botao amarelo", onclick: () => escEnviar(c, area) }, "Enviar"),
+        h("span", { class: "nota" }, "⌘ + Enter envia. Se ele estiver trabalhando, o pedido entra na fila desta conversa.")))
+        : h("div", { class: "esc-escrever" }, h("span", { class: "nota" }, "Só o editor manda pedidos para a estação dele.")));
+    if (rolar || noFim) msgs.scrollTop = msgs.scrollHeight;
+    if (focado) area.focus();
+  }
+  async function escEnviar(c, area) {
+    const texto = area.value.trim();
+    if (!texto) return;
+    area.disabled = true;
+    const { error } = await db.rpc("cw_esc_enviar", { p_conversa: c.id, p_texto: texto });
+    area.disabled = false;
+    if (error) { alert(error.message); return; }
+    area.value = "";
+    await escCarregar(); escDesenharTudo();
+  }
+  async function escResponder(m, aprovar) {
+    const { error } = await db.rpc("cw_esc_responder", { p_msg: m.id, p_aprovar: aprovar });
+    if (error) return alert(error.message);
+    m.estado = aprovar ? "aprovado" : "negado"; escDesenharPainel();
+  }
+  async function escParar(c) { await db.rpc("cw_esc_parar", { p_conversa: c.id }); await escCarregar(); escDesenharTudo(); }
+  async function escArquivar(c) { await db.rpc("cw_esc_arquivar", { p_conversa: c.id }); ESC.sel = null; await escCarregar(); escDesenharTudo(); }
+  function novaConversa() {
+    const ed = D.editores.find((e) => e.slug === ESC.slug) || {};
+    const cards = D.jira.filter((j) => ed.jira_id && j.responsavel_id === ed.jira_id && j.status_categoria !== "done");
+    const dems = D.demandas.filter((d) => d.editor_slug === ESC.slug && ["em_edicao", "refazer", "nova"].includes(d.status));
+    const trab = h("select", { id: "esc-trab" }, h("option", { value: "" }, "Sem card (conversa livre)"),
+      cards.length ? h("optgroup", { label: "Seus cards da sprint" }, cards.map((j) => h("option", { value: j.chave, "data-titulo": j.titulo }, `${j.chave} · ${j.titulo}`))) : null,
+      dems.length ? h("optgroup", { label: "Suas demandas" }, dems.map((d) => h("option", { value: codigo(d), "data-titulo": d.titulo }, `${codigo(d)} · ${d.titulo}`))) : null);
+    const titulo = h("input", { id: "esc-titulo", placeholder: "Ex.: Reel do painel novo" });
+    trab.onchange = () => { const o = trab.selectedOptions[0]; if (o && o.dataset.titulo && !titulo.value) titulo.value = o.dataset.titulo; };
+    const pasta = h("input", { id: "esc-pasta", placeholder: "~/CW-Work/escritorio/<card> (padrão)" });
+    const primeiro = h("textarea", { id: "esc-primeiro", placeholder: "Ex.: Edita o reel no padrão Reels-CW-01 a partir do bruto que está em Downloads." });
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    encher($("#detalhe-corpo"), h("h2", {}, "Nova conversa"),
+      h("label", { for: "esc-trab" }, "Trabalho", trab), h("label", { for: "esc-titulo" }, "Título", titulo),
+      h("label", { for: "esc-primeiro" }, "Primeiro pedido", primeiro),
+      h("details", {}, h("summary", { class: "nota" }, "Pasta do trabalho (opcional)"),
+        h("label", { for: "esc-pasta" }, "Pasta na sua máquina (dentro da sua pasta de usuário)", pasta),
+        h("p", { class: "nota" }, "Sem pasta, a estação usa a do preparo do card (~/CW-Work/preparo/<card>) ou cria ~/CW-Work/escritorio/<card>. O Claude age sozinho só dentro dela.")),
+      msg,
+      h("div", { class: "acoes" },
+        h("button", { class: "botao amarelo", onclick: async () => {
+          const { data, error } = await db.rpc("cw_esc_nova", { p_titulo: titulo.value || (trab.value || "Conversa"), p_trabalho: trab.value, p_pasta: pasta.value });
+          if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+          if (primeiro.value.trim()) await db.rpc("cw_esc_enviar", { p_conversa: data, p_texto: primeiro.value.trim() });
+          $("#detalhe").close(); ESC.sel = data; await escCarregar(); escDesenharTudo();
+        } }, "Começar"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    $("#detalhe").showModal();
+  }
 
   // ---------------------------------------------------------------- kit do time (gestão)
   // vídeos em que o item aparece no fluxo (skills/agentes usados), opcionalmente só de um editor
