@@ -559,6 +559,18 @@
     <div class="grade-cartoes" id="bib-lista"></div>
   </section>
 
+  <section id="aba-ferramentas" hidden>
+    <header class="cabeca"><p class="kicker">Biblioteca de APIs</p><h1>Ferramentas</h1>
+      <p class="sub">APIs da empresa que o Claude de cada editor usa pelo conector cw-studios, sem ver chave nenhuma. Cada geração conta no limite do mês do editor.</p></header>
+    <div class="grade-cartoes" id="ferr-lista"></div>
+    <div id="ferr-gestao" hidden>
+      <h3 class="grupo">Gastos do mês por editor</h3>
+      <div class="tabela"><table><thead><tr><th>Editor</th><th>Ferramenta</th><th class="n">Gerações</th><th class="n">Limite</th><th class="n">Custo estimado</th><th></th></tr></thead><tbody id="ferr-gastos"></tbody></table></div>
+    </div>
+    <h3 class="grupo">Últimas gerações</h3>
+    <div class="tabela"><table><thead><tr><th>Quando</th><th>Editor</th><th>Ferramenta</th><th>Modelo</th><th>Trabalho</th><th>Situação</th><th>Resultado</th></tr></thead><tbody id="ferr-usos"></tbody></table></div>
+  </section>
+
   <section id="aba-kit" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Kit do time</h1>
       <p class="sub">Os agentes e skills que viram o jeito oficial de editar. O que está no kit chega sozinho ao Claude de todos os editores, com o prefixo cw-kit-.</p></header>
@@ -707,9 +719,9 @@
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
     gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["escritorio", "Escritório"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
-             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["biblioteca", "Biblioteca"], ["gestao", "Pessoas"]]]],
+             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["gestao", "Pessoas"]]]],
     producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["biblioteca", "Biblioteca"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
   };
   const EXTRAS = { gestor: ["pedir"], producao: ["pedir"], editor: [], solicitante: [] };
@@ -729,6 +741,7 @@
     kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
     publicacao: "M22 2 11 13M22 2l-7 20-4-9-9-4z",
+    ferramentas: "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z",
     biblioteca: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5zM8 7h8M8 11h6",
   };
   function icone(d, cls) {
@@ -973,7 +986,7 @@
   }
 
   function desenhar() {
-    ({ biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
+    ({ ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1541,6 +1554,58 @@
     m.textContent = `Importado: ${linhas.length} registros (${Object.entries(porCol).map(([c, n]) => `${c}: ${n}`).join(", ")}).`;
     castDb && castDb.puxar();
   });
+
+  // ---------------------------------------------------------------- ferramentas (biblioteca de APIs)
+  const FERR = { lista: [], usos: [], limites: [], chaves: {} };
+  const ESTADO_USO = { completed: ["Pronto", "tom-ok"], queued: ["Na fila", "tom-aviso"], in_progress: ["Gerando", "tom-aviso"], enviado: ["Enviado", "tom-aviso"],
+    failed: ["Falhou", "tom-critico"], nsfw: ["Barrado (conteúdo)", "tom-critico"], canceled: ["Cancelado", "tom-neutro"], erro_envio: ["Recusado pela API", "tom-critico"] };
+  async function desenharFerramentas() {
+    const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
+    const gestor = eu.papel === "gestor";
+    const [f, u, l, c] = await Promise.all([db.from("ferramentas").select("*").order("nome"),
+      db.from("ferramenta_usos").select("*").gte("criado", new Date(Math.min(inicioMes, Date.now() - 30 * 864e5)).toISOString()).order("id", { ascending: false }).limit(1000),
+      db.from("ferramenta_limites").select("*"), gestor ? db.functions.invoke("ferramentas", { body: { acao: "situacao" } }) : Promise.resolve({ data: null })]);
+    FERR.lista = f.data || []; FERR.usos = u.data || []; FERR.limites = l.data || []; FERR.chaves = c.data || {};
+    const doMes = FERR.usos.filter((x) => new Date(x.criado) >= inicioMes && x.estado !== "erro_envio");
+    const limiteDe = (ed, fe) => (FERR.limites.find((x) => x.editor_slug === ed && x.ferramenta === fe.slug) || {}).limite_mes ?? fe.limite_mes;
+    encher($("#ferr-lista"), FERR.lista.length ? FERR.lista.map((fe) => {
+      const meus = doMes.filter((x) => x.ferramenta === fe.slug && x.editor_slug === meuSlug()).length;
+      const total = doMes.filter((x) => x.ferramenta === fe.slug).length;
+      const limite = h("input", { type: "number", min: 0, value: fe.limite_mes, style: "width:90px", "aria-label": "Limite padrão por editor" });
+      const custo = h("input", { type: "number", min: 0, step: "0.01", value: fe.custo_estimado ?? "", placeholder: "US$", style: "width:90px", "aria-label": "Custo estimado por geração" });
+      return h("div", { class: "bib-card" },
+        h("div", { class: "chips" }, h("span", { class: "chip " + (fe.ativa ? "tom-ok" : "tom-neutro") }, fe.ativa ? "Ligada" : "Desligada"),
+          gestor && h("span", { class: "chip " + (FERR.chaves[fe.slug] ? "tom-ok" : "tom-critico") }, FERR.chaves[fe.slug] ? "✓ Chave configurada" : "✗ Falta a chave")),
+        h("div", { class: "tit" }, fe.nome), fe.descricao && h("div", { class: "desc" }, fe.descricao),
+        fe.docs_url && h("a", { href: fe.docs_url.replace(/\/llms\.txt$/, ""), target: "_blank", rel: "noopener", class: "nota" }, "Documentação"),
+        meuSlug() ? h("div", { class: "nota" }, `Você usou ${meus} de ${limiteDe(meuSlug(), fe)} gerações este mês.`) : h("div", { class: "nota" }, `${total} gerações no time este mês.`),
+        gestor && h("div", { class: "bib-filtros" }, h("label", { class: "nota", style: "display:flex;gap:6px;align-items:center;flex-direction:row" }, "Limite/mês", limite),
+          h("label", { class: "nota", style: "display:flex;gap:6px;align-items:center;flex-direction:row" }, "US$/geração", custo),
+          h("button", { class: "botao leve peq", onclick: async () => { const { error } = await db.rpc("cw_ferr_ajustar", { p_slug: fe.slug, p_limite: Number(limite.value), p_custo: custo.value === "" ? null : Number(custo.value), p_ativa: null }); if (error) alert(error.message); desenharFerramentas(); } }, "Salvar"),
+          h("button", { class: "botao leve peq", onclick: async () => { await db.rpc("cw_ferr_ajustar", { p_slug: fe.slug, p_limite: null, p_custo: fe.custo_estimado, p_ativa: !fe.ativa }); desenharFerramentas(); } }, fe.ativa ? "Desligar" : "Ligar")),
+        gestor && !FERR.chaves[fe.slug] && h("p", { class: "nota", style: "margin:0" }, "Para configurar a chave, rode no Terminal do Mac: python3 ~/Documents/Skills/cw-cortes-hub/ferramentas/conectar-api.py " + fe.slug));
+    }) : h("div", { class: "vazio" }, "Nenhuma ferramenta cadastrada."));
+    $("#ferr-gestao").hidden = !gestor;
+    if (gestor) {
+      const linhas = [];
+      for (const fe of FERR.lista) for (const ed of D.editores.filter((e) => e.ativo)) {
+        const n = doMes.filter((x) => x.ferramenta === fe.slug && x.editor_slug === ed.slug).length;
+        const lim = limiteDe(ed.slug, fe), proprio = FERR.limites.some((x) => x.editor_slug === ed.slug && x.ferramenta === fe.slug);
+        const campo = h("input", { type: "number", min: 0, value: lim, style: "width:80px", "aria-label": "Limite de " + ed.nome });
+        linhas.push(h("tr", {}, td(ed.nome), td(fe.nome), td(n, 1), h("td", { class: "n" }, campo, proprio ? "" : h("span", { class: "nota" }, " (padrão)")),
+          td(fe.custo_estimado != null ? "US$ " + (n * fe.custo_estimado).toFixed(2) : "–", 1),
+          h("td", { class: "n" }, h("button", { class: "botao leve peq", onclick: async () => { await db.rpc("cw_ferr_limite", { p_editor: ed.slug, p_ferramenta: fe.slug, p_limite: Number(campo.value) }); desenharFerramentas(); } }, "Salvar"))));
+      }
+      encher($("#ferr-gastos"), linhas.length ? linhas : vazioLinha(6, "Sem editores."));
+    }
+    encher($("#ferr-usos"), FERR.usos.length ? FERR.usos.slice(0, 50).map((x) => {
+      const [rot, tom] = ESTADO_USO[x.estado] || [x.estado, "tom-neutro"];
+      const urls = (x.resultado && x.resultado.urls) || [];
+      return h("tr", {}, td(horaBR(x.criado)), td(nomeEditor(x.editor_slug) || "–"), td((FERR.lista.find((f) => f.slug === x.ferramenta) || {}).nome || x.ferramenta),
+        td(h("code", {}, x.caminho)), td(x.trabalho || "–"), h("td", {}, h("span", { class: "chip " + tom, title: x.erro || "" }, rot)),
+        h("td", {}, urls.length ? urls.map((u, i) => h("a", { href: u, target: "_blank", rel: "noopener", style: "margin-right:8px" }, "arquivo " + (i + 1))) : "–"));
+    }) : vazioLinha(7, "Nenhuma geração ainda."));
+  }
 
   // ---------------------------------------------------------------- biblioteca de repositórios
   const BIB = { repos: [], itens: [], escolhas: [], tipo: "todos", carregado: 0, busca: "", repo: "" };
