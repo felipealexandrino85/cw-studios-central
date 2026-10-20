@@ -2573,7 +2573,10 @@
     const tyt = h("input", { id: "pub-tyt", maxlength: 100, value: x.titulo_youtube || x.titulo });
     const quando = h("input", { id: "pub-quando", type: "datetime-local" });
     if (x.agendado_para) { const d = new Date(x.agendado_para); quando.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
-    const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" }); c.checked = (x.redes || []).includes(k); return [c, nome]; });
+    const ttTravado = !(PUB.situacao || {}).tiktok_publico;   // até o TikTok aprovar o app, ele só posta em conta privada
+    const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" });
+      c.checked = (x.redes || []).includes(k) && !(k === "tiktok" && ttTravado); if (k === "tiktok" && ttTravado) c.disabled = true;
+      return [c, k === "tiktok" && ttTravado ? nome + " (aguardando aprovação do app: poste pelo celular)" : nome]; });
     setTimeout(() => { const c = caixas.find(([cc]) => cc.value === "tiktok"); if (c) { const mostra = () => { ttBox.hidden = !c[0].checked; }; c[0].addEventListener("change", mostra); mostra(); } }, 0);
     // TikTok (Direct Post): conta, privacidade sem padrão, interações, conteúdo comercial e confirmação de música
     const cr = (PUB.situacao || {}).tiktok_criador || {}, aprovadoTT = !!(PUB.situacao || {}).tiktok_publico;
