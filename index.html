@@ -2638,12 +2638,13 @@
           ? h("div", { class: "acoes" },
             h("button", { class: "botao amarelo peq", onclick: () => escResponder(m, true) }, "Aprovar"),
             d.liberar ? h("button", { class: "botao leve peq", title: d.liberar, onclick: () => escResponder(m, true, true) }, "Aprovar e liberar esta pasta") : null,
+            d.liberar_conector ? h("button", { class: "botao leve peq", onclick: () => escResponder(m, true, true) }, "Aprovar e liberar este conector") : null,
             h("button", { class: "botao perigo peq", onclick: () => escResponder(m, false) }, "Negar"),
             h("span", { class: "nota" }, d.liberar
               ? `"Liberar" deixa o Claude usar ${d.liberar.split(/[\\/]/).slice(-2).join("/")} sem perguntar de novo (só ler e rodar; gravar fora da pasta do trabalho continua pedindo OK).`
-              : "Aprovar vale só para esta ação."))
+              : d.liberar_conector ? `"Liberar" deixa o Claude usar ${d.liberar_conector} sem perguntar de novo.` : "Aprovar vale só para esta ação."))
           : h("span", { class: "nota" }, "Esperando o editor responder."))
-        : h("span", {}, h("span", { class: "chip " + fim[1] }, d.sempre && m.estado === "aprovado" ? "Aprovado e pasta liberada" : fim[0])));
+        : h("span", {}, h("span", { class: "chip " + fim[1] }, d.sempre && m.estado === "aprovado" ? (d.liberar_conector && !d.liberar ? "Aprovado e conector liberado" : "Aprovado e pasta liberada") : fim[0])));
   }
   function escDesenharPainel(rolar) {
     const painel = $("#esc-painel");
