@@ -177,6 +177,11 @@
   .pub-card .leg { font-size: 13px; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .redes-res { display: flex; flex-wrap: wrap; gap: 6px; }
   .pub-conexoes { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 10px 14px; font-size: 14px; }
+  .tt-box { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 10px; background: var(--surface-2); }
+  .tt-box .conta { display: flex; gap: 10px; align-items: center; font-weight: 700; }
+  .tt-box .conta img { width: 32px; height: 32px; border-radius: 50%; }
+  .tt-box label.check { display: inline-flex; flex-direction: row; gap: 6px; align-items: center; font-weight: 600; }
+  .tt-box input[type=checkbox] { width: auto; margin: 0; }
   .pub-video { width: 100%; max-width: 340px; aspect-ratio: 9 / 16; border: 0; border-radius: 14px; background: #111; justify-self: center; }
   .bib-filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .bib-filtros input[type=search] { flex: 1 1 240px; min-width: 0; }
@@ -2096,15 +2101,53 @@
     const quando = h("input", { id: "pub-quando", type: "datetime-local" });
     if (x.agendado_para) { const d = new Date(x.agendado_para); quando.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
     const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" }); c.checked = (x.redes || []).includes(k); return [c, nome]; });
+    setTimeout(() => { const c = caixas.find(([cc]) => cc.value === "tiktok"); if (c) { const mostra = () => { ttBox.hidden = !c[0].checked; }; c[0].addEventListener("change", mostra); mostra(); } }, 0);
+    // TikTok (Direct Post): conta, privacidade sem padrão, interações, conteúdo comercial e confirmação de música
+    const cr = (PUB.situacao || {}).tiktok_criador || {}, aprovadoTT = !!(PUB.situacao || {}).tiktok_publico;
+    const PRIV = { PUBLIC_TO_EVERYONE: "Todo mundo", MUTUAL_FOLLOW_FRIENDS: "Amigos", FOLLOWER_OF_CREATOR: "Seguidores", SELF_ONLY: "Só eu" };
+    const opcoesPriv = cr.privacy_level_options || ["PUBLIC_TO_EVERYONE", "MUTUAL_FOLLOW_FRIENDS", "SELF_ONLY"];
+    const ttPriv = h("select", { id: "tt-priv" }, h("option", { value: "" }, "Escolha quem pode ver…"),
+      opcoesPriv.map((v) => h("option", { value: v, disabled: !aprovadoTT && v !== "SELF_ONLY" || null }, PRIV[v] || v)));
+    const caixa = (rot, desligado) => { const c = h("input", { type: "checkbox", disabled: desligado || null }); return [c, h("label", { class: "check" }, c, rot, desligado ? h("span", { class: "nota" }, " (desativado na conta)") : null)]; };
+    const [ttCom, lCom] = caixa("Permitir comentários", cr.comment_disabled), [ttDue, lDue] = caixa("Permitir dueto", cr.duet_disabled), [ttSti, lSti] = caixa("Permitir stitch", cr.stitch_disabled);
+    const [ttCom1, lCom1] = caixa("Este vídeo divulga uma marca, produto ou serviço"), [ttSua, lSua] = caixa("Sua marca (Cardápio Web)"), [ttParc, lParc] = caixa("Conteúdo de marca (parceria paga)");
+    const [ttAce, lAce] = caixa("");
+    const aceiteTxt = h("span", {});
+    const atualizaAceite = () => {
+      encher(aceiteTxt, "Ao postar, você concorda com ", ttParc.checked ? [h("a", { href: "https://www.tiktok.com/legal/page/global/bc-policy/en", target: "_blank", rel: "noopener" }, "a Política de Conteúdo de Marca"), " e "] : null,
+        h("a", { href: "https://www.tiktok.com/legal/page/global/music-usage-confirmation/en", target: "_blank", rel: "noopener" }, "a Confirmação de Uso de Música"), " do TikTok.");
+      lSua.hidden = lParc.hidden = !ttCom1.checked;
+      if (!ttCom1.checked) { ttSua.checked = false; ttParc.checked = false; }
+      if (ttParc.checked && ttPriv.value === "SELF_ONLY") ttPriv.value = "";
+    };
+    lAce.append(aceiteTxt); ttCom1.onchange = ttSua.onchange = ttParc.onchange = atualizaAceite; atualizaAceite();
+    const longoDemais = cr.max_video_post_duration_sec && x.duracao_s && x.duracao_s > cr.max_video_post_duration_sec;
+    const ttBox = h("div", { class: "tt-box" },
+      h("div", { class: "conta" }, cr.creator_avatar_url && h("img", { src: cr.creator_avatar_url, alt: "" }), `TikTok: postando como @${cr.creator_username || "conta do CW Cast"}`, cr.creator_nickname && h("span", { class: "nota" }, cr.creator_nickname)),
+      h("label", { for: "tt-priv" }, "Quem pode ver este vídeo", ttPriv),
+      !aprovadoTT && h("p", { class: "nota", style: "margin:0" }, "Enquanto o TikTok não aprova o app, ele só aceita \"Só eu\"."),
+      h("div", { style: "display:flex;gap:14px;flex-wrap:wrap" }, lCom, lDue, lSti),
+      lCom1, h("div", { style: "display:flex;gap:14px;flex-wrap:wrap;padding-left:22px" }, lSua, lParc),
+      lAce,
+      longoDemais && h("div", { class: "aviso erro" }, `O vídeo tem ${Math.round(x.duracao_s)} s e a conta aceita até ${cr.max_video_post_duration_sec} s no TikTok.`),
+      h("p", { class: "nota", style: "margin:0" }, "Depois de aprovado, pode levar alguns minutos para o vídeo aparecer no perfil."));
     const motivo = h("textarea", { id: "pub-motivo", placeholder: "O que o editor precisa ajustar?" });
     const caixaMotivo = h("label", { for: "pub-motivo", hidden: true }, "Motivo da recusa", motivo);
     const msg = h("div", { class: "aviso erro", hidden: true });
     const erro = (e) => { msg.hidden = false; msg.textContent = e.message || e; };
     async function decidir(aprovar) {
       if (!aprovar && caixaMotivo.hidden) { caixaMotivo.hidden = false; motivo.focus(); return; }
+      const redes = caixas.filter(([c]) => c.checked).map(([c]) => c.value);
+      if (aprovar && redes.includes("tiktok")) {
+        if (!ttPriv.value) return erro("No TikTok, escolha quem pode ver o vídeo.");
+        if (!ttAce.checked) return erro("No TikTok, marque a concordância com a Confirmação de Uso de Música.");
+        if (ttCom1.checked && !ttSua.checked && !ttParc.checked) return erro("Conteúdo comercial: marque \"Sua marca\" e/ou \"Conteúdo de marca\".");
+        if (longoDemais) return erro("O vídeo é longo demais para o TikTok desta conta: desmarque o TikTok.");
+      }
       const { error } = await db.rpc("cw_pub_decidir", { p_id: x.id, p_aprovar: aprovar, p_motivo: motivo.value, p_legenda: legenda.value,
-        p_titulo_youtube: tyt.value, p_redes: caixas.filter(([c]) => c.checked).map(([c]) => c.value),
-        p_agendado_para: quando.value ? new Date(quando.value).toISOString() : null });
+        p_titulo_youtube: tyt.value, p_redes: redes, p_agendado_para: quando.value ? new Date(quando.value).toISOString() : null,
+        p_opcoes: { tiktok: { privacidade: ttPriv.value, comentarios: ttCom.checked, dueto: ttDue.checked, stitch: ttSti.checked,
+          sua_marca: ttSua.checked, conteudo_marca: ttParc.checked, aceite: ttAce.checked } } });
       if (error) return erro(error);
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
     }
@@ -2130,6 +2173,7 @@
         h("label", { for: "pub-tyt" }, "Título no YouTube", tyt),
         h("fieldset", { style: "border:0;padding:0;margin:0;display:flex;gap:14px;flex-wrap:wrap" }, h("legend", { class: "nota" }, "Postar em"),
           caixas.map(([c, nome]) => h("label", { class: "check", style: "display:inline-flex;flex-direction:row;gap:6px;align-items:center;white-space:nowrap" }, c, nome))),
+        ttBox,
         h("label", { for: "pub-quando" }, "Quando postar (vazio = na próxima passada do robô)", quando),
         caixaMotivo, msg,
         h("div", { class: "acoes" },
