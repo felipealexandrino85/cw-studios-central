@@ -182,6 +182,16 @@
   .tt-box .conta img { width: 32px; height: 32px; border-radius: 50%; }
   .tt-box label.check { display: inline-flex; flex-direction: row; gap: 6px; align-items: center; font-weight: 600; }
   .tt-box input[type=checkbox] { width: auto; margin: 0; }
+  .pub-capa { position: relative; display: block; }
+  a.botao { text-decoration: none; display: inline-flex; align-items: center; }
+  .pub-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(20, 12, 40, .78); color: #fff; border-radius: 999px; padding: 8px 16px; font-weight: 800; font-size: 14px; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+  .pub-play:hover { background: var(--brand); }
+  .pub-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 14px; margin: 0; }
+  .pub-info div { min-width: 0; } .pub-info dt { font-size: 11.5px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; }
+  .pub-info dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+  .pub-avisos { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+  .pub-avisos .chip { white-space: normal; text-align: left; line-height: 1.35; max-width: 100%; }
+  .pub-card .tit { overflow-wrap: anywhere; }
   .pub-video { width: 100%; max-width: 340px; aspect-ratio: 9 / 16; border: 0; border-radius: 14px; background: #111; justify-self: center; }
   .bib-filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .bib-filtros input[type=search] { flex: 1 1 240px; min-width: 0; }
@@ -2369,11 +2379,16 @@
       db.from("publicacoes").select("*").order("id", { ascending: false }).limit(150), db.rpc("cw_pub_situacao")]);
     PUB.lista = l.data || []; PUB.situacao = st.data || {}; PUB.carregado = Date.now();
   }
+  function roboAtrasado(st) {   // robô agendado a cada 30 min, das 7h às 22h
+    const h = new Date().getHours();
+    return st.visto && h >= 8 && h < 23 && Date.now() - new Date(st.visto) > 75 * 60000;
+  }
   async function desenharPublicacao() {
     if (Date.now() - PUB.carregado > 5000) await carregarPublicacao();
     const st = PUB.situacao, ok = (k) => st[k] ? "✓" : "✗";
     encher($("#pub-conexoes"), h("b", {}, "Robô de postagem"),
       st.visto ? h("span", { class: "nota" }, "passou " + ha(st.visto)) : h("span", { class: "nota" }, "ainda não rodou"),
+      roboAtrasado(st) && h("span", { class: "chip tom-aviso", title: "O GitHub às vezes atrasa ou pula o horário agendado do robô" }, "Robô atrasado: o GitHub não rodou no horário"),
       ["drive", "instagram", "tiktok", "youtube"].map((k) => h("span", { class: "chip " + (st[k] ? "tom-ok" : "tom-neutro") },
         `${ok(k)} ${{ drive: "Google Drive", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube" }[k]}${k === "instagram" && st.instagram_conta ? " @" + st.instagram_conta : ""}${k === "tiktok" && st.tiktok_conta ? " @" + st.tiktok_conta : ""}`)),
       st.tiktok && !st.tiktok_publico && h("span", { class: "chip tom-aviso", title: "Até o TikTok aprovar o app, os vídeos saem privados" }, "TikTok: posts privados até a aprovação"),
@@ -2403,22 +2418,51 @@
       return h("span", { class: "chip" }, nome);
     }));
   }
+  // link para assistir: o arquivo no Drive (quando o robô já ligou o card) ou a busca pelo nome no Drive (na hora)
+  const PASTA_APROVAR = "1Mp8Yi6pvlhk0ouneA1cjch--oqNH59PB";
+  const linkVideo = (x) => x.drive_id ? `https://drive.google.com/file/d/${x.drive_id}/view`
+    : `https://drive.google.com/drive/search?q=${encodeURIComponent((x.arquivo || "").replace(/\.[^.]+$/, ""))}`;
+  const mb = (b) => b ? (b >= 1e9 ? (b / 1e9).toFixed(1).replace(".", ",") + " GB" : Math.round(b / 1e6) + " MB") : null;
+  const hashtags = (t) => (String(t || "").match(/#[\p{L}\p{N}_]+/gu) || []).length;
+  // avisos que ajudam a decidir antes de aprovar (limites de cada rede)
+  function avisosPub(x) {
+    const a = [], d = x.duracao_s, redes = x.redes || [], leg = x.legenda || "", tt = ((PUB.situacao || {}).tiktok_criador || {}).max_video_post_duration_sec;
+    if (d && d > 90 && redes.includes("instagram")) a.push(["Mais de 90 s: o Reels não aparece na aba Reels de quem não segue", "tom-aviso"]);
+    if (d && d > 180 && redes.includes("youtube")) a.push(["Mais de 3 min: o YouTube não trata como Shorts", "tom-critico"]);
+    if (d && tt && d > tt && redes.includes("tiktok")) a.push([`Mais longo que o TikTok aceita (${tt} s)`, "tom-critico"]);
+    if (d && d < 5) a.push(["Menos de 5 s", "tom-aviso"]);
+    if (!leg.trim()) a.push(["Sem legenda", "tom-aviso"]);
+    if (leg.length > 2200) a.push(["Legenda passa de 2.200 caracteres", "tom-critico"]);
+    if (hashtags(leg) > 30) a.push([`${hashtags(leg)} hashtags (o Instagram aceita até 30)`, "tom-critico"]);
+    if (redes.includes("youtube") && !(x.titulo_youtube || "").trim()) a.push(["Sem título para o YouTube", "tom-aviso"]);
+    if (/\.mov$/i.test(x.arquivo || "") && x.tamanho > 250e6) a.push(["Arquivo .mov grande: o envio às redes pode demorar", "tom-neutro"]);
+    return a;
+  }
   function cartaoPub(x) {
     const [rot, tom] = ESTADO_PUB[x.estado] || [x.estado, "tom-neutro"];
+    const avisos = avisosPub(x);
     return h("button", { class: "pub-card", onclick: () => abrirPub(x) },
-      x.previa ? h("img", { src: x.previa, alt: "Quadros do corte " + x.titulo }) : h("div", { class: "pub-previa" }),
+      h("span", { class: "pub-capa" }, x.previa ? h("img", { src: x.previa, alt: "Quadros do corte " + x.titulo }) : h("div", { class: "pub-previa" }),
+        h("a", { class: "pub-play", href: linkVideo(x), target: "_blank", rel: "noopener", onclick: (ev) => ev.stopPropagation(),
+          title: x.drive_id ? "Assistir no Drive" : "Abre a busca do Drive pelo nome do arquivo" }, "▶ Assistir")),
       h("div", { class: "corpo" },
         h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), x.episodio && h("span", { class: "chip" }, x.episodio),
           x.duracao_s && h("span", { class: "chip tom-neutro" }, Math.round(x.duracao_s) + " s"),
           x.agendado_para && x.estado !== "postado" && h("span", { class: "chip tom-aviso" }, "🗓 " + horaBR(x.agendado_para))),
         h("div", { class: "tit" }, x.titulo),
         x.legenda && h("div", { class: "leg" }, x.legenda),
+        avisos.length ? h("div", { class: "pub-avisos" }, avisos.map(([t, tm]) => h("span", { class: "chip " + tm }, "⚠ " + t))) : null,
         chipsRedes(x),
         h("small", { class: "nota" }, `P-${String(x.id).padStart(4, "0")} · ${nomeEditor(x.editor_slug) || "editor"} · enviado ${ha(x.criado)}`)));
   }
   function abrirPub(x) {
     const pode = podeAprovar(), aguardando = x.estado === "aguardando" || x.estado === "recusado";
     const legenda = h("textarea", { id: "pub-legenda", style: "min-height:140px" }); legenda.value = x.legenda || "";
+    const contLeg = h("span", { class: "nota" });
+    const contar = () => { const n = legenda.value.length, ht = hashtags(legenda.value);
+      contLeg.textContent = `${n.toLocaleString("pt-BR")}/2.200 caracteres · ${ht} hashtag${ht === 1 ? "" : "s"}${n > 2200 || ht > 30 ? " · passou do limite" : ""}`;
+      contLeg.style.color = n > 2200 || ht > 30 ? "var(--critico-tx)" : ""; };
+    legenda.addEventListener("input", contar); contar();
     const tyt = h("input", { id: "pub-tyt", maxlength: 100, value: x.titulo_youtube || x.titulo });
     const quando = h("input", { id: "pub-quando", type: "datetime-local" });
     if (x.agendado_para) { const d = new Date(x.agendado_para); quando.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
@@ -2482,16 +2526,25 @@
     encher($("#detalhe-corpo"),
       h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), x.episodio && h("span", { class: "chip" }, x.episodio), x.jira && h("span", { class: "chip" }, x.jira)),
       h("h2", {}, x.titulo),
-      h("p", { class: "nota", style: "margin:0" }, `P-${String(x.id).padStart(4, "0")} · ${nomeEditor(x.editor_slug) || "editor"} · ${x.arquivo}${x.duracao_s ? " · " + Math.round(x.duracao_s) + " s" : ""}`),
+      h("p", { class: "nota", style: "margin:0" }, `P-${String(x.id).padStart(4, "0")} · ${nomeEditor(x.editor_slug) || "editor"}${x.duracao_s ? " · " + Math.round(x.duracao_s) + " s" : ""}`),
       x.drive_id ? h("iframe", { class: "pub-video", src: `https://drive.google.com/file/d/${x.drive_id}/preview`, allow: "autoplay", title: "Corte " + x.titulo })
         : x.previa ? h("img", { src: x.previa, alt: "Quadros do corte", style: "width:100%;border-radius:14px" }) : null,
-      x.drive_id ? h("a", { href: `https://drive.google.com/file/d/${x.drive_id}/view`, target: "_blank", rel: "noopener" }, "Abrir no Drive")
-        : h("p", { class: "nota", style: "margin:0" }, `O vídeo está no Drive em ${x.pasta || "11. PUBLICAÇÃO/1. Para aprovar"}/${x.arquivo}. O player aparece aqui quando o robô ligar o card ao arquivo.`),
+      h("div", { class: "acoes", style: "justify-content:center" },
+        h("a", { class: "botao amarelo", href: linkVideo(x), target: "_blank", rel: "noopener" }, x.drive_id ? "▶ Assistir no Drive" : "▶ Achar o vídeo no Drive"),
+        h("a", { class: "botao leve", href: `https://drive.google.com/drive/folders/${PASTA_APROVAR}`, target: "_blank", rel: "noopener" }, "Pasta Para aprovar")),
+      !x.drive_id && h("p", { class: "nota", style: "margin:0;text-align:center" }, "O player aparece aqui quando o robô ligar o card ao arquivo; até lá, o botão abre a busca do Drive pelo nome."),
+      h("dl", { class: "pub-info" },
+        [["Editor", nomeEditor(x.editor_slug) || "—"], ["Enviado", horaBR(x.criado)], ["Duração", x.duracao_s ? Math.round(x.duracao_s) + " s" : "—"],
+         ["Arquivo", [x.arquivo, mb(x.tamanho)].filter(Boolean).join(" · ")],
+         x.jira && ["Card", h("a", { href: urlJira(x.jira), target: "_blank", rel: "noopener" }, x.jira)], x.episodio && ["Episódio", x.episodio],
+         x.decidido_em && [x.estado === "recusado" ? "Recusado por" : "Aprovado por", `${(x.decidido_por || "").split("@")[0]} · ${horaBR(x.decidido_em)}`],
+         x.agendado_para && ["Agendado", horaBR(x.agendado_para)]].filter(Boolean).map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, v)))),
+      avisosPub(x).length ? h("div", { class: "pub-avisos" }, avisosPub(x).map(([t, tm]) => h("span", { class: "chip " + tm }, "⚠ " + t))) : null,
       x.motivo && h("div", { class: "aviso" }, "Motivo da recusa: " + x.motivo),
       x.erro && x.estado !== "postado" && h("div", { class: x.estado === "erro" ? "aviso erro" : "aviso" }, x.erro),
       x.estado === "postado" || Object.keys(x.resultados || {}).length ? chipsRedes(x) : null,
       pode && aguardando ? [
-        h("label", { for: "pub-legenda" }, "Legenda (Instagram e TikTok; vai na descrição do YouTube)", legenda),
+        h("label", { for: "pub-legenda" }, "Legenda (Instagram e TikTok; vai na descrição do YouTube)", legenda, contLeg),
         h("label", { for: "pub-tyt" }, "Título no YouTube", tyt),
         h("fieldset", { style: "border:0;padding:0;margin:0;display:flex;gap:14px;flex-wrap:wrap" }, h("legend", { class: "nota" }, "Postar em"),
           caixas.map(([c, nome]) => h("label", { class: "check", style: "display:inline-flex;flex-direction:row;gap:6px;align-items:center;white-space:nowrap" }, c, nome))),
