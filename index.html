@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="cast.css?v=2026-10-20a">
 <script src="cast.js?v=2026-10-20a"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   // ===== Configuração do time (Supabase: Project Settings > API). A chave anon é pública por desenho:
   // quem protege os dados é o login com e-mail @cardapioweb.com e as regras do banco (papel de cada pessoa).
@@ -200,6 +201,11 @@
   .tt-box label.check { display: inline-flex; flex-direction: row; gap: 6px; align-items: center; font-weight: 600; }
   .tt-box input[type=checkbox] { width: auto; margin: 0; }
   .pub-capa { position: relative; display: block; }
+  .subir-lista { display: grid; gap: 12px; max-height: 52vh; overflow: auto; }
+  .subir-item { border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+  .subir-item .nome { font: 12px ui-monospace, Menlo, monospace; color: var(--text-faint); overflow-wrap: anywhere; }
+  .subir-barra { height: 8px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+  .subir-barra i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .3s; }
   a.botao { text-decoration: none; display: inline-flex; align-items: center; }
   .pub-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(20, 12, 40, .78); color: #fff; border-radius: 999px; padding: 8px 16px; font-weight: 800; font-size: 14px; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
   .pub-play:hover { background: var(--brand); }
@@ -603,6 +609,7 @@
   <section id="aba-publicacao" hidden>
     <header class="cabeca"><p class="kicker">Programas</p><h1>Publicação</h1>
       <p class="sub">Cortes prontos esperando aprovação. Aprovado, o robô posta no Instagram, TikTok e YouTube Shorts (confere a fila a cada 30 min, das 7h às 22h) e traz os links de volta.</p></header>
+    <div class="acoes" id="pub-acoes"></div>
     <div class="pub-conexoes" id="pub-conexoes"></div>
     <div class="segmentos" role="tablist" id="pub-seg"></div>
     <div class="pub-grade" id="pub-lista"></div>
@@ -2486,12 +2493,133 @@
       db.from("publicacoes").select("*").order("id", { ascending: false }).limit(150), db.rpc("cw_pub_situacao")]);
     PUB.lista = l.data || []; PUB.situacao = st.data || {}; PUB.carregado = Date.now();
   }
+  const quemMandou = (x) => nomeEditor(x.editor_slug) || (x.enviado_por ? x.enviado_por.split("@")[0] : "") || "editor";
+  // ---- produção sobe cortes pela página: o vídeo vai do navegador direto para o Drive (conta Google de quem sobe)
+  const GOOGLE_WEB = "97328569743-e9cqh8k5o2b78p5a03kf6g5cnash7702.apps.googleusercontent.com";
+  const PASTA_APROVAR_TXT = "CW Studios - Produção/CW Cast - Cortes/11. PUBLICAÇÃO/1. Para aprovar";
+  const acessoDrive = {};
+  function pedirAcessoDrive(escopo) {
+    return new Promise((ok, falha) => {
+      const guardado = acessoDrive[escopo];
+      if (guardado && guardado.expira > Date.now() + 120000) return ok(guardado.token);
+      if (!(window.google && google.accounts && google.accounts.oauth2)) return falha(new Error("O login do Google ainda não carregou. Espere uns segundos e tente de novo."));
+      google.accounts.oauth2.initTokenClient({ client_id: GOOGLE_WEB, scope: escopo, hint: eu.email,
+        callback: (r) => { if (r.error) return falha(new Error("O Google não liberou o Drive: " + r.error));
+          acessoDrive[escopo] = { token: r.access_token, expira: Date.now() + (r.expires_in || 3600) * 1000 }; ok(r.access_token); },
+        error_callback: (e) => falha(new Error(e && e.type === "popup_closed" ? "A janela do Google foi fechada antes de liberar o Drive." : "Não consegui abrir a janela do Google (libere pop-ups para a Central).")) }).requestAccessToken();
+    });
+  }
+  async function iniciarEnvioDrive(token, arquivo, nome) {
+    const r = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,size,name", {
+      method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": arquivo.type || "video/mp4", "X-Upload-Content-Length": String(arquivo.size) },
+      body: JSON.stringify({ name: nome, parents: [PASTA_APROVAR] }) });
+    if (!r.ok) { const e = new Error(`O Drive recusou (${r.status}): ${(await r.text()).slice(0, 200)}`); e.status = r.status; throw e; }
+    return r.headers.get("Location");
+  }
+  function enviarParaDrive(url, arquivo, progresso) {
+    return new Promise((ok, falha) => {
+      const x = new XMLHttpRequest();
+      x.open("PUT", url); x.setRequestHeader("Content-Type", arquivo.type || "video/mp4");
+      x.upload.onprogress = (ev) => ev.lengthComputable && progresso(ev.loaded / ev.total);
+      x.onload = () => x.status < 300 ? ok(JSON.parse(x.responseText || "{}")) : falha(new Error(`O Drive recusou o vídeo (${x.status})`));
+      x.onerror = () => falha(new Error("A conexão caiu no meio do envio"));
+      x.send(arquivo);
+    });
+  }
+  async function subirNoDrive(arquivo, nome, progresso) {
+    // drive.file basta para criar arquivos; se o Drive não deixar usar a pasta compartilhada com ele, pede o acesso completo
+    let token = await pedirAcessoDrive("https://www.googleapis.com/auth/drive.file"), url;
+    try { url = await iniciarEnvioDrive(token, arquivo, nome); }
+    catch (e) {
+      if (e.status !== 404 && e.status !== 403) throw e;
+      token = await pedirAcessoDrive("https://www.googleapis.com/auth/drive");
+      url = await iniciarEnvioDrive(token, arquivo, nome);
+    }
+    if (!url) throw new Error("O Drive não devolveu o endereço de envio");
+    return enviarParaDrive(url, arquivo, progresso);
+  }
+  async function analisarVideo(arquivo) {   // duração e 3 quadros lado a lado (prévia do card), no próprio navegador
+    const url = URL.createObjectURL(arquivo), v = document.createElement("video");
+    v.muted = true; v.preload = "auto"; v.src = url;
+    let dur = null, previa = null;
+    try {
+      await new Promise((ok, falha) => { v.onloadedmetadata = ok; v.onerror = falha; setTimeout(falha, 15000); });
+      dur = isFinite(v.duration) ? v.duration : null;
+      if (dur && v.videoWidth) {
+        const alt = 300, larg = Math.round(v.videoWidth * alt / v.videoHeight), cv = document.createElement("canvas");
+        cv.width = larg * 3; cv.height = alt; const g = cv.getContext("2d");
+        for (const [i, f] of [0.15, 0.5, 0.85].entries()) {
+          v.currentTime = dur * f;
+          await new Promise((ok) => { v.onseeked = ok; setTimeout(ok, 5000); });
+          g.drawImage(v, i * larg, 0, larg, alt);
+        }
+        previa = cv.toDataURL("image/jpeg", 0.6);
+        if (previa.length > 390000) previa = cv.toDataURL("image/jpeg", 0.35);
+        if (previa.length > 390000) previa = null;
+      }
+    } catch { /* formato que o navegador não abre (ex.: alguns .mov): sobe sem prévia */ }
+    URL.revokeObjectURL(url);
+    return { dur, previa };
+  }
+  const slugArquivo = (t) => semAcento(t).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "corte";
+  function abrirSubirCortes() {
+    const ttTravado = !(PUB.situacao || {}).tiktok_publico, itens = [];
+    const lista = h("div", { class: "subir-lista" }), msg = h("div", { class: "aviso erro", hidden: true });
+    const entrada = h("input", { type: "file", accept: "video/mp4,video/quicktime,.mp4,.mov", multiple: true, id: "subir-arquivos" });
+    entrada.onchange = () => {
+      for (const arq of entrada.files) {
+        const titulo = h("input", { maxlength: 200, "aria-label": "Título do corte" }); titulo.value = arq.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+        const legenda = h("textarea", { placeholder: "Legenda (dá para escrever agora ou depois, ao aprovar)", style: "min-height:60px" });
+        const redes = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" });
+          c.checked = k !== "tiktok" || !ttTravado; if (k === "tiktok" && ttTravado) { c.checked = false; c.disabled = true; } return [c, nome]; });
+        const barra = h("i"), estado = h("span", { class: "nota" }, `${mb(arq.size)} · pronto para subir`);
+        const it = { arq, titulo, legenda, redes, barra, estado };
+        it.el = h("div", { class: "subir-item" }, h("div", { class: "nome" }, arq.name), titulo, legenda,
+          h("div", { style: "display:flex;gap:12px;flex-wrap:wrap" }, redes.map(([c, nome]) => h("label", { class: "check", style: "display:inline-flex;flex-direction:row;gap:6px;align-items:center" }, c, nome))),
+          h("div", { class: "subir-barra" }, barra), estado);
+        itens.push(it); lista.append(it.el);
+      }
+      entrada.value = "";
+    };
+    const botao = h("button", { class: "botao amarelo", onclick: async () => {
+      const pendentes = itens.filter((i) => !i.feito);
+      if (!pendentes.length) { msg.hidden = false; msg.textContent = "Escolha pelo menos um vídeo."; return; }
+      msg.hidden = true; botao.disabled = true;
+      for (const it of pendentes) {
+        try {
+          if (!it.titulo.value.trim()) throw new Error("Dê um título ao corte");
+          it.estado.textContent = "Preparando a prévia…";
+          const { dur, previa } = await analisarVideo(it.arq);
+          const d = new Date(), hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          const ext = (it.arq.name.match(/\.[^.]+$/) || [".mp4"])[0].toLowerCase();
+          const nome = `${hoje}_${slugArquivo(it.titulo.value)}_${Math.random().toString(16).slice(2, 6)}${ext}`;
+          it.estado.textContent = "Enviando para o Drive…";
+          const f = await subirNoDrive(it.arq, nome, (p) => { it.barra.style.width = Math.round(p * 100) + "%"; it.estado.textContent = `Enviando para o Drive… ${Math.round(p * 100)}%`; });
+          const { error } = await db.rpc("cw_pub_criar", { p_dados: { titulo: it.titulo.value.trim(), legenda: it.legenda.value, arquivo: f.name || nome,
+            pasta: PASTA_APROVAR_TXT, drive_id: f.id, tamanho: Number(f.size) || it.arq.size, duracao_s: dur ? Math.round(dur * 10) / 10 : null, previa,
+            redes: it.redes.filter(([c]) => c.checked).map(([c]) => c.value) } });
+          if (error) throw new Error(error.message);
+          it.feito = true; it.barra.style.width = "100%"; it.estado.textContent = "✓ No Para aprovar";
+        } catch (e) { it.estado.textContent = "✗ " + (e.message || e); }
+      }
+      botao.disabled = false;
+      await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
+    } }, "Subir");
+    encher($("#detalhe-corpo"), h("h2", {}, "Subir cortes"),
+      h("p", { class: "nota", style: "margin:0" }, "Escolha um ou mais vídeos (.mp4 ou .mov). Eles vão para a pasta \"1. Para aprovar\" do Drive com a sua conta Google e viram cards em Para aprovar. Depois é só abrir cada card, ajustar a legenda e aprovar."),
+      h("label", { for: "subir-arquivos" }, "Vídeos", entrada), lista, msg,
+      h("p", { class: "nota", style: "margin:0" }, "Na primeira vez, o Google pede para liberar o Drive para a Central. Não feche esta janela enquanto envia."),
+      h("div", { class: "acoes" }, botao, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
   function roboAtrasado(st) {   // robô agendado a cada 30 min, das 7h às 22h
     const h = new Date().getHours();
     return st.visto && h >= 8 && h < 23 && Date.now() - new Date(st.visto) > 75 * 60000;
   }
   async function desenharPublicacao() {
     if (Date.now() - PUB.carregado > 5000) await carregarPublicacao();
+    encher($("#pub-acoes"), podeAprovar() ? h("button", { class: "botao amarelo", onclick: abrirSubirCortes }, "⬆ Subir cortes") : null);
     const st = PUB.situacao, ok = (k) => st[k] ? "✓" : "✗";
     encher($("#pub-conexoes"), h("b", {}, "Robô de postagem"),
       st.visto ? h("span", { class: "nota" }, "passou " + ha(st.visto)) : h("span", { class: "nota" }, "ainda não rodou"),
@@ -2560,7 +2688,7 @@
         x.legenda && h("div", { class: "leg" }, x.legenda),
         avisos.length ? h("div", { class: "pub-avisos" }, avisos.map(([t, tm]) => h("span", { class: "chip " + tm }, "⚠ " + t))) : null,
         chipsRedes(x),
-        h("small", { class: "nota" }, `P-${String(x.id).padStart(4, "0")} · ${nomeEditor(x.editor_slug) || "editor"} · enviado ${ha(x.criado)}`)));
+        h("small", { class: "nota" }, `P-${String(x.id).padStart(4, "0")} · ${quemMandou(x)} · enviado ${ha(x.criado)}`)));
   }
   function abrirPub(x) {
     const pode = podeAprovar(), aguardando = x.estado === "aguardando" || x.estado === "recusado";
@@ -2636,7 +2764,7 @@
     encher($("#detalhe-corpo"),
       h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), x.episodio && h("span", { class: "chip" }, x.episodio), x.jira && h("span", { class: "chip" }, x.jira)),
       h("h2", {}, x.titulo),
-      h("p", { class: "nota", style: "margin:0" }, `P-${String(x.id).padStart(4, "0")} · ${nomeEditor(x.editor_slug) || "editor"}${x.duracao_s ? " · " + Math.round(x.duracao_s) + " s" : ""}`),
+      h("p", { class: "nota", style: "margin:0" }, `P-${String(x.id).padStart(4, "0")} · ${quemMandou(x)}${x.duracao_s ? " · " + Math.round(x.duracao_s) + " s" : ""}`),
       x.drive_id ? h("iframe", { class: "pub-video", src: `https://drive.google.com/file/d/${x.drive_id}/preview`, allow: "autoplay", title: "Corte " + x.titulo })
         : x.previa ? h("img", { src: x.previa, alt: "Quadros do corte", style: "width:100%;border-radius:14px" }) : null,
       h("div", { class: "acoes", style: "justify-content:center" },
@@ -2644,7 +2772,7 @@
         h("a", { class: "botao leve", href: `https://drive.google.com/drive/folders/${PASTA_APROVAR}`, target: "_blank", rel: "noopener" }, "Pasta Para aprovar")),
       !x.drive_id && h("p", { class: "nota", style: "margin:0;text-align:center" }, "O player aparece aqui quando o robô ligar o card ao arquivo; até lá, o botão abre a busca do Drive pelo nome."),
       h("dl", { class: "pub-info" },
-        [["Editor", nomeEditor(x.editor_slug) || "—"], ["Enviado", horaBR(x.criado)], ["Duração", x.duracao_s ? Math.round(x.duracao_s) + " s" : "—"],
+        [[x.editor_slug ? "Editor" : "Enviado por", quemMandou(x)], ["Enviado", horaBR(x.criado)], ["Duração", x.duracao_s ? Math.round(x.duracao_s) + " s" : "—"],
          ["Arquivo", [x.arquivo, mb(x.tamanho)].filter(Boolean).join(" · ")],
          x.jira && ["Card", h("a", { href: urlJira(x.jira), target: "_blank", rel: "noopener" }, x.jira)], x.episodio && ["Episódio", x.episodio],
          x.decidido_em && [x.estado === "recusado" ? "Recusado por" : "Aprovado por", `${(x.decidido_por || "").split("@")[0]} · ${horaBR(x.decidido_em)}`],
