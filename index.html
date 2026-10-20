@@ -541,7 +541,8 @@
   </section>
 
   <section id="aba-escritorio" hidden>
-    <header class="cabeca"><p class="kicker" id="esc-kicker">Meu trabalho</p><h1>Escritório</h1>
+    <div class="acoes"><button class="botao leve" id="esc-voltar" type="button">← Voltar para a Sala</button></div>
+    <header class="cabeca"><p class="kicker" id="esc-kicker">Meu trabalho</p><h1 id="esc-titulo">Meu computador</h1>
       <p class="sub" id="esc-sub">Escreva aqui e o Claude da sua máquina edita. Ele age sozinho só dentro da pasta do vídeo; qualquer outra coisa pede o seu OK nesta página.</p></header>
     <div class="estacao" id="esc-estacao"></div>
     <div class="esc">
@@ -599,7 +600,7 @@
 
   <section id="aba-sala" hidden>
     <header class="cabeca"><p class="kicker">Operação</p><h1>Sala do CW Studios</h1>
-      <p class="sub">O time ao vivo. Na mesa e digitando é edição acontecendo agora; circulando pela sala é online sem vídeo aberto; mesa vazia é fora. Clique num bonequinho para ver o que ele está fazendo.</p></header>
+      <p class="sub" id="sala-sub">O time ao vivo. Na mesa e digitando é edição acontecendo agora; circulando pela sala é online sem vídeo aberto; mesa vazia é fora. Clique num bonequinho para ver o que ele está fazendo.</p></header>
     <div class="acoes"><button class="botao leve" id="sala-cheia">Tela cheia (para TV)</button></div>
     <div class="sala-palco" id="sala-palco"><canvas id="sala-canvas" aria-label="Sala do CW Studios com o time ao vivo" role="img"></canvas></div>
     <div class="sala-legenda" id="sala-legenda"></div>
@@ -758,7 +759,7 @@
     editor: [["Meu trabalho", [["meudia", "Meu dia"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
   };
-  const EXTRAS = { gestor: ["pedir"], producao: ["pedir"], editor: [], solicitante: [] };
+  const EXTRAS = { gestor: ["pedir", "escritorio"], producao: ["pedir"], editor: ["escritorio"], solicitante: [] };   // abas sem item no menu
   const abasDe = (papel) => (MENU[papel] || []).flatMap(([, itens]) => itens.map(([id]) => id)).concat(EXTRAS[papel] || []);
   const ICONES = {
     inicio: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
@@ -1099,14 +1100,36 @@
       h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
   }
+  // "editando agora" = passo nos últimos 30 min (ou Premiere em uso); o resto fecha sozinho 2 h depois do último passo
+  const ativoRecente = (t) => (t.agora_faz && minutosDesde(t.agora_faz.ts) <= 30) || (t.premiere && t.premiere.ultimo_ativo && minutosDesde(t.premiere.ultimo_ativo) <= 10);
+  function feitosHoje() {
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const base = eu.papel === "gestor" ? D.edicoes.filter((x) => visao.papel !== "editor" || x.editor_slug === visao.editor) : eu.papel === "editor" ? D.entregas : [];
+    return base.filter((x) => x.status === "entregue" && x.fechado_em && new Date(x.fechado_em) >= hoje)
+      .sort((a, b) => (b.fechado_em || "").localeCompare(a.fechado_em || ""));
+  }
   function desenharAoVivo() {
     const recencia = (l) => (l.t.agora_faz && l.t.agora_faz.ts) || l.t.desde || "";
-    const linhas = linhasAoVivo().sort((a, b) => recencia(b).localeCompare(recencia(a))), vivas = linhas.filter((l) => l.viva), paradas = linhas.filter((l) => !l.viva);
+    const linhas = linhasAoVivo().sort((a, b) => recencia(b).localeCompare(recencia(a)));
+    const vivas = linhas.filter((l) => l.viva && ativoRecente(l.t)), quietas = linhas.filter((l) => !(l.viva && ativoRecente(l.t)));
+    const feitos = feitosHoje(), numeros = eu.papel === "gestor";
+    const pecasHoje = feitos.reduce((a, x) => a + (x.pecas || 1), 0);
     const semNada = D.editores.filter((e) => e.ativo && !linhas.some((l) => l.ed.slug === e.slug));
     encher($("#aovivo"),
       h("h3", { class: "grupo" }, `Editando agora (${vivas.length})`),
       vivas.length ? vivas.map(blocoEdicao) : h("div", { class: "vazio" }, "Ninguém editando neste momento."),
-      paradas.length ? [h("h3", { class: "grupo" }, `Em aberto, parados (${paradas.length})`), paradas.map(blocoEdicao)] : null,
+      (numeros || eu.papel === "editor") && [h("h3", { class: "grupo" }, `Feito hoje (${feitos.length} ${feitos.length === 1 ? "vídeo" : "vídeos"}${pecasHoje > feitos.length ? ` · ${pecasHoje} peças` : ""})`),
+        feitos.length ? h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Hora"), numeros && h("th", {}, "Editor"), h("th", {}, "Vídeo"),
+            h("th", { class: "n" }, "Peças"), numeros && h("th", { class: "n" }, "Tempo ativo"), h("th", {}, "Etapas"))),
+          h("tbody", {}, feitos.map((x) => h("tr", {}, td(horaBR(x.fechado_em).slice(-5)), numeros && td(nomeEditor(x.editor_slug)),
+            td([x.titulo, x.jira ? h("span", { class: "nota" }, " · " + x.jira) : x.demanda ? h("span", { class: "nota" }, " · " + x.demanda) : null]),
+            td(x.pecas || 1, 1), numeros && td(duracao(x.segundos_ativos || 0), 1),
+            td(h("span", { class: "chips" }, Object.keys(x.etapas || {}).filter((k) => (x.etapas[k] || 0) > 30).map((k) => h("span", { class: "chip tom-neutro" }, (ETAPAS.find(([e]) => e === k) || [k, k])[1])))))))))
+          : h("div", { class: "vazio" }, "Nenhum vídeo finalizado hoje ainda. Um vídeo conta como feito quando chega à versão final (render, exportação ou publicação); se ninguém avisar, ele fecha sozinho 2 h depois do último passo.")],
+      quietas.length ? h("details", { class: "caixa", style: "background:#fff" },
+        h("summary", { style: "cursor:pointer;font-weight:700" }, `Abertos sem atividade recente (${quietas.length})`),
+        h("p", { class: "nota", style: "margin:6px 0 10px" }, "Sem passo nos últimos 30 min. Fecham sozinhos 2 h depois do último passo: como feito, se chegaram a uma versão final; senão, como \"sem entrega\"."),
+        quietas.map(blocoEdicao)) : null,
       semNada.length ? h("div", { class: "vazio" }, "Sem vídeo aberto: " + semNada.map((e) => e.nome).join(", ")) : null);
   }
 
@@ -1598,7 +1621,7 @@
   });
 
   // ---------------------------------------------------------------- sala (escritório em pixel art com o time ao vivo)
-  const SALA = { conversas: [], convTs: 0, bonecos: {}, alvos: [], raf: null, quadro: 0, ultimo: 0 };
+  const SALA = { conversas: [], estacoes: [], convTs: 0, bonecos: {}, alvos: [], raf: null, quadro: 0, ultimo: 0 };
   const SC = 3, TILE = 16;   // 1 "pixel" da arte = 3 px do canvas
   const COR_ETAPA = { preparo: "#7fa4c9", transcricao: "#3fc1b0", corte: "#f59f4a", montagem: "#4a8df5", motion: "#f25aa8",
                       render: "#a66bff", acabamento: "#7d6bff", revisao: "#f5d04a", entrega: "#4cd07d" };
@@ -1609,11 +1632,13 @@
   async function desenharSala() {
     if (Date.now() - SALA.convTs > 15000) {
       SALA.convTs = Date.now();
-      const { data } = await db.from("esc_conversas").select("editor_slug,estado").in("estado", ["rodando", "esperando_ok"]);
-      SALA.conversas = data || [];
+      const [cv, es] = await Promise.all([db.from("esc_conversas").select("editor_slug,estado").in("estado", ["rodando", "esperando_ok"]),
+        db.from("estacoes").select("editor_slug,maquina,visto")]);
+      SALA.conversas = Array.isArray(cv.data) ? cv.data : []; SALA.estacoes = Array.isArray(es.data) ? es.data : [];
     }
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo aberto"],
       ["#6b5a87", "Fora"], ["#7d6bff", "No Premiere"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
+    if (meuSlug()) $("#sala-sub").textContent = "O time ao vivo. Clique no seu computador (a setinha amarela) para mandar pedidos ao Claude da sua máquina — ele edita aí mesmo, e você acompanha tudo daqui.";
     $("#sala-cheia").onclick = () => { const el = $("#sala-palco"); (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {}); };
     $("#sala-canvas").onclick = cliqueSala;
     if (!SALA.raf) SALA.raf = requestAnimationFrame(quadroSala);
@@ -1681,6 +1706,13 @@
       }
       if (st.premiere) { px(m.x - 4, m.y - 17, 8, 7, "#9999ff"); c.fillStyle = "#2a1a5e"; c.font = `800 ${5 * SC}px Inter, sans-serif`; c.fillText("Pr", m.x * SC, (m.y - 11.5) * SC); }
       if (st.modo === "parado" && f % 30 < 15) px(m.x - 1, m.y - 15, 2, 2, "#ffffff55");
+      const estacaoOn = (SALA.estacoes || []).some((e) => e.editor_slug === m.ed.slug && e.visto && Date.now() - new Date(e.visto) < 60000);
+      if (estacaoOn && st.modo !== "editando" && !st.premiere) {   // estação ligada: terminal esperando pedido
+        c.fillStyle = "#4cd07d"; c.font = `700 ${5 * SC}px ui-monospace, Menlo, monospace`; c.fillText(f % 12 < 6 ? ">_" : ">", (m.x - 3) * SC, (m.y - 12) * SC);
+      }
+      if (m.ed.slug === meuSlug() && f % 24 < 16) {   // seta sobre o meu computador
+        px(m.x - 2, m.y - 30, 4, 3, "#ffb800"); px(m.x - 1, m.y - 27, 2, 2, "#ffb800");
+      }
       if (st.conv) {   // robozinho do Escritório ao lado do monitor
         const rx = m.x + 13, ry = m.y - 18 + (f % 8 < 4 ? 0 : 1);
         px(rx, ry, 8, 7, "#cfd8e6"); px(rx + 2, ry + 2, 1, 1, "#2a1b40"); px(rx + 5, ry + 2, 1, 1, "#2a1b40"); px(rx + 3, ry - 2, 2, 2, st.conv.estado === "esperando_ok" ? "#ffb800" : "#4cd07d");
@@ -1736,18 +1768,26 @@
     }
     if (!editores.length) { c.fillStyle = "#59327a"; c.font = `700 ${7 * SC}px Inter, sans-serif`; c.fillText("Cadastre os editores em Pessoas", (P.W / 2) * SC, (P.H / 2) * SC); }
   }
+  function abrirComputador(slug) {
+    trocarAba("escritorio");
+    const sel = $("#esc-editor");
+    if (eu.papel === "gestor" && sel.querySelector(`option[value="${slug}"]`)) { sel.value = slug; sel.onchange && sel.onchange(); }
+  }
   function cliqueSala(ev) {
     const cv = ev.currentTarget, r = cv.getBoundingClientRect();
     const x = (ev.clientX - r.left) * (cv.width / r.width) / SC, y = (ev.clientY - r.top) * (cv.height / r.height) / SC;
     const alvo = SALA.alvos.slice().reverse().find((a) => x >= a.x && x <= a.x + a.w && y >= a.y && y <= a.y + a.h);
     if (!alvo) return;
+    if (alvo.ed.slug === meuSlug()) return abrirComputador(alvo.ed.slug);   // o editor clica no próprio computador
     const st = estadoSala(alvo.ed);
     const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
     encher($("#detalhe-corpo"), h("h2", {}, alvo.ed.nome),
       h("p", { class: "nota", style: "margin:0" }, { fora: "Fora agora", livre: "Online, sem vídeo aberto", parado: "Na mesa, parado", editando: "Editando agora" }[st.modo]
         + (st.conv ? ` · Claude da estação ${st.conv.estado === "esperando_ok" ? "esperando OK" : "trabalhando"}` : "")),
       blocos.length ? blocos.map(blocoEdicao) : h("div", { class: "vazio" }, "Nenhum vídeo aberto agora."),
-      h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+      h("div", { class: "acoes" },
+        eu.papel === "gestor" && h("button", { class: "botao amarelo", onclick: () => { $("#detalhe").close(); abrirComputador(alvo.ed.slug); } }, "Ver a tela do computador dele"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
   }
 
@@ -2157,6 +2197,8 @@
       ? "Escreva aqui e o Claude da sua máquina edita. Ele age sozinho só dentro da pasta do vídeo; qualquer outra coisa pede o seu OK nesta página."
       : `Você está vendo o escritório de ${nomeEditor(slug) || "um editor"}. Só o próprio editor manda pedidos e aprova ações na máquina dele; aqui você acompanha.`;
     $("#esc-nova").hidden = !escPodeMandar();
+    $("#esc-titulo").textContent = escPodeMandar() ? "Meu computador" : `Computador de ${(nomeEditor(slug) || "editor").split(" ")[0]}`;
+    $("#esc-voltar").onclick = () => trocarAba("sala");
     $("#esc-nova").onclick = novaConversa;
     await escCarregar();
     escDesenharTudo();
