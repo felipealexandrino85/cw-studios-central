@@ -169,6 +169,15 @@
   .estacao { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 10px 14px; font-size: 14px; }
   .bolinha { width: 10px; height: 10px; border-radius: 50%; background: #c9c2d8; flex: none; }
   .bolinha.on { background: #22a06b; box-shadow: 0 0 0 4px rgba(34, 160, 107, .15); }
+  .pub-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pub-card { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 18px; overflow: hidden; display: grid; cursor: pointer; font: inherit; color: var(--text); padding: 0; min-width: 0; }
+  .pub-card img, .pub-previa { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #1d1630; display: block; }
+  .pub-card .corpo { padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
+  .pub-card .tit { font-family: var(--font-display); font-weight: 800; font-size: 15.5px; }
+  .pub-card .leg { font-size: 13px; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .redes-res { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pub-conexoes { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 10px 14px; font-size: 14px; }
+  .pub-video { width: 100%; max-width: 340px; aspect-ratio: 9 / 16; border: 0; border-radius: 14px; background: #111; justify-self: center; }
   .cabeca .sub { margin: 4px 0 0; color: var(--text-dim); max-width: 640px; }
   h3.grupo { font-family: var(--font-body); font-size: 12px; text-transform: uppercase; letter-spacing: 1.8px; font-weight: 800; margin: 12px 0 0; color: #8f7fb0; }
   .vazio { color: var(--text-faint); font-size: 14px; padding: 6px 2px; }
@@ -511,6 +520,14 @@
     </div>
   </section>
 
+  <section id="aba-publicacao" hidden>
+    <header class="cabeca"><p class="kicker">Programas</p><h1>Publicação</h1>
+      <p class="sub">Cortes prontos esperando aprovação. Aprovado, o robô posta no Instagram, TikTok e YouTube Shorts (confere a fila a cada 30 min, das 7h às 22h) e traz os links de volta.</p></header>
+    <div class="pub-conexoes" id="pub-conexoes"></div>
+    <div class="segmentos" role="tablist" id="pub-seg"></div>
+    <div class="pub-grade" id="pub-lista"></div>
+  </section>
+
   <section id="aba-kit" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Kit do time</h1>
       <p class="sub">Os agentes e skills que viram o jeito oficial de editar. O que está no kit chega sozinho ao Claude de todos os editores, com o prefixo cw-kit-.</p></header>
@@ -658,10 +675,10 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["escritorio", "Escritório"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["escritorio", "Escritório"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
              ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["gestao", "Pessoas"]]]],
-    producao: [["Programas", [["cast", "CW Cast"]]], ["Operação", [["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"]]]],
+    producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
   };
   const EXTRAS = { gestor: ["pedir"], producao: ["pedir"], editor: [], solicitante: [] };
@@ -680,6 +697,7 @@
     cast: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8",
     kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
+    publicacao: "M22 2 11 13M22 2l-7 20-4-9-9-4z",
   };
   function icone(d, cls) {
     const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), path = document.createElementNS(ns, "path");
@@ -848,6 +866,7 @@
     if (id === "pedidos") n = meusPedidos().filter((d) => d.status === "em_revisao").length;
     if (id === "meudia") n = D.demandas.filter((d) => d.editor_slug === visao.editor && d.status === "refazer").length;
     if (id === "cast") n = (castCont.alertas || 0) + (castCont.conf || 0);
+    if (id === "publicacao" && ["gestor", "producao"].includes(eu.papel)) n = PUB.lista.filter((x) => x.estado === "aguardando").length;
     return n ? h("em", { class: "sb-count" }, n) : null;
   }
   function trocarAba(nova) {
@@ -904,6 +923,7 @@
       D.previas = Object.fromEntries((pv.data || []).map((x) => [x.editor_slug + "/" + x.trabalho_id, x]));
     }
     await carregarNotasDeAjuste();
+    if (["gestor", "producao"].includes(p)) await carregarPublicacao();
     if ($("#nav").childElementCount) { montarVerComo(); montarNav(aba); }
   }
   // último pedido de ajuste de cada demanda em "ajuste pedido" (o editor vê o que mudar)
@@ -921,7 +941,7 @@
   }
 
   function desenhar() {
-    ({ escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
+    ({ publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1489,6 +1509,115 @@
     m.textContent = `Importado: ${linhas.length} registros (${Object.entries(porCol).map(([c, n]) => `${c}: ${n}`).join(", ")}).`;
     castDb && castDb.puxar();
   });
+
+  // ---------------------------------------------------------------- publicação (cortes → redes)
+  const PUB = { lista: [], situacao: {}, seg: "aguardando", timer: null, carregado: 0 };
+  const REDES = [["instagram", "Instagram"], ["tiktok", "TikTok"], ["youtube", "YouTube Shorts"]];
+  const SEG_PUB = [["aguardando", "Para aprovar", ["aguardando"]], ["fila", "Na fila", ["aprovado", "postando", "erro"]],
+                   ["postado", "Postados", ["postado"]], ["recusado", "Recusados", ["recusado", "cancelado"]]];
+  const ESTADO_PUB = { aguardando: ["Aguardando aprovação", "tom-aviso"], aprovado: ["Aprovado", "tom-ok"], postando: ["Postando", "tom-ok"],
+    postado: ["Postado", "tom-ok"], recusado: ["Recusado", "tom-critico"], erro: ["Erro ao postar", "tom-critico"], cancelado: ["Cancelado", "tom-neutro"] };
+  const podeAprovar = () => ["gestor", "producao"].includes(eu.papel);
+  async function carregarPublicacao() {
+    const [l, st] = await Promise.all([
+      db.from("publicacoes").select("*").order("id", { ascending: false }).limit(150), db.rpc("cw_pub_situacao")]);
+    PUB.lista = l.data || []; PUB.situacao = st.data || {}; PUB.carregado = Date.now();
+  }
+  async function desenharPublicacao() {
+    if (Date.now() - PUB.carregado > 5000) await carregarPublicacao();
+    const st = PUB.situacao, ok = (k) => st[k] ? "✓" : "✗";
+    encher($("#pub-conexoes"), h("b", {}, "Robô de postagem"),
+      st.visto ? h("span", { class: "nota" }, "passou " + ha(st.visto)) : h("span", { class: "nota" }, "ainda não rodou"),
+      ["drive", "instagram", "tiktok", "youtube"].map((k) => h("span", { class: "chip " + (st[k] ? "tom-ok" : "tom-neutro") },
+        `${ok(k)} ${{ drive: "Google Drive", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube" }[k]}`)),
+      !st.drive && h("span", { class: "nota" }, "Enquanto as redes não estiverem conectadas, os aprovados ficam na fila e saem assim que conectar."));
+    encher($("#pub-seg"), SEG_PUB.map(([id, nome, est]) => h("button", { role: "tab", "aria-selected": String(PUB.seg === id), onclick: () => { PUB.seg = id; desenharPublicacao(); } },
+      nome, h("em", {}, PUB.lista.filter((x) => est.includes(x.estado)).length))));
+    const est = SEG_PUB.find(([id]) => id === PUB.seg)[2];
+    const itens = PUB.lista.filter((x) => est.includes(x.estado));
+    encher($("#pub-lista"), itens.length ? itens.map(cartaoPub) : h("div", { class: "vazio" },
+      PUB.seg === "aguardando" ? "Nada esperando aprovação. Quando o editor disser ao Claude \"manda pra publicação\", o corte aparece aqui." : "Nada aqui."));
+    clearInterval(PUB.timer);
+    PUB.timer = setInterval(async () => { if (aba !== "publicacao") return clearInterval(PUB.timer); if (!document.hidden && !$("#detalhe").open) { await carregarPublicacao(); desenharPublicacao(); } }, 20000);
+  }
+  function chipsRedes(x) {
+    return h("div", { class: "redes-res" }, (x.redes || []).map((r) => {
+      const res = (x.resultados || {})[r] || {}, nome = (REDES.find(([k]) => k === r) || [r, r])[1];
+      if (res.estado === "postado") return res.link ? h("a", { class: "chip tom-ok", href: res.link, target: "_blank", rel: "noopener", onclick: (ev) => ev.stopPropagation() }, "✓ " + nome)
+        : h("span", { class: "chip tom-ok" }, "✓ " + nome);
+      if (res.estado === "erro") return h("span", { class: "chip tom-critico", title: res.erro || "" }, "✗ " + nome);
+      if (res.estado === "sem_conexao") return h("span", { class: "chip tom-neutro", title: "Rede ainda não conectada ao robô" }, "⏳ " + nome);
+      return h("span", { class: "chip" }, nome);
+    }));
+  }
+  function cartaoPub(x) {
+    const [rot, tom] = ESTADO_PUB[x.estado] || [x.estado, "tom-neutro"];
+    return h("button", { class: "pub-card", onclick: () => abrirPub(x) },
+      x.previa ? h("img", { src: x.previa, alt: "Quadros do corte " + x.titulo }) : h("div", { class: "pub-previa" }),
+      h("div", { class: "corpo" },
+        h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), x.episodio && h("span", { class: "chip" }, x.episodio),
+          x.duracao_s && h("span", { class: "chip tom-neutro" }, Math.round(x.duracao_s) + " s"),
+          x.agendado_para && x.estado !== "postado" && h("span", { class: "chip tom-aviso" }, "🗓 " + horaBR(x.agendado_para))),
+        h("div", { class: "tit" }, x.titulo),
+        x.legenda && h("div", { class: "leg" }, x.legenda),
+        chipsRedes(x),
+        h("small", { class: "nota" }, `P-${String(x.id).padStart(4, "0")} · ${nomeEditor(x.editor_slug) || "editor"} · enviado ${ha(x.criado)}`)));
+  }
+  function abrirPub(x) {
+    const pode = podeAprovar(), aguardando = x.estado === "aguardando" || x.estado === "recusado";
+    const legenda = h("textarea", { id: "pub-legenda", style: "min-height:140px" }); legenda.value = x.legenda || "";
+    const tyt = h("input", { id: "pub-tyt", maxlength: 100, value: x.titulo_youtube || x.titulo });
+    const quando = h("input", { id: "pub-quando", type: "datetime-local" });
+    if (x.agendado_para) { const d = new Date(x.agendado_para); quando.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+    const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" }); c.checked = (x.redes || []).includes(k); return [c, nome]; });
+    const motivo = h("textarea", { id: "pub-motivo", placeholder: "O que o editor precisa ajustar?" });
+    const caixaMotivo = h("label", { for: "pub-motivo", hidden: true }, "Motivo da recusa", motivo);
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    const erro = (e) => { msg.hidden = false; msg.textContent = e.message || e; };
+    async function decidir(aprovar) {
+      if (!aprovar && caixaMotivo.hidden) { caixaMotivo.hidden = false; motivo.focus(); return; }
+      const { error } = await db.rpc("cw_pub_decidir", { p_id: x.id, p_aprovar: aprovar, p_motivo: motivo.value, p_legenda: legenda.value,
+        p_titulo_youtube: tyt.value, p_redes: caixas.filter(([c]) => c.checked).map(([c]) => c.value),
+        p_agendado_para: quando.value ? new Date(quando.value).toISOString() : null });
+      if (error) return erro(error);
+      $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
+    }
+    async function mudar(acao) {
+      const { error } = await db.rpc("cw_pub_mudar", { p_id: x.id, p_acao: acao });
+      if (error) return erro(error);
+      $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao();
+    }
+    const [rot, tom] = ESTADO_PUB[x.estado] || [x.estado, "tom-neutro"];
+    encher($("#detalhe-corpo"),
+      h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), x.episodio && h("span", { class: "chip" }, x.episodio), x.jira && h("span", { class: "chip" }, x.jira)),
+      h("h2", {}, x.titulo),
+      h("p", { class: "nota", style: "margin:0" }, `P-${String(x.id).padStart(4, "0")} · ${nomeEditor(x.editor_slug) || "editor"} · ${x.arquivo}${x.duracao_s ? " · " + Math.round(x.duracao_s) + " s" : ""}`),
+      x.drive_id ? h("iframe", { class: "pub-video", src: `https://drive.google.com/file/d/${x.drive_id}/preview`, allow: "autoplay", title: "Corte " + x.titulo })
+        : x.previa ? h("img", { src: x.previa, alt: "Quadros do corte", style: "width:100%;border-radius:14px" }) : null,
+      x.drive_id ? h("a", { href: `https://drive.google.com/file/d/${x.drive_id}/view`, target: "_blank", rel: "noopener" }, "Abrir no Drive")
+        : h("p", { class: "nota", style: "margin:0" }, `O vídeo está no Drive em ${x.pasta || "11. PUBLICAÇÃO/1. Para aprovar"}/${x.arquivo}. O player aparece aqui quando o robô ligar o card ao arquivo.`),
+      x.motivo && h("div", { class: "aviso" }, "Motivo da recusa: " + x.motivo),
+      x.erro && x.estado !== "postado" && h("div", { class: x.estado === "erro" ? "aviso erro" : "aviso" }, x.erro),
+      x.estado === "postado" || Object.keys(x.resultados || {}).length ? chipsRedes(x) : null,
+      pode && aguardando ? [
+        h("label", { for: "pub-legenda" }, "Legenda (Instagram e TikTok; vai na descrição do YouTube)", legenda),
+        h("label", { for: "pub-tyt" }, "Título no YouTube", tyt),
+        h("fieldset", { style: "border:0;padding:0;margin:0;display:flex;gap:14px;flex-wrap:wrap" }, h("legend", { class: "nota" }, "Postar em"),
+          caixas.map(([c, nome]) => h("label", { class: "check", style: "display:inline-flex;flex-direction:row;gap:6px;align-items:center;white-space:nowrap" }, c, nome))),
+        h("label", { for: "pub-quando" }, "Quando postar (vazio = na próxima passada do robô)", quando),
+        caixaMotivo, msg,
+        h("div", { class: "acoes" },
+          h("button", { class: "botao amarelo", onclick: () => decidir(true) }, "Aprovar"),
+          h("button", { class: "botao perigo", onclick: () => decidir(false) }, "Recusar"),
+          h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar"))]
+      : [!aguardando && x.legenda && h("div", { class: "campos" }, h("dl", {}, h("dt", {}, "Legenda"), h("dd", {}, x.legenda))), msg,
+         h("div", { class: "acoes" },
+           pode && x.estado === "aprovado" && h("button", { class: "botao leve", onclick: () => mudar("voltar") }, "Voltar para aprovação"),
+           pode && x.estado === "erro" && h("button", { class: "botao amarelo", onclick: () => mudar("tentar") }, "Tentar de novo"),
+           pode && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao perigo peq", onclick: () => mudar("cancelar") }, "Cancelar"),
+           h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar"))]);
+    $("#detalhe").showModal();
+  }
 
   // ---------------------------------------------------------------- escritório virtual
   // O editor escreve; a estação (Claude na máquina dele) executa. Só o próprio editor manda e aprova: a gestão acompanha.
