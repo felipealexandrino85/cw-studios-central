@@ -632,6 +632,9 @@
     </div>
     <h3 class="grupo" id="kit-tit-oficial">No kit</h3>
     <div class="tabela"><table><thead><tr><th>Item</th><th>Tipo</th><th>Veio de</th><th class="n">Versão</th><th class="n">Vídeos com ele</th><th></th></tr></thead><tbody id="kit-oficial"></tbody></table></div>
+    <h3 class="grupo" id="kit-tit-bib">Na Biblioteca</h3>
+    <p class="nota" style="margin:0">Itens que você deixou para cada editor escolher (Biblioteca › Time CW Studios).</p>
+    <div class="tabela"><table><thead><tr><th>Item</th><th>Tipo</th><th>Veio de</th><th class="n">Editores usando</th><th></th></tr></thead><tbody id="kit-bib"></tbody></table></div>
     <h3 class="grupo" id="kit-tit-recebidos">Recebidos</h3>
     <p class="nota" style="margin:0">Compare pelo uso: quantos vídeos aquele editor fez com o item, o tempo ativo médio e a aprovação de primeira desses vídeos.</p>
     <div class="grade-cartoes" id="kit-recebidos"></div>
@@ -2084,17 +2087,18 @@
         $("#bib-url").value = ""; await sincronizarRepo(data);
       };
       encher($("#bib-repos"), BIB.repos.length ? BIB.repos.map((r) => h("div", { class: "bib-repo" },
-        h("b", {}, h("a", { href: r.url, target: "_blank", rel: "noopener" }, r.nome)),
+        h("b", {}, r.url.startsWith("interno:") ? r.nome : h("a", { href: r.url, target: "_blank", rel: "noopener" }, r.nome)),
         h("span", { class: "chip" }, `${r.total} itens`),
         r.sincronizado && !r.erro && r.total === 0 && h("span", { class: "chip tom-aviso", title: "Não há agentes (agents/*.md), skills (SKILL.md), comandos nem plugins do Claude neste repositório" }, "nada para o Claude aqui"),
         r.marketplace && h("span", { class: "chip tom-neutro", title: "Este repositório é um catálogo de plugins" }, "catálogo " + r.marketplace),
         r.erro ? h("span", { class: "chip tom-critico", title: r.erro }, "erro: " + r.erro) : h("span", { class: "nota" }, r.sincronizado ? "lido " + ha(r.sincronizado) : "ainda não lido"),
         h("span", { style: "flex:1" }),
+        r.url.startsWith("interno:") ? h("span", { class: "nota" }, "vem do Kit do time (Gestão › Kit do time)") : [
         h("button", { class: "botao leve peq", onclick: (ev) => sincronizarRepo(r.id, ev.target) }, "Atualizar"),
         h("button", { class: "botao perigo peq", onclick: async () => {
           if (!confirm(`Desconectar ${r.nome}? Os itens dele saem da biblioteca e do Claude de quem tinha escolhido.`)) return;
           await db.rpc("cw_bib_repo", { p_url: r.nome, p_remover: true }); BIB.carregado = 0; desenharBiblioteca();
-        } }, "Desconectar"))) : h("div", { class: "vazio" }, "Nenhum repositório ainda. Cole o endereço de um repositório público do GitHub com agentes ou skills."));
+        } }, "Desconectar")])) : h("div", { class: "vazio" }, "Nenhum repositório ainda. Cole o endereço de um repositório público do GitHub com agentes ou skills."));
     }
     const sel = $("#bib-repo");
     encher(sel, h("option", { value: "" }, "Todos os repositórios"), BIB.repos.map((r) => h("option", { value: r.id }, r.nome)),
@@ -2180,7 +2184,8 @@
       ? [`/plugin marketplace add ${repo.nome}`, `/plugin install ${x.nome}@${repo.marketplace}`]
       : [`/plugin marketplace add ${repo.nome}`, `(se o repositório não tiver catálogo de plugins, peça ao Claude: "instala o plugin da pasta ${pasta || "raiz"} de github.com/${repo.nome}")`]) : null;
     encher($("#detalhe-corpo"),
-      h("div", { class: "chips" }, h("span", { class: "chip" }, NOME_TIPO[x.tipo] || x.tipo), h("a", { class: "chip tom-neutro", href: `${repo.url}/blob/HEAD/${x.caminho}`, target: "_blank", rel: "noopener" }, repo.nome)),
+      h("div", { class: "chips" }, h("span", { class: "chip" }, NOME_TIPO[x.tipo] || x.tipo), (repo.url || "").startsWith("interno:") ? h("span", { class: "chip tom-neutro" }, repo.nome)
+        : h("a", { class: "chip tom-neutro", href: `${repo.url}/blob/HEAD/${x.caminho}`, target: "_blank", rel: "noopener" }, repo.nome)),
       h("h2", {}, x.nome),
       x.descricao && h("p", { style: "margin:0;color:var(--text-dim)" }, x.descricao),
       h("div", { class: "bib-uso" }, h("b", {}, "Como usar no Claude: "), COMO_USAR[x.tipo](nomeNoClaude(x))),
@@ -2561,22 +2566,31 @@
     const msg = h("div", { class: "aviso erro", hidden: true });
     const extras = Object.keys(item.arquivos || {});
     encher($("#detalhe-corpo"),
-      h("div", { class: "chips" }, h("span", { class: "chip" }, item.tipo === "agente" ? "Agente" : "Skill"), item.no_kit && h("span", { class: "chip tom-ok" }, `No kit · v${item.versao_kit}`)),
+      h("div", { class: "chips" }, h("span", { class: "chip" }, item.tipo === "agente" ? "Agente" : "Skill"), item.no_kit && h("span", { class: "chip tom-ok" }, `No kit · v${item.versao_kit}`),
+        item.biblioteca_id && h("span", { class: "chip tom-neutro" }, "Na Biblioteca")),
       h("h2", {}, item.nome), h("p", { class: "nota", style: "margin:0" }, `Enviado por ${nomeEditor(item.editor_slug)} ${ha(item.enviado_em)}${extras.length ? " · arquivos junto: " + extras.join(", ") : ""}`),
       item.descricao && h("p", { style: "margin:0;color:var(--text-dim)" }, item.descricao),
-      h("label", { for: "kit-conteudo" }, "Conteúdo (pode editar antes de pôr no kit)", area),
-      h("label", { for: "kit-nome" }, "Nome no kit (vira cw-kit-…)", nome), msg,
+      h("label", { for: "kit-conteudo" }, "Conteúdo (pode editar antes de aprovar)", area),
+      h("label", { for: "kit-nome" }, "Nome (vira cw-kit-… no kit ou cw-bib-… pela Biblioteca)", nome),
+      h("p", { class: "nota", style: "margin:0" }, h("b", {}, "Pôr no kit"), ": instala no Claude de todos os editores. ", h("b", {}, "Deixar na Biblioteca"), ": fica em Biblioteca › Time CW Studios e cada editor escolhe se quer."), msg,
       h("div", { class: "acoes" },
         h("button", { class: "botao amarelo", onclick: async () => {
           const { error } = await db.rpc("cw_kit_aprovar", { p_id: item.id, p_nome_kit: nome.value, p_conteudo: area.value });
           if (error) { msg.hidden = false; msg.textContent = error.message; return; }
           $("#detalhe").close(); carregar();
-        } }, item.no_kit ? "Salvar nova versão do kit" : "Pôr no kit"),
-        !item.no_kit && h("button", { class: "botao perigo peq", onclick: async () => { await db.rpc("cw_kit_tirar", { p_id: item.id, p_descartar: true }); $("#detalhe").close(); carregar(); } }, "Descartar"),
+        } }, item.no_kit ? "Salvar nova versão do kit" : "Pôr no kit (todos recebem)"),
+        !item.no_kit && h("button", { class: "botao leve", onclick: async () => {
+          const { error } = await db.rpc("cw_kit_biblioteca", { p_id: item.id, p_nome: nome.value, p_conteudo: area.value, p_tirar: false });
+          if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+          $("#detalhe").close(); BIB.carregado = 0; carregar();
+        } }, item.biblioteca_id ? "Atualizar na Biblioteca" : "Deixar na Biblioteca (cada um escolhe)"),
+        item.biblioteca_id && h("button", { class: "botao perigo peq", onclick: async () => { await db.rpc("cw_kit_biblioteca", { p_id: item.id, p_nome: null, p_conteudo: null, p_tirar: true }); $("#detalhe").close(); BIB.carregado = 0; carregar(); } }, "Tirar da Biblioteca"),
+        !item.no_kit && !item.biblioteca_id && h("button", { class: "botao perigo peq", onclick: async () => { await db.rpc("cw_kit_tirar", { p_id: item.id, p_descartar: true }); $("#detalhe").close(); carregar(); } }, "Descartar"),
         h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
   }
-  function desenharKit() {
+  async function desenharKit() {
+    if (Date.now() - BIB.carregado > 30000) await carregarBiblioteca();
     const oficial = D.kit.filter((k) => k.no_kit).sort((a, b) => a.nome_kit.localeCompare(b.nome_kit));
     $("#kit-tit-oficial").textContent = `No kit (${oficial.length})`;
     encher($("#kit-oficial"), oficial.length ? oficial.map((k) => {
@@ -2585,7 +2599,12 @@
         h("td", { class: "n" }, h("button", { class: "botao leve peq", onclick: () => abrirItemKit(k) }, "Ver"), " ",
           h("button", { class: "botao perigo peq", onclick: async () => { await db.rpc("cw_kit_tirar", { p_id: k.id, p_descartar: false }); carregar(); } }, "Tirar do kit")));
     }) : vazioLinha(6, "O kit ainda está vazio. Escolha entre os itens recebidos abaixo."));
-    const recebidos = D.kit.filter((k) => !k.no_kit && !k.descartado).sort((a, b) => a.nome.localeCompare(b.nome) || a.editor_slug.localeCompare(b.editor_slug));
+    const naBib = D.kit.filter((k) => k.biblioteca_id && !k.no_kit);
+    $("#kit-tit-bib").textContent = `Na Biblioteca (${naBib.length})`;
+    encher($("#kit-bib"), naBib.length ? naBib.map((k) => h("tr", {}, td(h("b", {}, "cw-bib-" + k.nome)), td(k.tipo === "agente" ? "Agente" : "Skill"), td(nomeEditor(k.editor_slug)),
+      td((BIB.escolhas || []).filter((e) => e.item_id === k.biblioteca_id).length || "–", 1),
+      h("td", { class: "n" }, h("button", { class: "botao leve peq", onclick: () => abrirItemKit(k) }, "Ver")))) : vazioLinha(5, "Nada na Biblioteca do time ainda."));
+    const recebidos = D.kit.filter((k) => !k.no_kit && !k.descartado && !k.biblioteca_id).sort((a, b) => a.nome.localeCompare(b.nome) || a.editor_slug.localeCompare(b.editor_slug));
     $("#kit-tit-recebidos").textContent = `Recebidos (${recebidos.length})`;
     encher($("#kit-recebidos"), recebidos.length ? recebidos.map((k) => {
       const u = usoKit(k.nome, k.editor_slug);
