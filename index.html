@@ -2360,7 +2360,10 @@
 
   // ---------------------------------------------------------------- escritório virtual
   // O editor escreve; a estação (Claude na máquina dele) executa. Só o próprio editor manda e aprova: a gestão acompanha.
-  const ESC = { slug: null, conversas: [], msgs: {}, ultimo: {}, sel: null, estacoes: [], timer: null, ocupado: false };
+  const ESC = { slug: null, conversas: [], espelhos: [], msgs: {}, ultimo: {}, sel: null, estacoes: [], timer: null, ocupado: false };
+  // sessões rodadas direto no Claude do editor (espelho): a chave na seleção é "e" + id
+  const ehEspelho = (sel) => typeof sel === "string" && sel[0] === "e";
+  const espelhoVivo = (x) => x.ativa && Date.now() - new Date(x.atualizada) < 10 * 60000;
   const escPodeMandar = () => eu.papel === "editor" && eu.editor && ESC.slug === eu.editor.slug;
   const ESTADO_CONV = { parada: ["Parada", "tom-neutro"], na_fila: ["Na fila", "tom-aviso"], rodando: ["Trabalhando", "tom-ok"],
                         esperando_ok: ["Esperando seu OK", "tom-aviso"], erro: ["Erro", "tom-critico"] };
@@ -2373,12 +2376,23 @@
   async function escCarregar(soMsgs) {
     if (!ESC.slug) return;
     if (!soMsgs) {
-      const [c, e] = await Promise.all([
+      const [c, e, sp] = await Promise.all([
         db.from("esc_conversas").select("*").eq("editor_slug", ESC.slug).eq("arquivada", false).order("atualizada", { ascending: false }).limit(60),
-        db.from("estacoes").select("*").eq("editor_slug", ESC.slug).order("visto", { ascending: false })]);
-      ESC.conversas = c.data || []; ESC.estacoes = e.data || [];
-      if (ESC.sel && !ESC.conversas.some((x) => x.id === ESC.sel)) ESC.sel = null;
-      if (!ESC.sel && ESC.conversas.length) ESC.sel = ESC.conversas[0].id;
+        db.from("estacoes").select("*").eq("editor_slug", ESC.slug).order("visto", { ascending: false }),
+        db.from("espelho_sessoes").select("*").eq("editor_slug", ESC.slug).order("atualizada", { ascending: false }).limit(40)]);
+      ESC.conversas = c.data || []; ESC.estacoes = e.data || []; ESC.espelhos = sp.data || [];
+      if (ESC.sel && !(ehEspelho(ESC.sel) ? ESC.espelhos.some((x) => "e" + x.id === ESC.sel) : ESC.conversas.some((x) => x.id === ESC.sel))) ESC.sel = null;
+      if (!ESC.sel) {   // o que está acontecendo agora primeiro
+        const ativa = ESC.conversas.find((x) => ["rodando", "esperando_ok", "na_fila"].includes(x.estado)), viva = ESC.espelhos.find(espelhoVivo);
+        ESC.sel = ativa ? ativa.id : viva ? "e" + viva.id : ESC.conversas.length ? ESC.conversas[0].id : ESC.espelhos.length ? "e" + ESC.espelhos[0].id : null;
+      }
+    }
+    if (ehEspelho(ESC.sel)) {
+      const id = ESC.sel, desde = ESC.ultimo[id] || 0;
+      const { data } = await db.from("espelho_msgs").select("*").eq("sessao_id", +id.slice(1)).gt("id", desde).order("id").limit(1000);
+      const lista = (ESC.msgs[id] || []).concat(data || []);
+      ESC.msgs[id] = lista; ESC.ultimo[id] = lista.length ? lista[lista.length - 1].id : 0;
+      return (data || []).length > 0;
     }
     if (ESC.sel) {
       const id = ESC.sel, desde = ESC.ultimo[id] || 0;
@@ -2448,7 +2462,12 @@
       return h("button", { class: "esc-conv" + (c.id === ESC.sel ? " is-active" : ""), onclick: async () => { ESC.sel = c.id; await escCarregar(true); escDesenharLista(); escDesenharPainel(true); } },
         h("b", {}, c.titulo), h("small", {}, [c.trabalho, ESC.estacoes.length > 1 ? c.maquina : null, ha(c.atualizada)].filter(Boolean).join(" · ")),
         c.estado !== "parada" ? h("span", {}, h("span", { class: "chip " + tom }, rot)) : null);
-    }) : h("div", { class: "vazio" }, escPodeMandar() ? "Nenhuma conversa ainda. Comece uma nova." : "Nenhuma conversa."));
+    }) : h("div", { class: "vazio" }, escPodeMandar() ? "Nenhuma conversa ainda. Comece uma nova." : "Nenhuma conversa."),
+      ESC.espelhos.length ? h("p", { class: "kicker", style: "margin:10px 2px 0" }, "Direto no Claude") : null,
+      ESC.espelhos.map((x) => h("button", { class: "esc-conv" + ("e" + x.id === ESC.sel ? " is-active" : ""),
+        onclick: async () => { ESC.sel = "e" + x.id; await escCarregar(true); escDesenharLista(); escDesenharPainel(true); } },
+        h("b", {}, x.titulo || "Sessão sem título"), h("small", {}, [x.trabalho, x.maquina, ha(x.atualizada)].filter(Boolean).join(" · ")),
+        espelhoVivo(x) ? h("span", {}, h("span", { class: "chip tom-ok" }, "Ao vivo")) : null)));
   }
   function msgEl(m, podeResponder) {
     const quando = new Date(m.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -2469,7 +2488,9 @@
         : h("span", {}, h("span", { class: "chip " + fim[1] }, fim[0])));
   }
   function escDesenharPainel(rolar) {
-    const painel = $("#esc-painel"), c = ESC.conversas.find((x) => x.id === ESC.sel);
+    const painel = $("#esc-painel");
+    if (ehEspelho(ESC.sel)) return escDesenharEspelho(painel, rolar);
+    const c = ESC.conversas.find((x) => x.id === ESC.sel);
     if (!c) return encher(painel, h("div", { class: "vazio", style: "grid-row: 1 / -1; align-self: center" },
       escPodeMandar() ? "Comece uma conversa: escolha o card ou a demanda e diga ao Claude o que fazer." : "Escolha uma conversa."));
     const caixa = painel.querySelector(".esc-msgs");
@@ -2498,6 +2519,22 @@
         : h("div", { class: "esc-escrever" }, h("span", { class: "nota" }, "Só o editor manda pedidos para a estação dele.")));
     if (rolar || noFim) msgs.scrollTop = msgs.scrollHeight;
     if (focado) area.focus();
+  }
+  function escDesenharEspelho(painel, rolar) {
+    const x = ESC.espelhos.find((y) => "e" + y.id === ESC.sel);
+    if (!x) return encher(painel, h("div", { class: "vazio" }, "Escolha uma sessão."));
+    const caixa = painel.querySelector(".esc-msgs");
+    const noFim = !caixa || caixa.scrollHeight - caixa.scrollTop - caixa.clientHeight < 80;
+    const msgs = h("div", { class: "esc-msgs" }, (ESC.msgs[ESC.sel] || []).map((m) => msgEl(m, false)),
+      espelhoVivo(x) ? h("div", { class: "msg-sis" }, "Sessão aberta: as mensagens novas chegam sozinhas.") : null);
+    encher(painel,
+      h("div", { class: "esc-topo" }, h("h2", {}, x.titulo || "Sessão sem título"), x.trabalho ? h("span", { class: "chip" }, x.trabalho) : null,
+        h("span", { class: "chip tom-neutro" }, "Direto no Claude"), x.maquina ? h("span", { class: "chip tom-neutro" }, "💻 " + x.maquina) : null,
+        h("span", { class: "chip " + (espelhoVivo(x) ? "tom-ok" : "tom-neutro") }, espelhoVivo(x) ? "Ao vivo" : x.ativa ? "Parada" : "Encerrada"),
+        x.pasta ? h("span", { class: "pasta" }, x.pasta) : null),
+      msgs,
+      h("div", { class: "esc-escrever" }, h("span", { class: "nota" }, "Sessão rodada direto no Claude do editor, que foi avisado de que ela aparece aqui. É só para acompanhar: senhas e tokens chegam ocultos e tudo some em 15 dias.")));
+    if (rolar || noFim) msgs.scrollTop = msgs.scrollHeight;
   }
   async function escEnviar(c, area) {
     const texto = area.value.trim();
