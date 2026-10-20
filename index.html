@@ -2637,10 +2637,13 @@
         ? (podeResponder
           ? h("div", { class: "acoes" },
             h("button", { class: "botao amarelo peq", onclick: () => escResponder(m, true) }, "Aprovar"),
+            d.liberar ? h("button", { class: "botao leve peq", title: d.liberar, onclick: () => escResponder(m, true, true) }, "Aprovar e liberar esta pasta") : null,
             h("button", { class: "botao perigo peq", onclick: () => escResponder(m, false) }, "Negar"),
-            h("span", { class: "nota" }, "Aprovar vale só para esta ação."))
+            h("span", { class: "nota" }, d.liberar
+              ? `"Liberar" deixa o Claude usar ${d.liberar.split(/[\\/]/).slice(-2).join("/")} sem perguntar de novo (só ler e rodar; gravar fora da pasta do trabalho continua pedindo OK).`
+              : "Aprovar vale só para esta ação."))
           : h("span", { class: "nota" }, "Esperando o editor responder."))
-        : h("span", {}, h("span", { class: "chip " + fim[1] }, fim[0])));
+        : h("span", {}, h("span", { class: "chip " + fim[1] }, d.sempre && m.estado === "aprovado" ? "Aprovado e pasta liberada" : fim[0])));
   }
   function escDesenharPainel(rolar) {
     const painel = $("#esc-painel");
@@ -2701,10 +2704,10 @@
     area.value = "";
     await escCarregar(); escDesenharTudo();
   }
-  async function escResponder(m, aprovar) {
-    const { error } = await db.rpc("cw_esc_responder", { p_msg: m.id, p_aprovar: aprovar });
+  async function escResponder(m, aprovar, sempre) {
+    const { error } = await db.rpc("cw_esc_responder", { p_msg: m.id, p_aprovar: aprovar, p_sempre: !!sempre });
     if (error) return alert(error.message);
-    m.estado = aprovar ? "aprovado" : "negado"; escDesenharPainel();
+    m.estado = aprovar ? "aprovado" : "negado"; if (sempre) m.dados = { ...(m.dados || {}), sempre: true }; escDesenharPainel();
   }
   async function escParar(c) { await db.rpc("cw_esc_parar", { p_conversa: c.id }); await escCarregar(); escDesenharTudo(); }
   async function escArquivar(c) { await db.rpc("cw_esc_arquivar", { p_conversa: c.id }); ESC.sel = null; await escCarregar(); escDesenharTudo(); }
