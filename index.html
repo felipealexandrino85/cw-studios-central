@@ -590,7 +590,7 @@
       <div id="msg-regra" class="aviso erro" hidden></div>
     </form>
     <h3 class="grupo" id="tit-sug-editores" hidden>Sugestões dos editores</h3>
-    <p class="nota" style="margin:0" id="nota-sug-editores" hidden>Regras que o Claude de cada editor tirou do CLAUDE.md dele e as que a Bia Viral tirou do desempenho dos cortes. Aceita vira regra do time e entra em todo Claude, inclusive na estação. Dá para ajustar o texto antes.</p>
+    <p class="nota" style="margin:0" id="nota-sug-editores" hidden>Regras que o Claude de cada editor tirou do CLAUDE.md dele e as que a Doti tirou do desempenho dos cortes. Aceita vira regra do time e entra em todo Claude, inclusive na estação. Dá para ajustar o texto antes.</p>
     <div class="alertas" id="sug-editores"></div>
     <h3 class="grupo">Ajustes que podem virar regra</h3>
     <p class="nota" style="margin:0">Pedidos de ajuste dos últimos 60 dias que ainda não viraram regra. Se o mesmo erro se repete, transforme em regra.</p>
@@ -1907,7 +1907,7 @@
   const CHICO = { cabelo: "#2b1d14", pele: "#e0a97f", camisa: "#a543fa", calca: "#3b4a6b", estilo: 0, acessorio: "bone", bigode: true };
   // Zé Algoritmo: o agente de SEO do YouTube (analisa o canal todo dia às 22h)
   const ZE = { cabelo: "#9aa0aa", pele: "#f2c9a5", camisa: "#e8352d", calca: "#2a2a33", estilo: 0, acessorio: "oculos", barba: "curta" };
-  // Bia Viral: analista de desempenho dos cortes no Instagram (toda segunda às 9h)
+  // Doti: analista de desempenho dos cortes no Instagram (toda segunda às 9h)
   const BIA = { cabelo: "#c58b4b", pele: "#e0a97f", camisa: "#ff6b5b", calca: "#3b4a6b", estilo: 2, acessorio: "fone", feminino: true };
   const cadeiraCostas = () => sprite("cadeira", 20, 13, (p) => { p(2, 0, 16, 8, "#4067c4"); p(2, 0, 16, 2, "#5a82dc"); p(14, 2, 4, 6, "#3355a6"); p(8, 8, 4, 3, "#2d3448"); p(4, 11, 12, 2, "#2d3448"); });
   const mesaEstacao = () => sprite("mesa", 46, 27, (p) => {
@@ -2052,9 +2052,9 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Bia Viral", npc: "bia" }])), cv = $("#sala-canvas"), T = TILE;
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }])), cv = $("#sala-canvas"), T = TILE;
     const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia");
-    P.mesas = P.mesas.filter((m) => !m.ed.npc);   // as mesas dos agentes (Zé Algoritmo e Bia Viral) na Edição
+    P.mesas = P.mesas.filter((m) => !m.ed.npc);   // as mesas dos agentes (Zé Algoritmo e Doti) na Edição
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
     const px = (x, y, w, hh, cor) => { c.fillStyle = cor; c.fillRect(Math.round(x) * SC, Math.round(y) * SC, Math.round(w) * SC, Math.round(hh) * SC); };
@@ -2224,7 +2224,7 @@
       for (let k = 0; k < 5; k++) { const hb = 2 + ((k * 3 + Math.floor(f / 6)) % 6); px(mx - 7 + k * 3, my - 5 - hb, 2, hb, k === 4 ? "#ff4d4d" : "#ffffffaa"); }
       px(mx + 5, my - 13, 3, 2, "#ff0000"); px(mx + 6, my - 13, 1, 1, "#ffffff");   // o "play" do YouTube
     }
-    {   // Bia Viral na mesa dela: monitor com o feed do Instagram (cores da marca e corações subindo)
+    {   // Doti na mesa dela: monitor com o feed do Instagram (cores da marca e corações subindo)
       const mx = mesaBia.x, my = mesaBia.y;
       c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
       px(mx - 9, my - 14, 18, 11, "#2a1b40"); px(mx - 9, my - 14, 18, 2, "#f25aa8"); px(mx - 9, my - 12, 18, 1, "#ffb800");
@@ -2317,12 +2317,12 @@
         txt(curto, x, by2 + 8, 4.6, "#2a1b40", 600);
       }
     }
-    // Bia Viral: plaquinha e balão
+    // Doti: plaquinha e balão
     {
       const bia2 = { x: mesaBia.x, y: mesaBia.y + 22 }, rb = ((SALA.ag || {}).relatorios || []).find((r) => r.agente === "bia");
       c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
-      const lwB = c.measureText("Bia Viral").width / SC + 12;
-      px(bia2.x - lwB / 2, bia2.y + 6, lwB, 10, "#2a2440"); px(bia2.x - lwB / 2 + 3, bia2.y + 9.5, 4, 4, "#f25aa8"); txt("Bia Viral", bia2.x + 2.5, bia2.y + 13.6, 4.8, "#ffffff", 700);
+      const lwB = c.measureText("Doti").width / SC + 12;
+      px(bia2.x - lwB / 2, bia2.y + 6, lwB, 10, "#2a2440"); px(bia2.x - lwB / 2 + 3, bia2.y + 9.5, 4, 4, "#f25aa8"); txt("Doti", bia2.x + 2.5, bia2.y + 13.6, 4.8, "#ffffff", 700);
       const novas = rb && Date.now() - new Date(rb.criado) < 7 * 864e5 ? (rb.dados || {}).regras_novas || 0 : 0;
       const falaB = novas ? `💡 ${novas} regra${novas > 1 ? "s" : ""} pro time` : (f % 240 < 70 ? "📊 análise toda segunda" : null);
       if (falaB && SALA.ag) {
@@ -2632,11 +2632,11 @@
     SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [],
                  relatorios: Array.isArray(sr.data) ? sr.data : [] };
   }
-  // ---- chat com os agentes do time (Bia Viral, Dinha, Chico): mesmo jeito do Zé, cada um com seu assunto
+  // ---- chat com os agentes do time (Doti, Dinha, Chico): mesmo jeito do Zé, cada um com seu assunto
   const diaLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
   const AGENTES_CHAT = {
-    bia: { nome: "Bia Viral", cores: () => BIA, sub: "Desempenho dos cortes no Instagram · consulta ao vivo", campo: "relatorio", agora: "bia", rotuloRel: "Análise da semana",
-      oi: "Oi! Sou a Bia Viral. Toda segunda eu analiso os cortes do Instagram: o que viralizou, o que não foi e por quê. As regras que eu sugiro vão para o Padrão do time.",
+    bia: { nome: "Doti", cores: () => BIA, sub: "Desempenho dos cortes no Instagram · consulta ao vivo", campo: "relatorio", agora: "bia", rotuloRel: "Análise da semana",
+      oi: "Oi! Sou a Doti. Toda segunda eu analiso os cortes do Instagram: o que viralizou, o que não foi e por quê. As regras que eu sugiro vão para o Padrão do time.",
       atalhos: ["Qual foi o melhor corte da semana e por quê?", "Qual gancho funciona melhor?", "Qual o melhor horário para postar?", "Quantos seguidores ganhamos essa semana?"] },
     dinha: { nome: "Dinha", cores: () => DINHA, sub: "Recepção · operação do CW Studios", campo: "resumo", agora: "dinha", rotuloRel: "Resumo do dia",
       oi: "Oi! Sou a Dinha. Todo dia às 8h eu monto o resumo da operação: o que está atrasado, o que espera decisão e como está a meta.",
@@ -2701,7 +2701,7 @@
     retrato.getContext("2d").drawImage(bonecoFrente(cfg.cores(), 0), 0, 0);
     const conversa = SALA.ag.perguntas.filter((q) => q.agente === ag).slice().reverse();
     const ultimo = SALA.ag.relatorios.find((r) => r.agente === ag);
-    const area = h("textarea", { placeholder: `Fale com ${cfg.nome === "Dinha" ? "a" : cfg.nome.startsWith("Bia") ? "a" : "o"} ${cfg.nome.split(" ")[0]}… (Enter envia)`, "aria-label": "Mensagem",
+    const area = h("textarea", { placeholder: `Fale com ${cfg.nome === "Dinha" ? "a" : cfg.nome === "Doti" ? "a" : "o"} ${cfg.nome.split(" ")[0]}… (Enter envia)`, "aria-label": "Mensagem",
       onkeydown: (ev) => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enviarAgente(area.value); } } });
     area.value = texto;
     // a Dinha abre o chat com o resumo de hoje
