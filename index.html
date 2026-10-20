@@ -163,6 +163,23 @@
   .msg-sis { align-self: center; font-size: 12.5px; color: var(--text-dim); background: var(--surface-3); border-radius: 99px; padding: 4px 12px; max-width: 100%; white-space: pre-wrap; text-align: center; }
   .msg-ok { align-self: stretch; border: 1px solid #f5c542; background: #fff8e1; border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
   .msg-ok pre { margin: 0; font: 12px ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; background: #fff; border-radius: 8px; padding: 8px; max-height: 160px; overflow: auto; }
+  .chat-sala { width: min(560px, calc(100vw - 24px)); height: min(760px, calc(100dvh - 24px)); overflow: hidden; }
+  .chat-sala[open] { display: flex; }
+  #chat-corpo { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; width: 100%; min-height: 0; }
+  .chat-topo { display: flex; gap: 12px; align-items: center; padding: 14px 16px; background: linear-gradient(135deg, #5b2bb5, #8a4fe8); color: #fff; }
+  .chat-topo .nota { color: rgba(255, 255, 255, .88); }
+  .chat-retrato { width: 44px; height: 70px; image-rendering: pixelated; background: rgba(255, 255, 255, .18); border-radius: 12px; padding: 6px; flex: none; }
+  .chat-quem { display: grid; gap: 4px; flex: 1; min-width: 0; }
+  .chat-quem b { font-size: 17px; font-family: var(--font-display); }
+  .chat-topo .fechar { background: rgba(255, 255, 255, .18); color: #fff; border: 0; border-radius: 99px; width: 34px; height: 34px; font-size: 16px; cursor: pointer; flex: none; }
+  .chat-barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .chat-barra select { flex: 1 1 200px; min-width: 0; }
+  .chat-sala .esc-msgs { min-height: 0; }
+  .chat-oi { align-self: flex-start; max-width: 92%; background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; border-bottom-left-radius: 4px; padding: 12px 14px; display: grid; gap: 10px; }
+  .digitando { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 10px 14px; display: inline-flex; gap: 4px; }
+  .digitando i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); animation: digita 1.2s infinite; }
+  .digitando i:nth-child(2) { animation-delay: .2s; } .digitando i:nth-child(3) { animation-delay: .4s; }
+  @keyframes digita { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
   .esc-escrever { border-top: 1px solid var(--line); padding: 12px; display: grid; gap: 8px; }
   .esc-escrever textarea { min-height: 70px; resize: vertical; }
   .esc-escrever .acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -763,6 +780,7 @@
 </div>
 
 <dialog id="detalhe"><div class="modal" id="detalhe-corpo"></div></dialog>
+<dialog id="chat-sala" class="chat-sala" aria-label="Conversa com o seu Claude"><div id="chat-corpo"></div></dialog>
 
 <script>
 (() => {
@@ -1668,7 +1686,7 @@
     }
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo aberto"],
       ["#6b5a87", "Fora"], ["#7d6bff", "No Premiere"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
-    if (meuSlug()) $("#sala-sub").textContent = "O time ao vivo. Clique no seu computador (a setinha amarela) para mandar pedidos ao Claude da sua máquina — ele edita aí mesmo, e você acompanha tudo daqui.";
+    if (meuSlug()) $("#sala-sub").textContent = "O time ao vivo. Clique no seu bonequinho para conversar com o Claude da sua máquina — ele edita aí mesmo, e você acompanha tudo daqui.";
     painelSala();
     $("#sala-cheia").onclick = () => { const el = $("#sala-palco"); (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {}); };
     $("#sala-canvas").onclick = cliqueSala;
@@ -2075,7 +2093,8 @@
       txt(nome, x + 2.5, y + 13.6, 4.8, st.modo === "fora" ? "#c9ccd3" : "#ffffff", 700);
       if (p.fora) continue;
       const alerta = st.conv && st.conv.estado === "esperando_ok";
-      const balao = alerta ? "❗ precisa de você" : st.modo === "editando" ? "✏️ " + (st.rotulo || "editando") : st.modo === "parado" ? "…" : null;
+      const balao = alerta ? "❗ precisa de você" : st.modo === "editando" ? "✏️ " + (st.rotulo || "editando") : st.modo === "parado" ? "…"
+        : p.m.ed.slug === meuSlug() ? "💬 fala comigo!" : null;
       if (balao) {
         c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
         const curto = balao.length > 26 ? balao.slice(0, 25) + "…" : balao, bw2 = c.measureText(curto).width / SC + 10, by2 = y - (p.sentado ? 50 : 50);
@@ -2108,12 +2127,75 @@
     const sel = $("#esc-editor");
     if (eu.papel === "gestor" && sel.querySelector(`option[value="${slug}"]`)) { sel.value = slug; sel.onchange && sel.onchange(); }
   }
+  // ---- chat com o bonequinho: o editor clica nele mesmo na Sala e conversa com o Claude da máquina dele
+  const CHAT = { timer: null, tique: 0 };
+  const coresBoneco = (slug) => { const seed = hashSlug(slug);
+    return { cabelo: CABELOS[seed % CABELOS.length], pele: PELES[(seed >>> 3) % PELES.length], camisa: CAMISAS[(seed >>> 6) % CAMISAS.length], estilo: (seed >>> 9) % 4 }; };
+  async function abrirChatSala() {
+    const slug = meuSlug(); if (!slug) return;
+    if (ESC.slug !== slug) { ESC.slug = slug; ESC.sel = null; ESC.msgs = {}; ESC.ultimo = {}; }
+    const dlg = $("#chat-sala");
+    if (!dlg.open) dlg.showModal();
+    await escCarregar();
+    desenharChat(true);
+    clearInterval(CHAT.timer);
+    CHAT.timer = setInterval(async () => {
+      if (!dlg.open) return clearInterval(CHAT.timer);
+      if (document.hidden || ESC.ocupado || $("#detalhe").open) return;
+      ESC.ocupado = true;
+      try {
+        CHAT.tique++;
+        const lista = CHAT.tique % 3 === 0, novo = await escCarregar(!lista);
+        if (novo || lista) desenharChat(novo);
+      } finally { ESC.ocupado = false; }
+    }, 2500);
+  }
+  function desenharChat(rolar) {
+    const corpo = $("#chat-corpo"), c = ESC.conversas.find((x) => x.id === ESC.sel);
+    const antes = corpo.querySelector(".esc-msgs"), noFim = !antes || antes.scrollHeight - antes.scrollTop - antes.clientHeight < 80;
+    const rasc = corpo.querySelector("textarea"), texto = rasc ? rasc.value : "", focado = rasc && document.activeElement === rasc;
+    const retrato = h("canvas", { class: "chat-retrato", width: 22, height: 35, "aria-hidden": "true" });
+    retrato.getContext("2d").drawImage(bonecoFrente(coresBoneco(ESC.slug), 0), 0, 0);
+    const on = estacaoOnline(c && c.maquina), [rot, tom] = c ? ESTADO_CONV[c.estado] || [c.estado, "tom-neutro"] : [];
+    const ativa = c && ["rodando", "esperando_ok", "na_fila"].includes(c.estado);
+    const sel = h("select", { "aria-label": "Conversa", onchange: async (ev) => {
+      if (ev.target.value === "nova") { ev.target.value = ESC.sel || ""; return novaConversa(); }
+      ESC.sel = +ev.target.value; await escCarregar(true); desenharChat(true); } },
+      ESC.conversas.map((x) => h("option", { value: x.id }, x.titulo + (x.estado !== "parada" && ESTADO_CONV[x.estado] ? " · " + ESTADO_CONV[x.estado][0] : ""))),
+      h("option", { value: "nova" }, "+ Nova conversa"));
+    if (c) sel.value = c.id;
+    const area = h("textarea", { placeholder: on ? "Fala com o seu Claude… (Enter envia, Shift+Enter pula linha)" : "Sua estação está desligada: o pedido fica na fila até ela ligar.",
+      "aria-label": "Mensagem para o Claude", onkeydown: (ev) => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); if (c) escEnviar(c, area); } } });
+    area.value = texto;
+    const primeiroNome = (nomeEditor(ESC.slug) || "").split(" ")[0];
+    const msgs = h("div", { class: "esc-msgs" },
+      c ? (ESC.msgs[c.id] || []).map((m) => msgEl(m, true))
+        : h("div", { class: "chat-oi" }, `Oi${primeiroNome ? ", " + primeiroNome : ""}! Sou o Claude da sua máquina. Me diz o card e o que fazer que eu edito aí no seu computador. Fora da pasta do vídeo, eu peço seu OK aqui.`,
+          h("div", {}, h("button", { class: "botao amarelo peq", onclick: novaConversa }, "Começar uma conversa"))),
+      c && c.estado === "rodando" ? h("div", { class: "digitando", "aria-label": "Trabalhando" }, h("i"), h("i"), h("i")) : null);
+    encher(corpo,
+      h("div", { class: "chat-topo" }, retrato,
+        h("div", { class: "chat-quem" }, h("b", {}, "Seu Claude"),
+          h("span", { class: "nota" }, on ? "🟢 na sua máquina, pronto" : "⚪ estação desligada: o pedido fica na fila"),
+          c ? h("span", { style: "display:flex;gap:6px;flex-wrap:wrap" }, h("span", { class: "chip " + tom }, rot), c.aprova_tudo ? h("span", { class: "chip tom-aviso" }, "Aprovando tudo") : null) : null),
+        h("button", { class: "fechar", "aria-label": "Fechar", onclick: () => $("#chat-sala").close() }, "✕")),
+      h("div", { class: "chat-barra" }, sel,
+        c ? h("button", { class: "botao " + (c.aprova_tudo ? "amarelo" : "leve") + " peq", onclick: () => escAprovarTudo(c) }, c.aprova_tudo ? "Desligar aprovar tudo" : "Aprovar tudo") : null,
+        ativa ? h("button", { class: "botao perigo peq", onclick: () => escParar(c) }, "Parar") : null,
+        h("button", { class: "botao leve peq", title: "Abrir a tela completa do seu computador", onclick: () => { $("#chat-sala").close(); abrirComputador(ESC.slug); } }, "Tela completa")),
+      msgs,
+      c ? h("div", { class: "esc-escrever" }, area, h("div", { class: "acoes" },
+        h("button", { class: "botao amarelo", onclick: () => escEnviar(c, area) }, "Enviar"),
+        h("span", { class: "nota" }, "Se ele estiver trabalhando, o pedido entra na fila."))) : h("div"));
+    if (rolar || noFim) msgs.scrollTop = msgs.scrollHeight;
+    if (focado) area.focus();
+  }
   function cliqueSala(ev) {
     const cv = ev.currentTarget, r = cv.getBoundingClientRect();
     const x = (ev.clientX - r.left) * (cv.width / r.width) / SC, y = (ev.clientY - r.top) * (cv.height / r.height) / SC;
     const alvo = SALA.alvos.slice().reverse().find((a) => x >= a.x && x <= a.x + a.w && y >= a.y && y <= a.y + a.h);
     if (!alvo) return;
-    if (alvo.ed.slug === meuSlug()) return abrirComputador(alvo.ed.slug);   // o editor clica no próprio computador
+    if (alvo.ed.slug === meuSlug()) return abrirChatSala();   // o editor clica no próprio bonequinho (ou mesa) e conversa com o Claude dele
     const st = estadoSala(alvo.ed);
     const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
     encher($("#detalhe-corpo"), h("h2", {}, alvo.ed.nome),
@@ -2651,7 +2733,7 @@
       } finally { ESC.ocupado = false; }
     }, 2500);
   }
-  function escDesenharTudo() { escDesenharEstacao(); escDesenharLista(); escDesenharPainel(true); }
+  function escDesenharTudo() { escDesenharEstacao(); escDesenharLista(); escDesenharPainel(true); if ($("#chat-sala").open) desenharChat(true); }
   function escDesenharEstacao() {
     const on = estacaoOnline(), varias = ESC.estacoes.length > 1;
     encher($("#esc-estacao"),
@@ -2766,6 +2848,7 @@
     const { error } = await db.rpc("cw_esc_responder", { p_msg: m.id, p_aprovar: aprovar, p_sempre: !!sempre });
     if (error) return alert(error.message);
     m.estado = aprovar ? "aprovado" : "negado"; if (sempre) m.dados = { ...(m.dados || {}), sempre: true }; escDesenharPainel();
+    if ($("#chat-sala").open) desenharChat();
   }
   async function escAprovarTudo(c) {
     if (!c.aprova_tudo) {
