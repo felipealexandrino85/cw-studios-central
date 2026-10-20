@@ -185,6 +185,11 @@
   .bib-card .desc { font-size: 13px; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .bib-card .rodape { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: space-between; }
   .bib-repos { display: grid; gap: 8px; }
+  .bib-passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+  .bib-passo { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text-dim); }
+  .bib-passo b.num { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: #fff; font-size: 13px; }
+  .bib-uso { font-size: 12.5px; background: var(--surface-2); border-radius: 10px; padding: 6px 10px; color: var(--text-dim); }
+  .bib-uso code { font-size: 12px; }
   .bib-repo { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 14px; }
   .bib-repo b { word-break: break-all; }
   pre.bib-conteudo { margin: 0; white-space: pre-wrap; word-break: break-word; font: 12.5px/1.5 ui-monospace, Menlo, monospace; background: var(--surface-2); border-radius: 12px; padding: 12px; max-height: 50vh; overflow: auto; }
@@ -556,6 +561,7 @@
       <div class="aviso erro" id="bib-msg" hidden></div>
       <div class="bib-repos" id="bib-repos"></div>
     </div>
+    <div class="caixa" id="bib-como" style="background:#fff;display:grid;gap:10px"></div>
     <h3 class="grupo" id="bib-titulo">Itens</h3>
     <div class="bib-filtros">
       <input type="search" id="bib-busca" placeholder="Buscar por nome ou descrição" aria-label="Buscar na biblioteca">
@@ -1830,6 +1836,11 @@
     BIB.repos = r.data || []; BIB.itens = b.data || []; BIB.escolhas = e.data || []; BIB.carregado = Date.now();
   }
   const meuSlug = () => eu.papel === "editor" && eu.editor ? eu.editor.slug : null;
+  const previaEditor = () => !meuSlug() && visao.papel === "editor";   // gestão usando "Ver como" um editor
+  const COMO_USAR = { skill: (n) => ["O Claude usa sozinho quando a tarefa combina. Ou peça: ", h("code", {}, `usa a skill ${n}`)],
+    agente: (n) => ["Peça no Claude: ", h("code", {}, `usa o agente ${n} para …`)], comando: (n) => ["No Claude, digite ", h("code", {}, `/${n}`)],
+    plugin: () => ["Depois de instalado, os recursos do plugin aparecem no Claude (veja a descrição)."] };
+  const nomeNoClaude = (x) => x.tipo === "plugin" ? x.nome : "cw-bib-" + x.nome.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
   const escolhi = (id) => BIB.escolhas.some((x) => x.item_id === id && x.editor_slug === meuSlug());
   async function desenharBiblioteca() {
     if (Date.now() - BIB.carregado > 5000) await carregarBiblioteca();
@@ -1858,8 +1869,19 @@
     }
     const sel = $("#bib-repo");
     encher(sel, h("option", { value: "" }, "Todos os repositórios"), BIB.repos.map((r) => h("option", { value: r.id }, r.nome)),
-      meuSlug() && h("option", { value: "meus" }, "Só os que estão no meu Claude"));
+      (meuSlug() || previaEditor()) && h("option", { value: "meus" }, "Só os que estão no meu Claude"));
     sel.value = BIB.repo; sel.onchange = () => { BIB.repo = sel.value; desenharBiblioteca(); };
+    // passo a passo do editor (e na prévia da gestão)
+    const versao = ((D.aovivo.find((x) => x.slug === (meuSlug() || visao.editor)) || {}).payload || {}).plugin;
+    const velho = versao && versao.localeCompare("1.9.2", undefined, { numeric: true }) < 0;
+    encher($("#bib-como"), gestor && !previaEditor() ? [h("b", {}, "Como o time usa"),
+        h("p", { class: "nota", style: "margin:0" }, "Cada editor entra aqui, clica em \"Adicionar ao meu Claude\" no que quiser e reabre o Claude Code. Use \"Ver como\" um editor (no topo) para ver a tela dele.")]
+      : [h("b", {}, "Como colocar no seu Claude"),
+        h("div", { class: "bib-passos" },
+          h("div", { class: "bib-passo" }, h("b", { class: "num" }, "1"), h("span", {}, "Clique em ", h("b", {}, "Adicionar ao meu Claude"), " no agente ou skill que quiser. Plugin: o botão copia um pedido; cole no Claude e envie.")),
+          h("div", { class: "bib-passo" }, h("b", { class: "num" }, "2"), h("span", {}, h("b", {}, "Feche e abra o Claude Code"), " (ou comece uma conversa nova). Ele instala sozinho o que você adicionou.")),
+          h("div", { class: "bib-passo" }, h("b", { class: "num" }, "3"), h("span", {}, "Use pedindo normalmente. Cada item mostra a frase certa, por exemplo ", h("code", {}, "usa a skill cw-bib-canvas-design"), "."))),
+        velho && h("div", { class: "aviso" }, `Seu plugin da central está na versão ${versao}. Para a biblioteca funcionar, atualize: peça ao Claude "atualiza o plugin cw-central" (claude plugin marketplace update cw-studios e claude plugin update cw-central@cw-studios) e reabra o Claude.`)]);
     const busca = $("#bib-busca"); busca.value = BIB.busca;
     busca.oninput = () => { BIB.busca = busca.value; clearTimeout(BIB.t); BIB.t = setTimeout(desenharListaBib, 150); };
     desenharListaBib();
@@ -1874,8 +1896,18 @@
     $("#bib-titulo").textContent = `Itens (${base.length})`;
     encher($("#bib-lista"), lista.length ? lista.map(cartaoBib) : h("div", { class: "vazio" }, BIB.itens.length ? "Nada encontrado com esse filtro." : "A biblioteca está vazia: a gestão conecta os repositórios aqui."));
   }
+  function proximoPasso(x, adicionou) {
+    encher($("#detalhe-corpo"), h("h2", {}, adicionou ? "Adicionado ao seu Claude" : "Removido do seu Claude"),
+      adicionou ? [h("p", {}, h("b", {}, "Agora feche e abra o Claude Code"), " (ou comece uma conversa nova). Ele instala ", h("code", {}, nomeNoClaude(x)), " sozinho."),
+          h("div", { class: "bib-uso" }, "Depois, para usar: ", COMO_USAR[x.tipo](nomeNoClaude(x)))]
+        : h("p", {}, "Na próxima vez que você abrir o Claude Code, ", h("code", {}, nomeNoClaude(x)), " sai do seu Claude."),
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: () => $("#detalhe").close() }, "Entendi")));
+    $("#detalhe").showModal();
+  }
   function botaoEscolha(x) {
-    if (!meuSlug()) return null;
+    if (!meuSlug() && !previaEditor()) return null;
+    if (previaEditor()) return h("button", { class: "botao amarelo peq", title: "Prévia: só o próprio editor adiciona",
+      onclick: () => alert("Isto é a prévia da visão do editor. Na conta dele, este botão adiciona o item ao Claude dele.") }, x.tipo === "plugin" ? "Instalar no meu Claude" : "Adicionar ao meu Claude");
     if (x.tipo === "plugin") return h("button", { class: "botao amarelo peq", onclick: (ev) => copiarInstalacao(x, ev.currentTarget) }, "Instalar no meu Claude");
     const tem = escolhi(x.id);
     return h("button", { class: tem ? "botao leve peq" : "botao amarelo peq", onclick: async (ev) => {
@@ -1884,15 +1916,21 @@
       if (error) { alert(error.message); ev.target.disabled = false; return; }
       if (tem) BIB.escolhas = BIB.escolhas.filter((e) => !(e.item_id === x.id && e.editor_slug === meuSlug()));
       else BIB.escolhas.push({ item_id: x.id, editor_slug: meuSlug() });
-      desenharListaBib();
-    } }, tem ? "✓ No meu Claude · tirar" : "Puxar para meu Claude");
+      desenharListaBib(); proximoPasso(x, !tem);
+    } }, tem ? "✓ No meu Claude · remover" : "Adicionar ao meu Claude");
   }
   // plugin: copia um pedido pronto; o Claude do editor instala com "kit.py plugin ID"
   async function copiarInstalacao(x, botao) {
     const pedido = `Instala o plugin ${x.nome} da biblioteca da central (ID ${x.id})`;
-    try { await navigator.clipboard.writeText(pedido); botao.textContent = "Copiado! Cole no Claude e envie"; }
-    catch { botao.textContent = pedido; }
-    setTimeout(() => { botao.textContent = "Instalar no meu Claude"; }, 6000);
+    let copiou = true;
+    try { await navigator.clipboard.writeText(pedido); } catch { copiou = false; }
+    encher($("#detalhe-corpo"), h("h2", {}, "Instalar " + x.nome),
+      h("div", { class: "bib-passos" },
+        h("div", { class: "bib-passo" }, h("b", { class: "num" }, "1"), h("span", {}, copiou ? "O pedido já foi copiado. " : "Copie o pedido abaixo. ", "Abra o Claude Code, ", h("b", {}, "cole (⌘V) e envie"), ".")),
+        h("div", { class: "bib-passo" }, h("b", { class: "num" }, "2"), h("span", {}, "Ele instala sozinho. Quando terminar, ", h("b", {}, "feche e abra o Claude"), "."))),
+      h("pre", { class: "bib-conteudo" }, pedido),
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: () => $("#detalhe").close() }, "Entendi")));
+    $("#detalhe").showModal();
   }
   function cartaoBib(x) {
     const repo = BIB.repos.find((r) => r.id === x.repo_id) || {};
@@ -1901,7 +1939,8 @@
       h("div", { class: "chips" }, h("span", { class: "chip" }, NOME_TIPO[x.tipo] || x.tipo), h("span", { class: "chip tom-neutro" }, repo.nome || "")),
       h("div", { class: "tit", role: "button", tabindex: 0, onclick: () => abrirItemBib(x), onkeydown: (ev) => { if (ev.key === "Enter") abrirItemBib(x); } }, x.nome),
       x.descricao && h("div", { class: "desc" }, x.descricao),
-      h("div", { class: "rodape" }, eu.papel === "gestor" ? h("span", { class: "nota" }, usam ? `${usam} editor(es) usam` : "ninguém usa ainda") : h("span"), botaoEscolha(x)));
+      escolhi(x.id) && h("div", { class: "bib-uso" }, COMO_USAR[x.tipo](nomeNoClaude(x))),
+      h("div", { class: "rodape" }, eu.papel === "gestor" && !previaEditor() ? h("span", { class: "nota" }, usam ? `${usam} editor(es) usam` : "ninguém usa ainda") : h("span"), botaoEscolha(x)));
   }
   async function abrirItemBib(x) {
     const repo = BIB.repos.find((r) => r.id === x.repo_id) || {};
@@ -1915,6 +1954,7 @@
       h("div", { class: "chips" }, h("span", { class: "chip" }, NOME_TIPO[x.tipo] || x.tipo), h("a", { class: "chip tom-neutro", href: `${repo.url}/blob/HEAD/${x.caminho}`, target: "_blank", rel: "noopener" }, repo.nome)),
       h("h2", {}, x.nome),
       x.descricao && h("p", { style: "margin:0;color:var(--text-dim)" }, x.descricao),
+      h("div", { class: "bib-uso" }, h("b", {}, "Como usar no Claude: "), COMO_USAR[x.tipo](nomeNoClaude(x))),
       instalar && [h("p", { class: "nota", style: "margin:0" }, "Clique em \"Instalar no meu Claude\": o pedido é copiado; cole no Claude e envie. Ele instala e pede para você fechar e abrir o Claude. Se preferir fazer à mão:"), h("pre", { class: "bib-conteudo" }, instalar.join("\n"))],
       extras.length > 0 && h("p", { class: "nota", style: "margin:0" }, `Vai junto: ${extras.slice(0, 12).join(", ")}${extras.length > 12 ? ` e mais ${extras.length - 12}` : ""}`),
       data && data.conteudo && h("pre", { class: "bib-conteudo" }, data.conteudo),
