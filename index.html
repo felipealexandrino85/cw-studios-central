@@ -1531,6 +1531,8 @@
       ["drive", "instagram", "tiktok", "youtube"].map((k) => h("span", { class: "chip " + (st[k] ? "tom-ok" : "tom-neutro") },
         `${ok(k)} ${{ drive: "Google Drive", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube" }[k]}${k === "instagram" && st.instagram_conta ? " @" + st.instagram_conta : ""}`)),
       st.erro_instagram && h("span", { class: "chip tom-critico", title: st.erro_instagram }, "Acesso do Instagram recusado: reconecte"),
+      st.youtube_canal && h("span", { class: "chip " + (st.youtube ? "tom-ok" : "tom-aviso") }, st.youtube ? `YouTube: ${st.youtube_canal}` : `YouTube: canal ${st.youtube_canal} aguardando confirmação`),
+      st.drive && st.drive_pasta === false && h("span", { class: "chip tom-critico" }, "A conta do Google não enxerga a pasta CW Cast - Cortes"),
       st.instagram_dias != null && st.instagram_dias < 15 && h("span", { class: "chip tom-aviso" },
         st.instagram_dias <= 0 ? "Acesso do Instagram venceu: renove" : `Acesso do Instagram vence em ${st.instagram_dias} dias`),
       !st.drive && h("span", { class: "nota" }, "Enquanto as redes não estiverem conectadas, os aprovados ficam na fila e saem assim que conectar."));
