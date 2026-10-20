@@ -424,7 +424,7 @@ window.iniciarCast = function (CTX) {
   var fN = function (v) { return v == null || v === "" || isNaN(v) ? "—" : nf.format(v); };
   var pf2 = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
   var fP = function (v) { return v == null || isNaN(v) ? "—" : (Math.abs(v) < 1 ? pf2 : pf).format(v) + "%"; };
-  var S = { metricas: new Map(), riscos: new Map(), melhorias: new Map(), semana: new Map(), conf: new Map(), seguidores: new Map(), yt_diario: new Map(), videos: new Map(), config: new Map() };
+  var S = { metricas: new Map(), riscos: new Map(), melhorias: new Map(), semana: new Map(), conf: new Map(), seguidores: new Map(), yt_diario: new Map(), ig_diario: new Map(), videos: new Map(), config: new Map() };
   var gPending = new Map(), gTimers = {};
   var gGet = function (col, id) { return S[col].get(id) || {}; };
   var dis_ = function () { return canWrite ? "" : " disabled"; };
@@ -458,7 +458,7 @@ window.iniciarCast = function (CTX) {
   function editingMain() { var a = document.activeElement; return !!(a && a.closest && a.closest("#cast-main") && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); }
   function gRender() { renderTabs(); renderBanner(); if (st.tab !== "equipe" && !editingMain()) renderMain(); setSync(); }
   function gSubscribe() {
-    ["metricas", "riscos", "melhorias", "semana", "conf", "seguidores", "yt_diario"].forEach(function (c) {
+    ["metricas", "riscos", "melhorias", "semana", "conf", "seguidores", "yt_diario", "ig_diario"].forEach(function (c) {
       db.collection(c).onSnapshot(function (snap) {
         var m = new Map(); snap.docs.forEach(function (d) { m.set(d.id, d.data()); });
         gPending.forEach(function (v, k) { if (k.indexOf(c + "/") === 0) m.set(k.slice(c.length + 1), v); });
@@ -510,7 +510,9 @@ window.iniciarCast = function (CTX) {
     var m = Object.assign({ base: 10629, base_data: "2026-10-14", meta: 2000, inicio: "2026-10-01", fim: "2026-12-31" }, S.config.get("meta") || {});
     m.base = Number(m.base) || 0; m.meta = Number(m.meta) || 2000;
     var ser = segSeries().filter(function (p) { return p.d >= m.inicio && p.d <= m.fim && (!asOf || p.d <= asOf); }), last = ser[ser.length - 1];
-    var hoje0 = asOf || TODAY, ref = last ? last.d : hoje0, total = diff(m.fim, m.inicio) + 1, el = Math.max(0, Math.min(total, diff(ref, m.inicio) + 1));
+    // a contagem começa na data-base (o número anotado); antes dela não há leitura, então o esperado também parte dali
+    var zero = m.base_data && m.base_data >= m.inicio ? m.base_data : add(m.inicio, -1);
+    var hoje0 = asOf || TODAY, ref = last ? last.d : hoje0, total = Math.max(diff(m.fim, zero), 1), el = Math.max(0, Math.min(total, diff(ref, zero)));
     var r = { m: m, last: last ? { fim: last.d } : null, ref: ref, esperado: m.meta * el / total, atual: last ? last.total : null, original: m.meta / total };
     r.ganhos = r.atual == null ? null : r.atual - m.base;
     r.faltam = r.ganhos == null ? null : Math.max(m.meta - r.ganhos, 0);
@@ -520,16 +522,59 @@ window.iniciarCast = function (CTX) {
     r.dia = r.faltam == null ? null : r.faltam / r.diasRestantes;
     r.precisa = r.dia == null ? null : r.dia * 7;
     r.rows = [];
-    var pd = add(m.inicio, -1), pt = m.base;
+    var pd = zero, pt = m.base;
     ser.forEach(function (p) {
       var dias = Math.max(diff(p.d, pd), 1), ganho = p.total - pt, prevAcum = pt - m.base;
       r.rows.push({ d: p.d, total: p.total, ganho: ganho, dias: dias, porDia: ganho / dias, need: Math.max(m.meta - prevAcum, 0) / Math.max(diff(m.fim, pd), 1), acum: p.total - m.base, src: S.seguidores.has(p.d) ? "diario" : "semana" });
       pd = p.d; pt = p.total;
     });
-    r.media = r.ganhos == null ? null : r.ganhos / Math.max(diff(ref, add(m.inicio, -1)), 1);
+    r.media = r.ganhos == null ? null : r.ganhos / Math.max(diff(ref, zero), 1);
+    r.zero = zero;
     r.hoje = r.rows.filter(function (x) { return x.d === hoje0; })[0] || null;
     r.start = ref >= hoje0 ? add(ref, 1) : hoje0;
     return r;
+  }
+  /* ----- projeção: no ritmo dos últimos 7 dias, onde a meta chega em 31/12 ----- */
+  function projecao(r) {
+    var m = r.m, ser = segSeries().filter(function (p) { return p.d >= m.inicio && p.d <= m.fim; });
+    if (m.base_data && m.base_data >= add(m.inicio, -1) && (!ser.length || m.base_data < ser[0].d)) ser.unshift({ d: m.base_data, total: m.base });
+    if (ser.length < 2 || r.ganhos == null) return null;
+    var last = ser[ser.length - 1], corte = add(last.d, -7), base = ser[0];
+    for (var i = ser.length - 2; i >= 0; i--) { if (ser[i].d <= corte) { base = ser[i]; break; } }
+    var ritmo = (last.total - base.total) / Math.max(diff(last.d, base.d), 1), restam = Math.max(diff(m.fim, last.d), 0);
+    var final = r.ganhos + Math.max(ritmo, 0) * restam;
+    return { ser: ser, last: last, base: base, ritmo: ritmo, restam: restam, final: final, pct: final / m.meta * 100,
+             bate: r.faltam === 0 ? last.d : ritmo > 0 ? add(last.d, Math.ceil(r.faltam / ritmo)) : null };
+  }
+  function projStatus(pj, r) { return !pj ? "none" : pj.final >= r.m.meta ? "ok" : pj.final >= r.m.meta * 0.85 ? "warn" : "bad"; }
+  function projChart(pj, r) {
+    var m = r.m, W = 700, H = 240, L = 46, R = 12, T = 14, B = 28, x0 = add(m.inicio, -1), dias = Math.max(diff(m.fim, x0), 1);
+    var max = Math.max(m.meta, pj.final) * 1.08;
+    var X = function (d) { return L + (W - L - R) * Math.max(0, Math.min(1, diff(d, x0) / dias)); }, Y = function (v) { return T + (H - T - B) * (1 - Math.max(v, 0) / max); };
+    var s = '<svg viewBox="0 0 700 240" role="img" aria-label="Seguidores conquistados, meta e projeção até ' + br(m.fim) + '" class="segchart">';
+    [0, 0.5, 1].forEach(function (f) { var v = max * f; s += '<line class="cg" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '"/><text class="ct" x="' + (L - 6) + '" y="' + (Y(v) + 3) + '" text-anchor="end">' + fN(Math.round(v)) + "</text>"; });
+    s += '<line x1="' + X(x0) + '" y1="' + Y(0) + '" x2="' + X(m.fim) + '" y2="' + Y(m.meta) + '" stroke="#9aa0aa" stroke-width="2" stroke-dasharray="4 5"/>';
+    s += '<text class="ct" x="' + (X(m.fim) - 4) + '" y="' + (Y(m.meta) - 6) + '" text-anchor="end">meta +' + fN(m.meta) + "</text>";
+    var pts = pj.ser.map(function (p) { return X(p.d) + "," + Y(p.total - m.base); }).join(" ");
+    s += '<polyline points="' + pts + '" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linejoin="round"/>';
+    s += '<line x1="' + X(pj.last.d) + '" y1="' + Y(r.ganhos) + '" x2="' + X(m.fim) + '" y2="' + Y(pj.final) + '" stroke="' + (pj.final >= m.meta ? "#16a34a" : "#dc2626") + '" stroke-width="3" stroke-dasharray="8 6"/>';
+    s += '<circle cx="' + X(pj.last.d) + '" cy="' + Y(r.ganhos) + '" r="5" fill="#7c3aed"/>';
+    s += '<text class="cv" x="' + (X(m.fim) - 4) + '" y="' + (Y(pj.final) + (pj.final >= m.meta ? -8 : 16)) + '" text-anchor="end">projeção +' + fN(Math.round(pj.final)) + "</text>";
+    [m.inicio, add(m.inicio, Math.round(dias / 2)), m.fim].forEach(function (d) { s += '<text class="ct" x="' + X(d) + '" y="' + (H - 8) + '" text-anchor="middle">' + dm(d) + "</text>"; });
+    return s + "</svg>";
+  }
+  function projCard(r) {
+    var pj = projecao(r), m = r.m;
+    if (!pj) return '<section class="card"><div class="cardhead"><h3>Projeção até ' + br(m.fim) + '</h3></div><div class="empty-note">Precisa de pelo menos duas leituras de seguidores para projetar. O robô registra uma por dia.</div></section>';
+    var st2 = projStatus(pj, r), frase = pj.final >= m.meta
+      ? "No ritmo atual, batemos a meta em <b>" + br(pj.bate) + "</b> e chegamos a <b>+" + fN(Math.round(pj.final)) + "</b> em " + br(m.fim) + " (" + fN(Math.round(pj.pct)) + "% da meta)."
+      : "No ritmo atual, chegamos a <b>+" + fN(Math.round(pj.final)) + "</b> em " + br(m.fim) + " (" + fN(Math.round(pj.pct)) + "% da meta). Para bater, o ritmo precisa subir de <b>" + fD(pj.ritmo) + "</b> para <b>" + fN(Math.ceil(r.dia)) + "</b> por dia.";
+    return '<section class="card"><div class="cardhead"><h3>Projeção até ' + br(m.fim) + '</h3><span class="pill ' + st2 + '">' + (st2 === "ok" ? "Bate a meta" : st2 === "warn" ? "Perto" : "Não bate") + "</span></div>" +
+      '<div class="kpis"><div class="kpi"><span>Ritmo atual</span><b>' + (pj.ritmo >= 0 ? "+" : "") + fD(pj.ritmo) + "</b><small>por dia (de " + dm(pj.base.d) + " a " + dm(pj.last.d) + ")</small></div>" +
+      '<div class="kpi"><span>Precisa por dia</span><b>' + fN(Math.ceil(r.dia || 0)) + "</b><small>até " + br(m.fim) + "</small></div>" +
+      '<div class="kpi ' + (st2 === "ok" ? "ok" : st2 === "bad" ? "bad" : "") + '"><span>Projeção em ' + dm(m.fim) + "</span><b>+" + fN(Math.round(pj.final)) + "</b><small>" + fN(Math.round(pj.pct)) + "% da meta</small></div>" +
+      '<div class="kpi"><span>Bate a meta em</span><b>' + (pj.bate && pj.bate <= m.fim ? dm(pj.bate) : "—") + "</b><small>" + (pj.bate && pj.bate <= m.fim ? "no ritmo atual" : "não bate no ritmo atual") + "</small></div></div>" +
+      projChart(pj, r) + '<p class="hint">' + frase + " O ritmo usa os últimos 7 dias de leitura; muda todo dia com a leitura nova do robô.</p></section>";
   }
   function meterHtml(r) {
     var pct = r.ganhos == null ? 0 : Math.max(0, Math.min(100, r.ganhos / r.m.meta * 100)), ep = Math.min(100, r.esperado / r.m.meta * 100);
@@ -545,6 +590,7 @@ window.iniciarCast = function (CTX) {
     return '<section class="card"><div class="cardhead"><h3>Meta de seguidores</h3><span class="pill ' + r.status + '">' + SL[r.status] + "</span></div>" +
       '<div class="big"><b>' + sgn(r.ganhos) + "</b><span>de " + fN(m.meta) + " novos · faltam <strong>" + fN(r.faltam) + "</strong></span></div>" + meterHtml(r) +
       '<div class="trio"><div><span>Precisa por dia</span><b>' + (r.dia == null ? "—" : fN(Math.ceil(r.dia))) + "</b></div><div><span>Média até agora</span><b>" + fD(r.media) + "</b></div><div><span>Hoje</span><b>" + hojeTxt(r) + "</b></div></div>" + segEntry() +
+      (function () { var pj = projecao(r); return pj ? '<p class="hint" style="margin:6px 0 0"><b>Projeção ' + dm(r.m.fim) + ":</b> +" + fN(Math.round(pj.final)) + " (" + fN(Math.round(pj.pct)) + "% da meta) no ritmo de " + fD(pj.ritmo) + "/dia" + (pj.final >= r.m.meta && pj.bate ? "; bate em " + dm(pj.bate) : "") + ".</p>" : ""; })() +
       '<p class="hint">' + (r.last ? "Última leitura: " + br(r.last.fim) + ". " : "Sem leitura ainda. ") + go("meta", "Ver ritmo dia a dia") + "</p></section>";
   }
 
@@ -569,9 +615,10 @@ window.iniciarCast = function (CTX) {
     var r = igMeta(), m = r.m, d = dis_();
     var html = '<section class="card hero"><div class="cardhead"><h3>+' + fN(m.meta) + " seguidores no @cw.cast</h3><span class=\"pill " + r.status + '">' + SL[r.status] + '</span></div><div class="herogrid"><div><div class="big"><b>' + (r.faltam == null ? "—" : fN(r.faltam)) + "</b><span>seguidores faltam até " + br(m.fim) + "</span></div>" + meterHtml(r) +
       '<div class="mrow"><span>Conquistados <b>' + sgn(r.ganhos) + "</b></span><span>Esperado até hoje <b>+" + fN(Math.round(r.esperado)) + "</b></span><span>Seguidores agora <b>" + fN(r.atual) + "</b>" + (r.last ? " (" + dm(r.last.fim) + ")" : "") + "</span></div></div>" +
-      '<div class="tiles"><div class="kpi"><span>Precisamos por dia</span><b>' + (r.dia == null ? "—" : fN(Math.ceil(r.dia))) + '</b><small>recalculado a cada leitura</small></div><div class="kpi"><span>Plano original</span><b>' + fN(Math.ceil(r.original)) + "</b><small>por dia, desde 01/10</small></div>" +
+      '<div class="tiles"><div class="kpi"><span>Precisamos por dia</span><b>' + (r.dia == null ? "—" : fN(Math.ceil(r.dia))) + '</b><small>recalculado a cada leitura</small></div><div class="kpi"><span>Plano original</span><b>' + fN(Math.ceil(r.original)) + "</b><small>por dia, desde " + dm(add(r.zero, 1)) + "</small></div>" +
       '<div class="kpi"><span>Média até agora</span><b>' + fD(r.media) + "</b><small>por dia</small></div><div class=\"kpi\"><span>Ganho de hoje</span><b>" + hojeTxt(r) + "</b><small>" + (r.hoje ? "leitura de " + dm(r.hoje.d) : "registre a leitura de hoje") + "</small></div></div></div>" +
       "<h4 class=\"sechead\">Registrar leitura</h4>" + segEntry() + '<p class="hint">Anote o total de seguidores do perfil, de preferência no mesmo horário todo dia. Se pular um dia, o ganho é dividido entre os dias.</p></section>';
+    html += projCard(r);
     html += '<div class="cols"><section class="card"><div class="cardhead"><h3>Seguidores novos por dia</h3></div>' + segChart(r) + '<div class="legend2"><span><i class="lg ok"></i>Bateu o necessário</span><span><i class="lg bad"></i>Abaixo do necessário</span><span><i class="lg fut"></i>Próximos dias</span></div></section>';
     html += '<section class="card"><div class="cardhead"><h3>Próximos dias</h3></div>';
     if (r.dia == null) html += '<div class="empty-note">Sem leitura ainda.</div>';
@@ -774,9 +821,27 @@ window.iniciarCast = function (CTX) {
     return html;
   }
 
+  function diaADia() {   // últimos 14 dias de Instagram e YouTube, do robô
+    var dias = {}, k;
+    [["seguidores", "s"], ["ig_diario", "i"], ["yt_diario", "y"]].forEach(function (c) { S[c[0]].forEach(function (v, id) { if (id >= add(TODAY, -15)) (dias[id] = dias[id] || {})[c[1]] = v || {}; }); });
+    var ids = Object.keys(dias).sort().reverse().slice(0, 14);
+    if (!ids.length) return "";
+    var segs = segSeries(), ganho = function (d) { for (var j = segs.length - 1; j > 0; j--) if (segs[j].d === d) return diff(d, segs[j - 1].d) === 1 ? segs[j].total - segs[j - 1].total : null; return null; };
+    var ultY = ids.filter(function (x) { return dias[x].y; })[0], ultI = ids.filter(function (x) { return dias[x].i && dias[x].i.views != null && x < TODAY; })[0];
+    var resumo = [];
+    if (ultI) resumo.push("Instagram em " + dm(ultI) + ": " + fN(dias[ultI].i.views) + " views, " + fN(dias[ultI].i.alcance) + " contas alcançadas" + (ganho(ultI) != null ? ", " + sgn(ganho(ultI)) + " seguidores" : "") + ".");
+    if (ultY) resumo.push("YouTube em " + dm(ultY) + ": " + fN(dias[ultY].y.org) + " views orgânicas, " + fN(dias[ultY].y.ads) + " de anúncio, " + sgn(dias[ultY].y.subs) + " inscritos.");
+    var html = '<h2 style="font-size:16px;margin:18px 0 6px">Dia a dia</h2>' + (resumo.length ? '<p class="hint" style="margin-top:0">' + resumo.join(" ") + "</p>" : "") +
+      '<div class="tablewrap"><table class="hist"><thead><tr><th>Dia</th><th>Seguidores IG</th><th>Ganho IG</th><th>Views IG</th><th>Alcance IG</th><th>YT orgânicas</th><th>YT anúncio</th><th>Inscritos YT</th><th>Horas YT</th></tr></thead><tbody>';
+    for (k = 0; k < ids.length; k++) {
+      var d = ids[k], x = dias[d], s2 = x.s || {}, i2 = x.i || {}, y2 = x.y || {}, g = ganho(d);
+      html += "<tr><td>" + DNAME[toD(d).getUTCDay()] + " " + dm(d) + "</td><td>" + fN(s2.total != null ? s2.total : i2.seguidores) + "</td><td>" + (g == null ? "—" : sgn(g)) + "</td><td>" + fN(i2.views) + "</td><td>" + fN(i2.alcance) + "</td><td>" + fN(y2.org) + "</td><td>" + fN(y2.ads) + "</td><td>" + (y2.subs == null ? "—" : sgn(y2.subs)) + "</td><td>" + fD(y2.horas) + "</td></tr>";
+    }
+    return html + '</tbody></table></div><p class="hint" style="margin-top:6px">Atualiza sozinho todo dia de manhã. O YouTube fecha os números com 2 a 3 dias de atraso, por isso os dias mais recentes dele aparecem depois.</p>';
+  }
   function viewMetricas() {
     var ws = metList(), cur = ws[ws.length - 1], prev = ws[ws.length - 2], r = igMeta(), d = dis_();
-    var html = '<div class="toolbar"><strong>Métricas de Instagram, TikTok e YouTube</strong>' + (canWrite ? '<button class="btn" data-act="new-sem">+ Registrar semana</button>' : "") + "</div>" + '<p class="hint" style="margin-top:0">A meta de +2.000 seguidores e o ritmo diário estão na aba ' + go("meta", "Meta de seguidores") + ". Instagram e TikTok entram sozinhos todo dia às 8h; o YouTube, pela rotina de segunda.</p>";
+    var html = '<div class="toolbar"><strong>Métricas de Instagram, TikTok e YouTube</strong>' + (canWrite ? '<button class="btn" data-act="new-sem">+ Registrar semana</button>' : "") + "</div>" + '<p class="hint" style="margin-top:0">A meta de +2.000 seguidores e o ritmo diário estão na aba ' + go("meta", "Meta de seguidores") + ". Instagram e YouTube entram sozinhos todo dia de manhã (TikTok quando a conexão de métricas for refeita).</p>" + diaADia();
     if (!cur) return html + '<div class="empty-note">Nenhuma semana registrada ainda. O YouTube é preenchido toda segunda pela rotina automática; o Instagram vem do PDF do Insights.</div>';
     var c = cur.ig || {}, p = (prev && prev.ig) || {}, cy = cur.yt || {}, py = (prev && prev.yt) || {};
     var tile = function (l, a, b) { return '<div class="kpi"><span>' + esc(l) + "</span><b>" + fN(a) + "</b>" + dlt(a, b) + "</div>"; };
