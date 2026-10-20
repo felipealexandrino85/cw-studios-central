@@ -562,6 +562,7 @@
   <section id="aba-ferramentas" hidden>
     <header class="cabeca"><p class="kicker">Biblioteca de APIs</p><h1>Ferramentas</h1>
       <p class="sub">APIs da empresa que o Claude de cada editor usa pelo conector cw-studios, sem ver chave nenhuma. Cada geração conta no limite do mês do editor.</p></header>
+    <div class="acoes" id="ferr-acoes" hidden><button class="botao amarelo" id="ferr-nova">Adicionar ferramenta</button></div>
     <div class="grade-cartoes" id="ferr-lista"></div>
     <div id="ferr-gestao" hidden>
       <h3 class="grupo">Gastos do mês por editor</h3>
@@ -1583,9 +1584,17 @@
           h("label", { class: "nota", style: "display:flex;gap:6px;align-items:center;flex-direction:row" }, "US$/geração", custo),
           h("button", { class: "botao leve peq", onclick: async () => { const { error } = await db.rpc("cw_ferr_ajustar", { p_slug: fe.slug, p_limite: Number(limite.value), p_custo: custo.value === "" ? null : Number(custo.value), p_ativa: null }); if (error) alert(error.message); desenharFerramentas(); } }, "Salvar"),
           h("button", { class: "botao leve peq", onclick: async () => { await db.rpc("cw_ferr_ajustar", { p_slug: fe.slug, p_limite: null, p_custo: fe.custo_estimado, p_ativa: !fe.ativa }); desenharFerramentas(); } }, fe.ativa ? "Desligar" : "Ligar")),
-        gestor && !FERR.chaves[fe.slug] && h("p", { class: "nota", style: "margin:0" }, "Para configurar a chave, rode no Terminal do Mac: python3 ~/Documents/Skills/cw-cortes-hub/ferramentas/conectar-api.py " + fe.slug));
+        gestor && !FERR.chaves[fe.slug] && h("p", { class: "nota", style: "margin:0" }, "Falta conectar a chave. Quando tiver, rode no Terminal do Mac: ",
+          h("code", {}, "python3 ~/Documents/Skills/cw-cortes-hub/ferramentas/conectar-api.py " + fe.slug)),
+        gestor && fe.slug !== "higgsfield" && h("div", { class: "acoes" },
+          h("button", { class: "botao leve peq", onclick: () => formFerramenta(fe) }, "Editar"),
+          h("button", { class: "botao perigo peq", onclick: async () => {
+            if (!confirm(`Remover ${fe.nome}? Some do Claude do time (o histórico de uso também sai).`)) return;
+            await db.rpc("cw_ferr_remover", { p_slug: fe.slug }); desenharFerramentas(); } }, "Remover")));
     }) : h("div", { class: "vazio" }, "Nenhuma ferramenta cadastrada."));
     $("#ferr-gestao").hidden = !gestor;
+    $("#ferr-acoes").hidden = !gestor;
+    $("#ferr-nova").onclick = () => formFerramenta(null);
     if (gestor) {
       const linhas = [];
       for (const fe of FERR.lista) for (const ed of D.editores.filter((e) => e.ativo)) {
@@ -1605,6 +1614,40 @@
         td(h("code", {}, x.caminho)), td(x.trabalho || "–"), h("td", {}, h("span", { class: "chip " + tom, title: x.erro || "" }, rot)),
         h("td", {}, urls.length ? urls.map((u, i) => h("a", { href: u, target: "_blank", rel: "noopener", style: "margin-right:8px" }, "arquivo " + (i + 1))) : "–"));
     }) : vazioLinha(7, "Nenhuma geração ainda."));
+  }
+
+  // cadastro de ferramenta nova (a chave entra depois, pelo Terminal)
+  function formFerramenta(fe) {
+    const tipoAtual = fe ? (/Bearer/.test(fe.autenticacao) ? "bearer" : /Key \{/.test(fe.autenticacao) ? "id_segredo" : "cabecalho") : "bearer";
+    const campo = (id, rotulo, valor, extra) => { const i = h("input", { id, value: valor || "", ...(extra || {}) }); return [h("label", { for: id }, rotulo, i), i]; };
+    const [lNome, nome] = campo("fe-nome", "Nome", fe && fe.nome, { placeholder: "Ex.: ElevenLabs" });
+    const [lDesc, desc] = campo("fe-desc", "Para que serve (o Claude do time lê isso)", fe && fe.descricao, { placeholder: "Ex.: Gera locução em português com as vozes da marca" });
+    const [lDocs, docs] = campo("fe-docs", "Link da documentação da API", fe && fe.docs_url, { placeholder: "https://…" });
+    const [lBase, base] = campo("fe-base", "Endereço da API", fe && fe.base_url, { placeholder: "https://api.exemplo.com" });
+    const tipo = h("select", { id: "fe-tipo" }, [["bearer", "Token (Authorization: Bearer …)"], ["cabecalho", "Chave num cabeçalho próprio (ex.: x-api-key)"], ["id_segredo", "ID + segredo (como o Higgsfield)"]]
+      .map(([v, t]) => h("option", { value: v, selected: v === tipoAtual || null }, t)));
+    const [lCab, cab] = campo("fe-cab", "Nome do cabeçalho da chave", fe && tipoAtual === "cabecalho" ? fe.autenticacao.split(":")[0] : "", { placeholder: "x-api-key" });
+    lCab.hidden = tipo.value !== "cabecalho"; tipo.onchange = () => { lCab.hidden = tipo.value !== "cabecalho"; };
+    const [lSt, st] = campo("fe-status", "Caminho para ver o andamento (opcional)", fe && fe.status_caminho, { placeholder: "/requests/{id}/status" });
+    const [lLim, lim] = campo("fe-lim", "Limite de usos por editor no mês", fe ? fe.limite_mes : 40, { type: "number", min: 0 });
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    encher($("#detalhe-corpo"), h("h2", {}, fe ? "Editar ferramenta" : "Adicionar ferramenta"),
+      h("p", { class: "nota", style: "margin:0" }, "Cadastre agora e conecte a chave quando tiver. Até lá ela aparece para o time como \"falta a chave\" e não gera nada."),
+      lNome, lDesc, lDocs, lBase, h("label", { for: "fe-tipo" }, "Como a API recebe a chave", tipo), lCab, lSt, lLim, msg,
+      h("div", { class: "acoes" },
+        h("button", { class: "botao amarelo", onclick: async () => {
+          const { data, error } = await db.rpc("cw_ferr_criar", { p_nome: nome.value, p_descricao: desc.value, p_docs: docs.value, p_base_url: base.value,
+            p_tipo_auth: tipo.value, p_cabecalho: cab.value, p_status_caminho: st.value, p_limite: Number(lim.value || 40) });
+          if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+          $("#detalhe").close(); await desenharFerramentas();
+          encher($("#detalhe-corpo"), h("h2", {}, "Ferramenta cadastrada"),
+            h("p", {}, "Quando tiver a chave, rode no Terminal do Mac e cole quando ele pedir (não aparece na tela):"),
+            h("pre", { class: "bib-conteudo" }, "python3 ~/Documents/Skills/cw-cortes-hub/ferramentas/conectar-api.py " + data),
+            h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+          $("#detalhe").showModal();
+        } }, fe ? "Salvar" : "Cadastrar"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    $("#detalhe").showModal();
   }
 
   // ---------------------------------------------------------------- biblioteca de repositórios
