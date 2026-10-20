@@ -202,6 +202,16 @@
   .sala-palco canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; cursor: pointer; }
   .sala-palco:fullscreen { display: grid; place-items: center; border-radius: 0; }
   .sala-palco:fullscreen canvas { width: auto; height: 100vh; max-width: 100vw; object-fit: contain; }
+  .sala-topo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); gap: 10px; }
+  .sala-num { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; display: grid; }
+  .sala-num b { font-family: var(--font-display); font-size: 24px; font-weight: 900; color: var(--text); }
+  .sala-num span { font-size: 12.5px; color: var(--text-dim); }
+  .sala-feed { background: #1f1b2e; color: #e9e4f5; border-radius: 16px; padding: 12px 16px; display: grid; gap: 6px; font-size: 13px; }
+  .sala-feed > b { font-family: var(--font-display); font-size: 14px; }
+  .sala-feed-linha { display: grid; grid-template-columns: 44px 80px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+  .sala-feed-linha time { color: #9b90b8; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  .sala-feed-linha .quem { font-weight: 700; color: #ffd36b; }
+  .sala-feed .nota { color: #9b90b8; }
   .sala-legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--text-dim); align-items: center; }
   .sala-legenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
   .cabeca .sub { margin: 4px 0 0; color: var(--text-dim); max-width: 640px; }
@@ -607,7 +617,9 @@
     <header class="cabeca"><p class="kicker">Operação</p><h1>Sala do CW Studios</h1>
       <p class="sub" id="sala-sub">O time ao vivo. Na mesa e digitando é edição acontecendo agora; circulando pela sala é online sem vídeo aberto; mesa vazia é fora. Clique num bonequinho para ver o que ele está fazendo.</p></header>
     <div class="acoes"><button class="botao leve" id="sala-cheia">Tela cheia (para TV)</button></div>
+    <div class="sala-topo" id="sala-topo"></div>
     <div class="sala-palco" id="sala-palco"><canvas id="sala-canvas" aria-label="Sala do CW Studios com o time ao vivo" role="img"></canvas></div>
+    <div class="sala-feed" id="sala-feed"></div>
     <div class="sala-legenda" id="sala-legenda"></div>
   </section>
 
@@ -1627,7 +1639,7 @@
 
   // ---------------------------------------------------------------- sala (escritório em pixel art com o time ao vivo)
   const SALA = { conversas: [], estacoes: [], convTs: 0, bonecos: {}, alvos: [], raf: null, quadro: 0, ultimo: 0 };
-  const SC = 3, TILE = 16;   // 1 "pixel" da arte = 3 px do canvas
+  const SC = 2, TILE = 16;   // 1 "pixel" da arte = 2 px do canvas
   const COR_ETAPA = { preparo: "#7fa4c9", transcricao: "#3fc1b0", corte: "#f59f4a", montagem: "#4a8df5", motion: "#f25aa8",
                       render: "#a66bff", acabamento: "#7d6bff", revisao: "#f5d04a", entrega: "#4cd07d" };
   const CABELOS = ["#2b1d14", "#5a3a22", "#c58b4b", "#1c1c28", "#8a3b2f", "#d9c08a", "#3b2a4f"];
@@ -1644,6 +1656,7 @@
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo aberto"],
       ["#6b5a87", "Fora"], ["#7d6bff", "No Premiere"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
     if (meuSlug()) $("#sala-sub").textContent = "O time ao vivo. Clique no seu computador (a setinha amarela) para mandar pedidos ao Claude da sua máquina — ele edita aí mesmo, e você acompanha tudo daqui.";
+    painelSala();
     $("#sala-cheia").onclick = () => { const el = $("#sala-palco"); (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {}); };
     $("#sala-canvas").onclick = cliqueSala;
     if (!SALA.raf) SALA.raf = requestAnimationFrame(quadroSala);
@@ -1659,12 +1672,26 @@
     return { modo, trab: ativo, etapa: premiere ? "acabamento" : ativo && ativo.etapa, premiere, conv,
              rotulo: premiere ? "acabamento no Premiere" : ativo && ativo.agora_faz && ativo.agora_faz.rotulo };
   }
-  function planta(editores) {   // posições das mesas e do lounge (em pixels da arte)
-    const porLinha = 4, linhas = Math.max(1, Math.ceil(editores.length / porLinha));
-    const W = 20 * TILE, H = (8.4 + linhas * 4.8) * TILE;
-    const mesas = editores.map((ed, i) => ({ ed, x: Math.round((3.4 + (i % porLinha) * 4.4) * TILE), y: Math.round((5 + Math.floor(i / porLinha) * 4.8) * TILE) }));
-    const lounge = [{ x: 2.4 * TILE, y: H - 2.2 * TILE }, { x: 4.6 * TILE, y: H - 2.0 * TILE }, { x: 1.4 * TILE, y: 3.9 * TILE }, { x: 10 * TILE, y: H - 2.2 * TILE }, { x: 18.4 * TILE, y: 4 * TILE }];
-    return { W, H, mesas, lounge };
+  // Arte da Sala: pixel art gerada em código, no estilo do Habblaud (github.com/marmottajr/habblaud, MIT) — prédio
+  // visto de cima com salas, jardim e rua. Nada é imagem: tudo sai das funções abaixo.
+  function layoutSala(editores) {
+    const T = TILE, porLinha = 4, linhas = Math.max(1, Math.ceil(editores.length / porLinha));
+    const bx = 3 * T, by = 3 * T, bw = 26 * T, topoH = 7.5 * T, corrH = 2 * T, edH = (2.5 + linhas * 4.3) * T;
+    const bh = topoH + corrH + edH, W = 32 * T, H = by + bh + 5.5 * T;
+    const salas = [
+      { id: "recepcao", nome: "Recepção", x: bx, y: by, w: 7 * T, h: topoH, piso: "bege" },
+      { id: "copa", nome: "Copa", x: bx + 7 * T, y: by, w: 6 * T, h: topoH, piso: "xadrez" },
+      { id: "estudio", nome: "Estúdio CW Cast", x: bx + 13 * T, y: by, w: 7 * T, h: topoH, piso: "carpete" },
+      { id: "lounge", nome: "Lounge", x: bx + 20 * T, y: by, w: 6 * T, h: topoH, piso: "madeira" },
+      { id: "edicao", nome: "Edição", x: bx, y: by + topoH + corrH, w: bw, h: edH, piso: "cinza" }];
+    const sEd = salas[4], cols = Math.min(porLinha, Math.max(1, editores.length));
+    const passo = Math.min(5.6 * T, (bw - 3 * T) / cols), x0 = sEd.x + (bw - passo * cols) / 2;
+    const mesas = editores.map((ed, i) => ({ ed, x: Math.round(x0 + (i % cols + 0.5) * passo), y: Math.round(sEd.y + 3.4 * T + Math.floor(i / cols) * 4.3 * T) }));
+    const [rec, copa, , lounge] = salas;
+    const lazer = [{ x: copa.x + 1.8 * T, y: copa.y + 5.2 * T }, { x: copa.x + 4.4 * T, y: copa.y + 6.6 * T }, { x: lounge.x + 1.8 * T, y: lounge.y + 4.6 * T },
+                   { x: lounge.x + 4.2 * T, y: lounge.y + 6.8 * T }, { x: rec.x + 4.8 * T, y: rec.y + 6.6 * T }, { x: bx + 9 * T, y: by + topoH + 1.4 * T },
+                   { x: bx + 19 * T, y: by + topoH + 1.4 * T }];
+    return { W, H, bx, by, bw, bh, topoH, corrH, salas, mesas, lazer };
   }
   function quadroSala(t) {
     SALA.raf = null;
@@ -1673,105 +1700,184 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = planta(editores), cv = $("#sala-canvas");
+    const P = layoutSala(editores), cv = $("#sala-canvas"), T = TILE;
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
-    const px = (x, y, w, hh, cor) => { c.fillStyle = cor; c.fillRect(Math.round(x) * SC, Math.round(y) * SC, w * SC, hh * SC); };
-    const f = SALA.quadro;
-    // chão e paredes
-    for (let y = 0; y < P.H; y += TILE) for (let x = 0; x < P.W; x += TILE) px(x, y, TILE, TILE, ((x + y) / TILE) % 2 ? "#e9dcf7" : "#efe5fa");
-    px(0, 0, P.W, 2.2 * TILE, "#59327a"); px(0, 2.2 * TILE, P.W, 3, "#3f2259");
-    for (const jx of [2, 14.5]) { px(jx * TILE, 5, 3 * TILE, 22, "#bfe3ff"); px(jx * TILE, 5, 3 * TILE, 2, "#fff"); px((jx + 1.5) * TILE - 1, 5, 2, 22, "#59327a"); }
-    c.fillStyle = "#ffb800"; c.font = `800 ${7 * SC}px Nunito, Inter, sans-serif`; c.textAlign = "center"; c.fillText("CW STUDIOS", (P.W / 2) * SC, 14 * SC);
-    const agora = new Date(), hora = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    px(P.W / 2 - 14, 18, 28, 11, "#2a1b40"); c.fillStyle = "#4cd07d"; c.font = `700 ${6 * SC}px ui-monospace, Menlo, monospace`; c.fillText(hora, (P.W / 2) * SC, 26.5 * SC);
-    // café, plantas, sofá, estúdio
-    px(0.8 * TILE, 2.6 * TILE, 18, 22, "#6b4a3a"); px(0.8 * TILE + 3, 2.6 * TILE + 3, 12, 8, "#2a1b40"); px(0.8 * TILE + 7, 2.6 * TILE + 13, 4, 4, "#fff");
-    if (f % 20 < 10) px(0.8 * TILE + 8, 2.6 * TILE - 4 - (f % 10) / 3, 1, 3, "#ffffff99");
-    const plantaPx = (x, y) => { px(x + 2, y + 10, 10, 8, "#c0703f"); px(x, y, 14, 11, "#3fa66b"); px(x + 3, y - 4, 8, 6, "#56c482"); };
-    plantaPx(P.W - 1.4 * TILE, 2.6 * TILE); plantaPx(0.4 * TILE, P.H - 4.4 * TILE); plantaPx(P.W - 1.4 * TILE, P.H - 4.4 * TILE);
-    px(1 * TILE, P.H - 2 * TILE, 4.5 * TILE, 18, "#ff6b5b"); px(1 * TILE, P.H - 2 * TILE - 6, 4.5 * TILE, 8, "#e0503f");
-    px(P.W - 6 * TILE, P.H - 2.6 * TILE, 5 * TILE, 30, "#3b2a4f"); px(P.W - 4.2 * TILE, P.H - 2.4 * TILE, 4, 16, "#cfcfcf"); px(P.W - 4.2 * TILE - 2, P.H - 2.4 * TILE - 4, 8, 6, "#888");
+    const px = (x, y, w, hh, cor) => { c.fillStyle = cor; c.fillRect(Math.round(x) * SC, Math.round(y) * SC, Math.round(w) * SC, Math.round(hh) * SC); };
+    const txt = (s, x, y, tam, cor, peso, alinha) => { c.font = `${peso || 700} ${tam * SC}px Inter, system-ui, sans-serif`; c.textAlign = alinha || "center"; c.fillStyle = cor; c.fillText(s, x * SC, y * SC); };
+    const f = SALA.quadro, hora = new Date().getHours(), noite = hora >= 19 || hora < 6;
+    const ruido = (x, y) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
+    // ---- lado de fora: grama, árvores, calçada, rua
+    px(0, 0, P.W, P.H, "#6b9b46");
+    for (let y = 0; y < P.H; y += 4) for (let x = 0; x < P.W; x += 4) { const r = ruido(x, y) % 29; if (r === 0) px(x, y, 1, 2, "#5a8a3a"); else if (r === 1) px(x, y, 1, 1, "#82b45a"); }
+    const arvore = (x, y, pinheiro) => {
+      px(x - 1, y + 2, 3, 6, "#6b4a2f");
+      if (pinheiro) { for (let k = 0; k < 3; k++) px(x - 6 + k * 2, y - 8 + k * 4, 13 - k * 4, 4, k % 2 ? "#2f6a30" : "#3a7c38"); px(x - 1, y - 11, 3, 3, "#2f6a30"); }
+      else { px(x - 6, y - 7, 13, 9, "#3f7d3a"); px(x - 5, y - 9, 11, 3, "#4f9446"); px(x - 4, y - 6, 4, 3, "#5aa54f"); px(x - 6, y + 1, 13, 1, "#2f6a30"); }
+    };
+    const dir = P.W / T - 1.3, arv = [[1.2, 4], [1.2, 10], [1.2, 16], [1.6, 22], [dir, 5], [dir, 11], [dir, 17], [dir - 0.4, 23]];
+    arv.forEach(([ax, ay], i) => { if (ay * T < P.by + P.bh) arvore(ax * T, ay * T, i % 2 === 0); });
+    for (let x = 4; x < P.W; x += 3 * T) arvore(x + 8, 1.4 * T, (x / T) % 2 === 0);
+    const calc = P.by + P.bh + 1.2 * T;
+    px(0, calc, P.W, 1.6 * T, "#c99f80"); for (let x = 0; x < P.W; x += 8) px(x, calc, 1, 1.6 * T, "#b88c6e"); px(0, calc + 0.8 * T, P.W, 1, "#b88c6e");
+    px(0, calc + 1.6 * T, P.W, 2.6 * T, "#4b4c55"); for (let x = (f * 2) % 24 - 24; x < P.W; x += 24) px(x, calc + 2.85 * T, 12, 1, "#e8d36a");
+    const carro = ((f * 3) % (P.W + 120)) - 60;
+    px(carro, calc + 1.9 * T, 22, 9, "#e9e4dc"); px(carro + 4, calc + 1.9 * T - 4, 14, 5, "#cfd8e6"); px(carro + 3, calc + 1.9 * T + 9, 4, 2, "#1c1c28"); px(carro + 15, calc + 1.9 * T + 9, 4, 2, "#1c1c28");
+    for (let x = 2 * T; x < P.W; x += 7 * T) { px(x, calc - 9, 1, 10, "#3b3f4a"); px(x - 1, calc - 11, 3, 2, noite ? "#ffe9a3" : "#c9c9c9"); }
+    // ---- prédio: pisos, paredes (vista 3/4), portas
+    const piso = (s) => {
+      const { x, y, w, h } = s;
+      if (s.piso === "bege") { px(x, y, w, h, "#efe3cf"); for (let i = x; i < x + w; i += 16) px(i, y, 1, h, "#e2d3ba"); for (let j = y; j < y + h; j += 16) px(x, j, w, 1, "#e2d3ba"); }
+      else if (s.piso === "xadrez") { for (let j = y; j < y + h; j += 8) for (let i = x; i < x + w; i += 8) px(i, j, 8, 8, ((i + j) / 8) % 2 ? "#dfe8f0" : "#c9d6e2"); }
+      else if (s.piso === "carpete") { px(x, y, w, h, "#3d2f5c"); for (let j = y; j < y + h; j += 4) for (let i = x + (j % 8 ? 2 : 0); i < x + w; i += 4) px(i, j, 1, 1, "#4a3a6e"); }
+      else if (s.piso === "madeira") { for (let j = y; j < y + h; j += 4) { px(x, j, w, 4, (j / 4) % 2 ? "#c8925a" : "#bb8550"); for (let i = x + ((j / 4) % 3) * 9; i < x + w; i += 26) px(i, j, 1, 4, "#a8743f"); } }
+      else { px(x, y, w, h, "#dde1e7"); for (let i = x; i < x + w; i += 32) px(i, y, 1, h, "#d2d7de"); }
+    };
+    const parede = (s) => { px(s.x, s.y, s.w, 18, "#f4f1ec"); px(s.x, s.y + 18, s.w, 2, "#cfc8bd"); px(s.x, s.y + 14, s.w, 2, "#e4ded4"); };
+    P.salas.forEach((s) => { piso(s); parede(s); });
+    const corrY = P.by + P.topoH;
+    px(P.bx, corrY, P.bw, P.corrH, "#e8e2d6"); for (let i = P.bx; i < P.bx + P.bw; i += 24) px(i, corrY, 1, P.corrH, "#ddd5c6");
+    // contorno e divisórias (com vãos de porta)
+    const borda = "#3b4250";
+    px(P.bx - 3, P.by - 3, P.bw + 6, 3, borda); px(P.bx - 3, P.by + P.bh, P.bw + 6, 3, borda);
+    px(P.bx - 3, P.by - 3, 3, P.bh + 6, borda); px(P.bx + P.bw, P.by - 3, 3, P.bh + 6, borda);
+    P.salas.slice(1, 4).forEach((s) => px(s.x - 1, s.y, 2, P.topoH, borda));
+    P.salas.slice(0, 4).forEach((s) => { px(s.x, corrY - 2, s.w, 2, borda); px(s.x + s.w / 2 - 8, corrY - 2, 16, 2, "#e8e2d6"); });
+    const sEd = P.salas[4]; px(sEd.x, sEd.y - 2, sEd.w, 2, borda);
+    for (const xp of [sEd.x + sEd.w * 0.25, sEd.x + sEd.w * 0.75]) px(xp - 10, sEd.y - 2, 20, 2, "#e8e2d6");
+    px(P.bx - 3, P.by + P.bh - 22, 3, 14, "#8a5a3a");   // porta de entrada
+    // ---- móveis
+    const planta = (x, y) => { px(x, y + 6, 8, 6, "#c97b4a"); px(x + 1, y + 6, 6, 1, "#a8623a"); px(x - 1, y, 10, 6, "#3f8f45"); px(x + 1, y - 3, 6, 4, "#56a85a"); };
+    const estante = (x, y) => { px(x, y, 14, 22, "#8a5a3a"); for (let k = 0; k < 3; k++) { px(x + 1, y + 2 + k * 7, 12, 5, "#5e3b24"); for (let b = 0; b < 5; b++) px(x + 2 + b * 2, y + 3 + k * 7, 2, 4, ["#e85d4f", "#4a8df5", "#ffb800", "#7ac943", "#a543fa"][(b + k) % 5]); } };
+    const sofa = (x, y, w, cor, cor2) => { px(x, y, w, 5, cor2); px(x, y + 5, w, 7, cor); px(x - 2, y + 3, 3, 9, cor2); px(x + w - 1, y + 3, 3, 9, cor2); };
+    const relogio = (x, y) => { px(x - 4, y - 4, 9, 9, "#2a2a33"); px(x - 3, y - 3, 7, 7, "#f7f7f2"); const d = new Date(), a = (d.getMinutes() / 60) * 6.283, b = ((d.getHours() % 12) / 12) * 6.283;
+      c.strokeStyle = "#2a2a33"; c.lineWidth = SC * 0.7; c.beginPath(); c.moveTo((x + 0.5) * SC, (y + 0.5) * SC); c.lineTo((x + 0.5 + Math.sin(a) * 3) * SC, (y + 0.5 - Math.cos(a) * 3) * SC);
+      c.moveTo((x + 0.5) * SC, (y + 0.5) * SC); c.lineTo((x + 0.5 + Math.sin(b) * 2) * SC, (y + 0.5 - Math.cos(b) * 2) * SC); c.stroke(); };
+    const quadroP = (x, y, cor) => { px(x, y, 12, 9, "#5e3b24"); px(x + 1, y + 1, 10, 7, cor); px(x + 2, y + 5, 8, 2, "#ffffff55"); };
+    const [rec, copa, est, lou] = P.salas;
+    // recepção
+    px(rec.x + 8, rec.y + 28, 34, 9, "#8a5a3a"); px(rec.x + 8, rec.y + 28, 34, 2, "#a36d48"); px(rec.x + 14, rec.y + 23, 8, 6, "#23202e");
+    px(rec.x + (rec.w - 44) / 2, rec.y + 5, 44, 8, "#59327a"); txt("CW STUDIOS", rec.x + rec.w / 2, rec.y + 11, 4.6, "#ffb800", 900);
+    sofa(rec.x + 8, rec.y + 92, 30, "#4a6fa5", "#3a5885"); px(rec.x + rec.w - 50, rec.y + 66, 42, 28, "#c64b3c"); px(rec.x + rec.w - 48, rec.y + 68, 38, 24, "#d9604f");
+    planta(rec.x + 4, rec.y + 44); planta(rec.x + rec.w - 13, rec.y + 40); relogio(rec.x + rec.w - 10, rec.y + 9);
+    // copa
+    px(copa.x + 4, copa.y + 20, copa.w - 8, 10, "#b9c4cf"); px(copa.x + 4, copa.y + 20, copa.w - 8, 2, "#d7dee6");
+    px(copa.x + 8, copa.y + 9, 10, 12, "#3b3f4a"); px(copa.x + 10, copa.y + 12, 6, 4, "#1c1c28"); if (f % 20 < 10) px(copa.x + 12, copa.y + 5 - (f % 10) / 4, 1, 3, "#ffffffaa");
+    px(copa.x + 24, copa.y + 7, 14, 14, "#e9e4dc"); px(copa.x + 25, copa.y + 8, 12, 6, "#ffffff"); px(copa.x + copa.w - 26, copa.y + 9, 18, 11, "#7aa7d9");
+    for (const [mx, my] of [[24, 56], [copa.w - 24, 56], [24, 90], [copa.w - 24, 90]]) { px(copa.x + mx - 11, copa.y + my, 22, 11, "#f2efe9"); px(copa.x + mx - 11, copa.y + my + 11, 22, 2, "#cfc8bd");
+      for (const dx of [-15, 11]) px(copa.x + mx + dx, copa.y + my + 2, 4, 6, "#d9604f"); }
+    // estúdio CW Cast
     const algumEditando = editores.some((e) => estadoSala(e).modo === "editando");
-    px(P.W - 5.6 * TILE, P.H - 2.5 * TILE, 20, 8, algumEditando && f % 16 < 12 ? "#ff3b3b" : "#5a1f1f");
-    c.fillStyle = "#fff"; c.font = `800 ${4 * SC}px Inter, sans-serif`; c.fillText("ON AIR", (P.W - 5.6 * TILE + 10) * SC, (P.H - 2.5 * TILE + 6) * SC);
-    c.fillStyle = "#e9dcf7"; c.font = `700 ${4 * SC}px Inter, sans-serif`; c.fillText("estúdio CW Cast", (P.W - 3.5 * TILE) * SC, (P.H - 0.5 * TILE) * SC);
+    px(est.x + est.w / 2 - 16, est.y + 4, 32, 9, algumEditando && f % 16 < 12 ? "#ff3b3b" : "#5a1f1f"); txt("ON AIR", est.x + est.w / 2, est.y + 10.6, 4.6, "#fff", 900);
+    px(est.x + 16, est.y + 58, est.w - 32, 20, "#2a1f3d"); px(est.x + 16, est.y + 58, est.w - 32, 3, "#3b2d55");
+    for (const k of [0.28, 0.5, 0.72]) { const mx = Math.round(est.w * k); px(est.x + mx, est.y + 48, 3, 12, "#bfbfbf"); px(est.x + mx - 2, est.y + 44, 7, 6, "#555"); px(est.x + mx - 4, est.y + 82, 10, 6, "#4a8df5"); }
+    px(est.x + 8, est.y + 24, 18, 12, "#1c1c28"); px(est.x + 9, est.y + 25, 16, 9, algumEditando ? "#a66bff" : "#2a2440");
+    quadroP(est.x + est.w - 18, est.y + 4, "#ffb800"); planta(est.x + est.w - 14, est.y + 96);
+    // lounge
+    sofa(lou.x + 10, lou.y + 28, 36, "#7a4fd6", "#5e3aa8"); px(lou.x + 18, lou.y + 48, 20, 9, "#8a5a3a");
+    px(lou.x + lou.w - 46, lou.y + 68, 38, 22, "#2f8f5b"); px(lou.x + lou.w - 28, lou.y + 68, 2, 22, "#ffffff"); px(lou.x + lou.w - 46, lou.y + 78, 38, 1, "#ffffffaa");
+    for (const [bx2, cor] of [[8, "#e85d4f"], [20, "#4a8df5"], [32, "#ffb800"]]) px(lou.x + bx2, lou.y + 96, 9, 7, cor);
+    estante(lou.x + lou.w - 18, lou.y + 24); quadroP(lou.x + 52, lou.y + 4, "#56a85a"); planta(lou.x + lou.w - 14, lou.y + 98);
+    // corredor
+    for (const xb of [P.bx + 3 * T, P.bx + 12 * T, P.bx + 21 * T]) { px(xb, corrY + 9, 28, 6, "#8a5a3a"); px(xb, corrY + 9, 28, 2, "#a36d48"); }
+    planta(P.bx + 9 * T, corrY + 4); planta(P.bx + 18 * T, corrY + 4);
+    // edição: quadro com o placar do dia, estantes e plantas
+    const feitos = feitosHoje().length;
+    px(sEd.x + 10, sEd.y + 3, 54, 15, "#f7f7f2"); px(sEd.x + 10, sEd.y + 3, 54, 1, "#9aa0aa"); txt(`Feito hoje: ${feitos}`, sEd.x + 37, sEd.y + 13, 5, "#2a1b40", 800);
+    relogio(sEd.x + sEd.w - 20, sEd.y + 9); estante(sEd.x + sEd.w - 40, sEd.y + 22); planta(sEd.x + 4, sEd.y + sEd.h - 18); planta(sEd.x + sEd.w - 14, sEd.y + sEd.h - 18);
+    // nomes das salas
+    P.salas.forEach((s) => { c.font = `800 ${5.4 * SC}px Inter, system-ui, sans-serif`; const lw = c.measureText(s.nome).width / SC + 10;
+      px(s.x + s.w / 2 - lw / 2, s.y - 12, lw, 11, "#2a2440"); txt(s.nome, s.x + s.w / 2, s.y - 4.2, 5.4, "#ffffff", 800); });
+    // ---- mesas da edição (uma por editor) e os bonequinhos
     SALA.alvos = [];
     const pessoas = [];
     for (const m of P.mesas) {
       const st = estadoSala(m.ed), seed = hashSlug(m.ed.slug);
-      const cores = { cabelo: CABELOS[seed % CABELOS.length], pele: PELES[(seed >> 3) % PELES.length], camisa: CAMISAS[(seed >> 6) % CAMISAS.length] };
-      // mesa e monitor
-      px(m.x - 18, m.y - 6, 36, 14, "#8a5a3c"); px(m.x - 18, m.y + 6, 36, 3, "#6b4430");
-      const tela = st.modo === "fora" ? "#1b1b24" : st.premiere ? "#2a1a5e" : st.modo === "editando" ? COR_ETAPA[st.etapa] || "#4cd07d" : st.modo === "parado" ? "#3a3550" : "#24203a";
-      px(m.x - 11, m.y - 21, 22, 14, "#2a1b40"); px(m.x - 10, m.y - 20, 20, 11, tela); px(m.x - 2, m.y - 7, 4, 2, "#2a1b40");
+      const cores = { cabelo: CABELOS[seed % CABELOS.length], pele: PELES[(seed >> 3) % PELES.length], camisa: CAMISAS[(seed >> 6) % CAMISAS.length], estilo: (seed >> 9) % 3 };
+      const tela = st.modo === "fora" ? "#15151c" : st.premiere ? "#2a1a5e" : st.modo === "editando" ? COR_ETAPA[st.etapa] || "#4cd07d" : st.modo === "parado" ? "#3a3550" : "#24203a";
+      px(m.x - 20, m.y - 4, 40, 12, "#8d5b3a"); px(m.x - 20, m.y - 4, 40, 2, "#a36d48"); px(m.x - 20, m.y + 8, 40, 4, "#6e4429");
+      px(m.x - 18, m.y + 12, 2, 6, "#5a3820"); px(m.x + 16, m.y + 12, 2, 6, "#5a3820");
+      px(m.x - 9, m.y - 15, 18, 12, "#23202e"); px(m.x - 8, m.y - 14, 16, 9, tela); px(m.x - 2, m.y - 4, 4, 1, "#23202e");
+      px(m.x + 11, m.y - 2, 6, 3, "#e9e4dc");   // caneca
       if (st.modo === "editando" && !st.premiere) {
-        if (st.etapa === "render") { px(m.x - 7, m.y - 13, 14, 3, "#00000055"); px(m.x - 7, m.y - 13, 2 + (f % 13), 3, "#ffffff"); }
-        else for (let k = 0; k < 3; k++) px(m.x - 7 + ((f + k * 5) % 12), m.y - 17 + k * 3, 4, 1, "#ffffffcc");
+        if (st.etapa === "render") { px(m.x - 6, m.y - 11, 12, 2, "#00000055"); px(m.x - 6, m.y - 11, 1 + (f % 12), 2, "#ffffff"); }
+        else for (let k = 0; k < 3; k++) px(m.x - 6 + ((f + k * 4) % 9), m.y - 13 + k * 3, 4, 1, "#ffffffcc");
       }
-      if (st.premiere) { px(m.x - 4, m.y - 17, 8, 7, "#9999ff"); c.fillStyle = "#2a1a5e"; c.font = `800 ${5 * SC}px Inter, sans-serif`; c.fillText("Pr", m.x * SC, (m.y - 11.5) * SC); }
-      if (st.modo === "parado" && f % 30 < 15) px(m.x - 1, m.y - 15, 2, 2, "#ffffff55");
+      if (st.premiere) { px(m.x - 3, m.y - 13, 7, 6, "#9999ff"); txt("Pr", m.x + 0.5, m.y - 8.4, 4, "#2a1a5e", 900); }
       const estacaoOn = (SALA.estacoes || []).some((e) => e.editor_slug === m.ed.slug && e.visto && Date.now() - new Date(e.visto) < 60000);
-      if (estacaoOn && st.modo !== "editando" && !st.premiere) {   // estação ligada: terminal esperando pedido
-        c.fillStyle = "#4cd07d"; c.font = `700 ${5 * SC}px ui-monospace, Menlo, monospace`; c.fillText(f % 12 < 6 ? ">_" : ">", (m.x - 3) * SC, (m.y - 12) * SC);
-      }
-      if (m.ed.slug === meuSlug() && f % 24 < 16) {   // seta sobre o meu computador
-        px(m.x - 2, m.y - 30, 4, 3, "#ffb800"); px(m.x - 1, m.y - 27, 2, 2, "#ffb800");
-      }
-      if (st.conv) {   // robozinho do Escritório ao lado do monitor
-        const rx = m.x + 13, ry = m.y - 18 + (f % 8 < 4 ? 0 : 1);
-        px(rx, ry, 8, 7, "#cfd8e6"); px(rx + 2, ry + 2, 1, 1, "#2a1b40"); px(rx + 5, ry + 2, 1, 1, "#2a1b40"); px(rx + 3, ry - 2, 2, 2, st.conv.estado === "esperando_ok" ? "#ffb800" : "#4cd07d");
-      }
-      // cadeira e plaquinha
-      px(m.x - 8, m.y + 22, 16, 4, "#3b2a4f");
-      c.fillStyle = st.modo === "fora" ? "#8f82a8" : "#2a1b40"; c.font = `700 ${4.2 * SC}px Inter, sans-serif`;
-      c.fillText(m.ed.nome.split(" ")[0], m.x * SC, (m.y + 33) * SC);
-      SALA.alvos.push({ ed: m.ed, x: m.x - 20, y: m.y - 22, w: 40, h: 56 });
-      // boneco: senta na mesa (editando/parado) ou circula (livre); fora não aparece
+      if (estacaoOn && st.modo !== "editando" && !st.premiere) txt(f % 12 < 6 ? ">_" : ">", m.x - 4, m.y - 7.5, 4.4, "#4cd07d", 800, "left");
+      if (st.conv) { const rx = m.x - 30, ry = m.y - 12 + (f % 8 < 4 ? 0 : 1); px(rx, ry, 8, 7, "#cfd8e6"); px(rx + 2, ry + 2, 1, 1, "#2a1b40"); px(rx + 5, ry + 2, 1, 1, "#2a1b40"); px(rx + 3, ry - 2, 2, 2, st.conv.estado === "esperando_ok" ? "#ffb800" : "#4cd07d"); }
+      if (m.ed.slug === meuSlug() && f % 24 < 16) { px(m.x - 2, m.y - 26, 5, 3, "#ffb800"); px(m.x - 1, m.y - 23, 3, 2, "#ffb800"); }
+      px(m.x - 6, m.y + 22, 12, 5, "#2d2f3a"); px(m.x - 1, m.y + 27, 2, 3, "#2d2f3a");   // cadeira
+      SALA.alvos.push({ ed: m.ed, x: m.x - 22, y: m.y - 18, w: 44, h: 50 });
       let b = SALA.bonecos[m.ed.slug];
-      if (!b) b = SALA.bonecos[m.ed.slug] = { x: m.x, y: m.y + 20, alvo: null, espera: 0 };
-      if (st.modo === "fora") { b.x = m.x; b.y = m.y + 20; continue; }
+      if (!b) b = SALA.bonecos[m.ed.slug] = { x: m.x, y: m.y + 22, alvo: null, espera: 0 };
+      if (st.modo === "fora") { b.x = m.x; b.y = m.y + 22; pessoas.push({ fora: true, m, st }); continue; }
       const naMesa = st.modo !== "livre";
-      if (naMesa) b.alvo = { x: m.x, y: m.y + 20 };
-      else if (!b.alvo || (Math.hypot(b.alvo.x - b.x, b.alvo.y - b.y) < 2 && --b.espera <= 0)) {
-        b.alvo = P.lounge[(seed + f) % P.lounge.length]; b.espera = 20 + (seed % 40);
-      }
-      const dx = b.alvo.x - b.x, dy = b.alvo.y - b.y, d = Math.hypot(dx, dy);
-      const andando = d > 1.5;
-      if (andando) { b.x += dx / d * Math.min(2.2, d); b.y += dy / d * Math.min(2.2, d); }
+      if (naMesa) b.alvo = { x: m.x, y: m.y + 22 };
+      else if (!b.alvo || (Math.hypot(b.alvo.x - b.x, b.alvo.y - b.y) < 2 && --b.espera <= 0)) { b.alvo = P.lazer[(seed + f) % P.lazer.length]; b.espera = 25 + (seed % 40); }
+      const dx = b.alvo.x - b.x, dy = b.alvo.y - b.y, d = Math.hypot(dx, dy), andando = d > 1.5;
+      if (andando) { b.x += dx / d * Math.min(2.4, d); b.y += dy / d * Math.min(2.4, d); }
       pessoas.push({ b, st, cores, m, sentado: naMesa && !andando, andando });
-      SALA.alvos.push({ ed: m.ed, x: b.x - 10, y: b.y - 28, w: 20, h: 30 });
+      SALA.alvos.push({ ed: m.ed, x: b.x - 9, y: b.y - 24, w: 18, h: 28 });
     }
-    pessoas.sort((a, b2) => a.b.y - b2.b.y);
-    for (const { b, st, cores, sentado, andando } of pessoas) {
+    pessoas.filter((p) => !p.fora).sort((a, b2) => a.b.y - b2.b.y).forEach(({ b, st, cores, sentado, andando }) => {
       const x = Math.round(b.x), y = Math.round(b.y);
-      if (sentado) {   // de costas para nós, olhando o monitor e digitando
-        px(x - 6, y - 19, 12, 9, cores.cabelo); px(x - 7, y - 16, 1, 4, cores.pele); px(x + 6, y - 16, 1, 4, cores.pele);
-        px(x - 2, y - 10, 4, 2, cores.pele);
-        px(x - 8, y - 8, 16, 10, cores.camisa); px(x - 8, y - 8, 16, 2, "#00000022");
+      px(x - 6, y + 1, 12, 2, "#00000022");   // sombra
+      if (sentado) {   // de costas, olhando o monitor
+        px(x - 6, y - 20, 12, 10, cores.cabelo); px(x - 7, y - 16, 1, 4, cores.pele); px(x + 6, y - 16, 1, 4, cores.pele);
+        px(x - 7, y - 10, 14, 9, cores.camisa); px(x - 7, y - 10, 14, 2, "#00000022");
         const sobe = st.modo === "editando" && f % 4 < 2, desce = st.modo === "editando" && !sobe;
-        px(x - 11, y - 8 - (sobe ? 2 : 0), 3, 7, cores.camisa); px(x + 8, y - 8 - (desce ? 2 : 0), 3, 7, cores.camisa);
-        px(x - 11, y - 9 - (sobe ? 2 : 0), 3, 2, cores.pele); px(x + 8, y - 9 - (desce ? 2 : 0), 3, 2, cores.pele);
-      } else {         // de frente, andando ou parado em pé
-        px(x - 5, y - 27, 10, 4, cores.cabelo); px(x - 5, y - 23, 10, 7, cores.pele); px(x - 5, y - 23, 1, 4, cores.cabelo); px(x + 4, y - 23, 1, 4, cores.cabelo);
-        px(x - 3, y - 20, 2, 2, "#2a1b40"); px(x + 1, y - 20, 2, 2, "#2a1b40"); px(x - 1, y - 17, 2, 1, "#c0705a");
-        px(x - 6, y - 16, 12, 9, cores.camisa); px(x - 8, y - 16, 2, 7, cores.pele); px(x + 6, y - 16, 2, 7, cores.pele);
-        const passo = andando ? (f % 4 < 2 ? 2 : -2) : 0;
-        px(x - 4, y - 7, 3, 7 + passo, "#3b2a4f"); px(x + 1, y - 7, 3, 7 - passo, "#3b2a4f");
-        px(x - 4, y + passo, 3, 1, "#1c1c28"); px(x + 1, y - passo, 3, 1, "#1c1c28");
+        px(x - 10, y - 10 - (sobe ? 2 : 0), 3, 6, cores.camisa); px(x + 7, y - 10 - (desce ? 2 : 0), 3, 6, cores.camisa);
+      } else {         // de frente: cabeção (chibi), andando
+        px(x - 6, y - 24, 12, 4, cores.cabelo); px(x - 6, y - 20, 12, 8, cores.pele);
+        if (cores.estilo === 1) { px(x - 7, y - 22, 2, 9, cores.cabelo); px(x + 5, y - 22, 2, 9, cores.cabelo); } else { px(x - 6, y - 20, 1, 3, cores.cabelo); px(x + 5, y - 20, 1, 3, cores.cabelo); }
+        if (cores.estilo === 2) px(x - 7, y - 25, 14, 2, cores.cabelo);
+        px(x - 3, y - 17, 2, 2, "#2a1b40"); px(x + 2, y - 17, 2, 2, "#2a1b40"); px(x - 5, y - 15, 2, 1, "#f2a0a0"); px(x + 4, y - 15, 2, 1, "#f2a0a0");
+        px(x - 5, y - 12, 10, 7, cores.camisa); px(x - 7, y - 12, 2, 5, cores.pele); px(x + 5, y - 12, 2, 5, cores.pele);
+        const pp = andando ? (f % 4 < 2 ? 1 : -1) : 0;
+        px(x - 4, y - 5, 3, 5 + pp, "#3b3f52"); px(x + 1, y - 5, 3, 5 - pp, "#3b3f52");
       }
-      // balão com o passo atual (ou o pedido de OK da estação)
+    });
+    // plaquinhas e balões por cima de tudo
+    if (noite) { c.fillStyle = "rgba(18,24,70,0.38)"; c.fillRect(0, 0, cv.width, cv.height);
+      for (let x = 2 * T; x < P.W; x += 7 * T) { c.fillStyle = "rgba(255,226,140,0.22)"; c.beginPath(); c.arc((x + 0.5) * SC, (calc - 10) * SC, 18 * SC, 0, 6.283); c.fill(); } }
+    for (const p of pessoas) {
+      const { st } = p, x = p.fora ? p.m.x : Math.round(p.b.x), y = p.fora ? p.m.y + 22 : Math.round(p.b.y);
+      const nome = p.m.ed.nome.split(" ")[0];
+      c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
+      const lw = c.measureText(nome).width / SC + 12, cor = st.modo === "fora" ? "#9aa0aa" : st.conv && st.conv.estado === "esperando_ok" ? "#ffb800" : st.modo === "editando" ? "#4cd07d" : st.modo === "parado" ? "#f5d04a" : "#c9bfe0";
+      px(x - lw / 2, y + 4, lw, 10, st.modo === "fora" ? "#3b3f4acc" : "#2a2440"); px(x - lw / 2 + 3, y + 7.5, 4, 4, cor);
+      txt(nome, x + 2.5, y + 11.6, 4.8, st.modo === "fora" ? "#c9ccd3" : "#ffffff", 700);
+      if (p.fora) continue;
       const alerta = st.conv && st.conv.estado === "esperando_ok";
-      const texto = alerta ? "! esperando seu OK" : st.modo === "editando" ? (st.rotulo || "editando") : st.modo === "parado" ? "…" : null;
-      if (texto) {
-        c.font = `600 ${4.2 * SC}px Inter, sans-serif`;
-        const curto = texto.length > 26 ? texto.slice(0, 25) + "…" : texto;
-        const larg = c.measureText(curto).width / SC + 8, by = y - (sentado ? 57 : 40);
-        px(x - larg / 2, by, larg, 10, alerta ? "#ffb800" : "#ffffff"); px(x - 1, by + 10, 3, 2, alerta ? "#ffb800" : "#ffffff");
-        c.fillStyle = "#2a1b40"; c.fillText(curto, x * SC, (by + 7.2) * SC);
+      const balao = alerta ? "❗ precisa de você" : st.modo === "editando" ? "✏️ " + (st.rotulo || "editando") : st.modo === "parado" ? "…" : null;
+      if (balao) {
+        c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
+        const curto = balao.length > 26 ? balao.slice(0, 25) + "…" : balao, bw2 = c.measureText(curto).width / SC + 10, by2 = y - (p.sentado ? 44 : 40);
+        px(x - bw2 / 2, by2, bw2, 11, alerta ? "#ffb800" : "#ffffff"); px(x - bw2 / 2, by2 + 11, bw2, 1, "#00000022"); px(x - 1, by2 + 11, 3, 2, alerta ? "#ffb800" : "#ffffff");
+        txt(curto, x, by2 + 8, 4.6, "#2a1b40", 600);
       }
     }
-    if (!editores.length) { c.fillStyle = "#59327a"; c.font = `700 ${7 * SC}px Inter, sans-serif`; c.fillText("Cadastre os editores em Pessoas", (P.W / 2) * SC, (P.H / 2) * SC); }
+    if (!editores.length) txt("Cadastre os editores em Pessoas", P.W / 2, P.by + P.bh - 30, 7, "#59327a", 800);
+    if (f % 27 === 1) painelSala();
+  }
+  // números do topo e o feed de atividade (HTML em volta da cena)
+  function painelSala() {
+    const eds = D.editores.filter((e) => e.ativo).map((e) => [e, estadoSala(e)]);
+    const n = (fn) => eds.filter(([, s]) => fn(s)).length;
+    encher($("#sala-topo"), [["Online", n((s) => s.modo !== "fora")], ["Editando agora", n((s) => s.modo === "editando")],
+      ["Precisam de você", n((s) => s.conv && s.conv.estado === "esperando_ok")], ["Feitos hoje", feitosHoje().length]]
+      .map(([rot, v]) => h("div", { class: "sala-num" }, h("b", {}, v), h("span", {}, rot))));
+    const itens = [];
+    for (const s of D.aovivo) {
+      const ed = D.editores.find((e) => e.slug === s.slug); if (!ed || !ed.ativo) continue;
+      for (const t of (s.payload || {}).trabalhos || []) for (const x of t.historico || []) itens.push({ ts: x.ts, ed, rotulo: x.rotulo, titulo: t.titulo, etapa: x.etapa });
+    }
+    itens.sort((a, b) => (b.ts || "").localeCompare(a.ts || ""));
+    encher($("#sala-feed"), h("b", {}, "Atividade"), itens.length ? itens.slice(0, 8).map((x) => h("div", { class: "sala-feed-linha" },
+      h("time", {}, horaBR(x.ts).slice(-5)), h("span", { class: "quem" }, x.ed.nome.split(" ")[0]), h("span", {}, x.rotulo || "passo", h("span", { class: "nota" }, " · " + (x.titulo || "")))))
+      : h("span", { class: "nota" }, "Sem atividade recente."));
   }
   function abrirComputador(slug) {
     trocarAba("escritorio");
