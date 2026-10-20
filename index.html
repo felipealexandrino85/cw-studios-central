@@ -177,6 +177,11 @@
   .chat-barra select { flex: 1 1 200px; min-width: 0; }
   .chat-sala .esc-msgs { min-height: 0; }
   .chat-oi { align-self: flex-start; max-width: 92%; background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; border-bottom-left-radius: 4px; padding: 12px 14px; display: grid; gap: 10px; }
+  .msg.ia table { border-collapse: collapse; font-size: 13px; margin: 4px 0; }
+  .msg.ia th, .msg.ia td { border: 1px solid var(--line); padding: 3px 8px; text-align: left; white-space: nowrap; }
+  .msg.ia .tabela { overflow-x: auto; max-width: 100%; }
+  .ze-atalhos { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ze-atalhos button { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 99px; padding: 5px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
   .digitando { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 10px 14px; display: inline-flex; gap: 4px; }
   .digitando i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); animation: digita 1.2s infinite; }
   .digitando i:nth-child(2) { animation-delay: .2s; } .digitando i:nth-child(3) { animation-delay: .4s; }
@@ -796,6 +801,7 @@
 
 <dialog id="detalhe"><div class="modal" id="detalhe-corpo"></div></dialog>
 <dialog id="chat-sala" class="chat-sala" aria-label="Conversa com o seu Claude"><div id="chat-corpo"></div></dialog>
+<dialog id="chat-ze" class="chat-sala" aria-label="Conversa com o Zé Algoritmo"><div id="chat-ze-corpo" style="display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:100%;min-height:0"></div></dialog>
 
 <script>
 (() => {
@@ -2563,15 +2569,24 @@
     const linha = (t) => { const out = []; t.split(/(\*\*[^*]+\*\*)/).forEach((p2) => out.push(/^\*\*.*\*\*$/.test(p2) ? h("b", {}, p2.slice(2, -2)) : p2)); return out; };
     const blocos = [], lista = [];
     const fecha = () => { if (lista.length) { blocos.push(h("ul", { style: "margin:0;padding-left:18px;display:grid;gap:2px" }, lista.splice(0).map((x) => h("li", {}, linha(x))))); } };
+    const tabela = [];
+    const fechaTabela = () => {
+      if (!tabela.length) return;
+      const linhas = tabela.splice(0).filter((r) => !/^\|?\s*:?-{2,}/.test(r)).map((r) => r.replace(/^\||\|$/g, "").split("|").map((c2) => c2.trim()));
+      blocos.push(h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, (linhas[0] || []).map((c2) => h("th", {}, linha(c2))))),
+        h("tbody", {}, linhas.slice(1).map((r) => h("tr", {}, r.map((c2) => h("td", {}, linha(c2)))))))));
+    };
     String(texto || "").split("\n").forEach((l) => {
       const t = l.trim();
+      if (/^\|.*\|$/.test(t)) { fecha(); return tabela.push(t); }
+      fechaTabela();
       if (/^[-*•]\s+/.test(t)) return lista.push(t.replace(/^[-*•]\s+/, ""));
       fecha();
       if (!t) return;
       if (/^#{1,4}\s+/.test(t)) return blocos.push(h("b", { style: "display:block;margin-top:6px" }, t.replace(/^#+\s+/, "")));
       blocos.push(h("p", { style: "margin:0" }, linha(t)));
     });
-    fecha();
+    fecha(); fechaTabela();
     return h("div", { style: "display:grid;gap:6px;font-size:14px;line-height:1.5" }, blocos);
   }
   // dispara o robô na hora pela função "robo" da central; sem a chave do GitHub ligada, fica para a próxima passada da agenda
@@ -2584,6 +2599,61 @@
       db.from("seo_perguntas").select("*").order("id", { ascending: false }).limit(20), db.from("seo_relatorios").select("*").order("dia", { ascending: false }).limit(60)]);
     SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [],
                  relatorios: Array.isArray(sr.data) ? sr.data : [] };
+  }
+  // ---- chat com o Zé: pergunta e resposta em sequência; ele consulta o canal ao vivo quando precisa
+  const ATALHOS_ZE = ["Como foram os últimos 7 dias?", "Quais vídeos mais cresceram na busca este mês?", "De onde vêm nossas views?", "O que você mudaria primeiro?"];
+  async function abrirChatZe() {
+    if (!["gestor", "producao", "editor"].includes(eu.papel)) return;
+    if (!SALA.seo || !SALA.seo.relatorios) await recarregarSeo();
+    const dlg = $("#chat-ze");
+    if (!dlg.open) dlg.showModal();
+    desenharChatZe(true);
+    clearInterval(SALA.zeTimer);
+    SALA.zeTimer = setInterval(async () => {   // enquanto houver pergunta sem resposta, confere a cada 5 s
+      if (!dlg.open) return clearInterval(SALA.zeTimer);
+      if (document.hidden || !(SALA.seo.perguntas || []).some((q) => !q.resposta)) return;
+      const antes = (SALA.seo.perguntas || []).filter((q) => q.resposta).length;
+      await recarregarSeo();
+      if ((SALA.seo.perguntas || []).filter((q) => q.resposta).length !== antes) desenharChatZe(true);
+    }, 5000);
+  }
+  async function enviarZe(texto) {
+    texto = String(texto || "").trim();
+    if (texto.length < 3) return;
+    const { error } = await db.rpc("cw_seo_perguntar", { p_texto: texto });
+    if (error) { alert(error.message); return; }
+    SALA.seoNaHora = await dispararRobo("responder");
+    await recarregarSeo(); desenharChatZe(true);
+  }
+  function desenharChatZe(rolar) {
+    const corpo = $("#chat-ze-corpo");
+    const rasc = corpo.querySelector("textarea"), texto = rasc ? rasc.value : "";
+    const retrato = h("canvas", { class: "chat-retrato", width: 22, height: 35, "aria-hidden": "true" });
+    retrato.getContext("2d").drawImage(bonecoFrente(ZE, 0), 0, 0);
+    const conversa = (SALA.seo.perguntas || []).slice().reverse();
+    const st = SALA.seo.st || {};
+    const area = h("textarea", { placeholder: "Pergunte qualquer coisa sobre o canal… (Enter envia)", "aria-label": "Mensagem para o Zé",
+      onkeydown: (ev) => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enviarZe(area.value); } } });
+    area.value = texto;
+    const msgs = h("div", { class: "esc-msgs" },
+      h("div", { class: "msg ia" }, mdSimples(`Fala, chefe! Sou o Zé Algoritmo, cuido do SEO do YouTube do CW Cast.${st.visto ? ` Minha última análise foi em ${horaBR(st.visto)}.` : ""} Pode perguntar qualquer coisa do canal: eu consulto os números do YouTube na hora.`)),
+      conversa.map((q) => [
+        h("div", { class: "msg editor" }, q.pergunta, h("span", { class: "quando" }, horaBR(q.criado).slice(-5) + (q.autor && q.autor !== eu.email ? " · " + q.autor.split("@")[0] : ""))),
+        q.resposta ? h("div", { class: "msg ia" }, mdSimples(q.resposta), h("span", { class: "quando" }, q.respondido_em ? horaBR(q.respondido_em).slice(-5) : ""))
+          : h("div", { class: "digitando", "aria-label": "O Zé está consultando o canal" }, h("i"), h("i"), h("i"))]),
+      (SALA.seo.perguntas || []).some((q) => !q.resposta) ? h("div", { class: "msg-sis" }, SALA.seoNaHora === false
+        ? "O disparo na hora não respondeu: respondo na próxima passada do robô (até ~30 min)." : "Consultando o canal… costuma levar menos de 1 minuto.") : null);
+    encher(corpo,
+      h("div", { class: "chat-topo" }, retrato,
+        h("div", { class: "chat-quem" }, h("b", {}, "Zé Algoritmo"), h("span", { class: "nota" }, "SEO do YouTube · consulta o canal ao vivo")),
+        h("button", { class: "botao leve peq", style: "background:rgba(255,255,255,.18);color:#fff;border:0", onclick: () => abrirSeo() }, "📊 Relatório"),
+        h("button", { class: "fechar", "aria-label": "Fechar", onclick: () => $("#chat-ze").close() }, "✕")),
+      msgs,
+      h("div", { class: "esc-escrever" },
+        h("div", { class: "ze-atalhos" }, ATALHOS_ZE.map((t) => h("button", { type: "button", onclick: () => enviarZe(t) }, t))),
+        area, h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: () => enviarZe(area.value) }, "Enviar"),
+          h("span", { class: "nota" }, "Ele só lê o canal. Mudar título, descrição ou tags continua precisando de aprovação no 📊 Relatório."))));
+    if (rolar) msgs.scrollTop = msgs.scrollHeight;
   }
   async function abrirSeo() {
     if (!["gestor", "producao", "editor"].includes(eu.papel)) return;
@@ -2674,10 +2744,10 @@
           h("span", { class: "chip " + (sg.estado === "erro" ? "tom-critico" : sg.estado === "aplicado" ? "tom-ok" : "tom-aviso") }, sg.estado === "aplicado" ? "Aplicado" : sg.estado === "erro" ? "Erro" : "Na fila"),
           ` ${CAMPO[sg.campo]} · ${sg.video_titulo || ""}`, sg.erro ? " — " + sg.erro : "",
           sg.antes && sg.depois ? ` · busca: ${fN(sg.antes.busca)} → ${fN(sg.depois.busca)} views/semana` : sg.estado === "aplicado" ? " · resultado em 7 dias" : "")))) : null,
-      h("b", {}, "Pergunte para o Zé"),
-      h("div", { style: "display:grid;gap:6px" }, pergunta, h("div", { class: "acoes" }, h("button", { class: "botao amarelo peq", onclick: perguntar }, "Perguntar"),
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo peq", onclick: () => { $("#detalhe").close(); abrirChatZe(); } }, "💬 Conversar com o Zé")),
+      false && h("div", { style: "display:grid;gap:6px" }, pergunta, h("div", { class: "acoes" }, h("button", { class: "botao amarelo peq", onclick: perguntar }, "Perguntar"),
         h("span", { class: "nota" }, SALA.seoNaHora === false ? "O disparo na hora ainda não está ligado: respondo na próxima passada do robô (até ~30 min)." : "Respondo em cerca de 1 minuto, com os dados da última análise. Pode deixar esta janela aberta."))),
-      perguntas.length ? h("div", { style: "display:grid;gap:8px" }, perguntas.slice(0, 6).map((q) => h("div", { class: "subir-item" },
+      false && perguntas.length ? h("div", { style: "display:grid;gap:8px" }, perguntas.slice(0, 6).map((q) => h("div", { class: "subir-item" },
         h("div", {}, h("b", {}, "Você: "), q.pergunta), q.resposta ? h("div", {}, h("b", {}, "Zé: "), mdSimples(q.resposta)) : h("span", { class: "nota" }, "⏳ pensando… (cerca de 1 minuto)")))) : null,
       h("details", {}, h("summary", { style: "font-weight:800;cursor:pointer" }, "De onde vêm os meus dados e como eu decido"),
         h("div", { style: "display:grid;gap:6px;margin-top:6px;font-size:14px" },
@@ -2723,7 +2793,7 @@
     if (!alvo) return;
     if (alvo.dinha) return abrirDinha();
     if (alvo.chico) return abrirChico();
-    if (alvo.seo) return abrirSeo();
+    if (alvo.seo) return abrirChatZe();
     if (alvo.ed.slug === meuSlug()) return abrirChatSala();   // o editor clica no próprio bonequinho (ou mesa) e conversa com o Claude dele
     const st = estadoSala(alvo.ed);
     const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
