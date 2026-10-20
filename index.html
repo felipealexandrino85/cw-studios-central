@@ -2543,7 +2543,8 @@
     if (ehEspelho(ESC.sel)) {
       const id = ESC.sel, desde = ESC.ultimo[id] || 0;
       const { data } = await db.from("espelho_msgs").select("*").eq("sessao_id", +id.slice(1)).gt("id", desde).order("id").limit(1000);
-      const lista = (ESC.msgs[id] || []).concat(data || []);
+      const tem = new Set((ESC.msgs[id] || []).map((m) => m.id));   // duas leituras ao mesmo tempo não duplicam
+      const lista = (ESC.msgs[id] || []).concat((data || []).filter((m) => !tem.has(m.id)));
       ESC.msgs[id] = lista; ESC.ultimo[id] = lista.length ? lista[lista.length - 1].id : 0;
       return (data || []).length > 0;
     }
@@ -2553,7 +2554,8 @@
       // pedidos de OK mudam de estado: relê os que ainda estavam aguardando
       const aguardando = (ESC.msgs[id] || []).filter((m) => m.papel === "ok" && m.estado === "aguardando").map((m) => m.id);
       const reler = aguardando.length ? (await db.from("esc_msgs").select("*").in("id", aguardando)).data || [] : [];
-      const lista = (ESC.msgs[id] || []).map((m) => reler.find((r) => r.id === m.id) || m).concat(data || []);
+      const tem = new Set((ESC.msgs[id] || []).map((m) => m.id));   // envio e atualização automática ao mesmo tempo não duplicam
+      const lista = (ESC.msgs[id] || []).map((m) => reler.find((r) => r.id === m.id) || m).concat((data || []).filter((m) => !tem.has(m.id)));
       ESC.msgs[id] = lista; ESC.ultimo[id] = lista.length ? lista[lista.length - 1].id : 0;
       return (data || []).length > 0 || reler.some((r) => r.estado !== "aguardando");
     }
