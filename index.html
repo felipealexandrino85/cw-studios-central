@@ -762,7 +762,7 @@
              ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["gestao", "Pessoas"]]]],
     producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
     editor: [["Meu trabalho", [["meudia", "Meu dia"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
-    solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
+    solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
   };
   const EXTRAS = { gestor: ["pedir", "escritorio"], producao: ["pedir"], editor: ["escritorio"], solicitante: [] };   // abas sem item no menu
   const abasDe = (papel) => (MENU[papel] || []).flatMap(([, itens]) => itens.map(([id]) => id)).concat(EXTRAS[papel] || []);
@@ -996,7 +996,7 @@
     } else if (p === "editor") {
       pedidos.push(db.rpc("cw_ao_vivo"), db.rpc("cw_minhas_entregas"), db.from("regras").select("texto,tipo,ativa").eq("ativa", true).order("id"));
     } else {
-      pedidos.push(db.rpc("cw_posicoes"));
+      pedidos.push(db.rpc("cw_posicoes"), db.rpc("cw_ao_vivo"));   // a Sala é de todo mundo
     }
     const r = await Promise.all(pedidos);
     for (const x of r) if (x && x.error) console.error(x.error);
@@ -1009,7 +1009,7 @@
     } else if (p === "editor") {
       D.aovivo = r[2].data || []; D.entregas = r[3].data || []; D.regras = r[4].data || [];
     } else {
-      D.posicoes = Object.fromEntries((r[2].data || []).map((x) => [x.id, x.posicao]));
+      D.posicoes = Object.fromEntries((r[2].data || []).map((x) => [x.id, x.posicao])); D.aovivo = r[3].data || [];
     }
     if (jiraPedido) {
       const [jc, js, pv] = await jiraPedido; D.jira = jc.data || []; D.jiraSync = js.data || null;
@@ -1028,7 +1028,7 @@
     for (const e of data || []) D.eventos[e.demanda_id] = e;
   }
   async function atualizarAoVivo() {
-    if (document.hidden || !["inicio", "aovivo", "meudia", "cast", "sala"].includes(aba) || eu.papel === "solicitante") return;
+    if (document.hidden || !["inicio", "aovivo", "meudia", "cast", "sala"].includes(aba) || (eu.papel === "solicitante" && aba !== "sala")) return;
     const { data } = await db.rpc("cw_ao_vivo");
     if (data) { D.aovivo = data; desenhar(); }
   }
