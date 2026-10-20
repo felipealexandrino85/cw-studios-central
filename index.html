@@ -2042,7 +2042,8 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores), cv = $("#sala-canvas"), T = TILE;
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: true }])), cv = $("#sala-canvas"), T = TILE;
+    const mesaZe = P.mesas.find((m) => m.ed.npc); P.mesas = P.mesas.filter((m) => !m.ed.npc);   // a mesa do Zé Algoritmo na Edição
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
     const px = (x, y, w, hh, cor) => { c.fillStyle = cor; c.fillRect(Math.round(x) * SC, Math.round(y) * SC, Math.round(w) * SC, Math.round(hh) * SC); };
@@ -2150,10 +2151,7 @@
     spr(sinucaS(), lou.x + lou.w - 46, lou.y + 62);
     [["#e85d4f", 24], ["#4a8df5", 36], ["#ffb800", 48]].forEach(([cor, x]) => spr(pufeS(cor), lou.x + x, lou.y + 98));
     spr(plantaS(1), lou.x + lou.w - 16, lou.y + 88);
-    const ze = { x: lou.x + 72, y: lou.y + 46 }, zeIdeias = ((SALA.seo || {}).sugestoes || []).filter((x) => x.estado === "aguardando").length;
-    px(ze.x - 7, ze.y, 14, 2, "#00000033");
-    c.drawImage(bonecoFrente(ZE, 0), (ze.x - 11) * SC, (ze.y - 33) * SC, 22 * SC, 35 * SC);
-    px(ze.x - 6, ze.y - 14, 8, 6, "#2a2a33"); px(ze.x - 5, ze.y - 13, 6, 4, f % 40 < 20 ? "#ff4d4d" : "#7fd3ff"); px(ze.x - 3, ze.y - 12, 2, 2, "#ffffff");   // tablet com o gráfico
+    const ze = { x: mesaZe.x, y: mesaZe.y + 22 }, zeIdeias = ((SALA.seo || {}).sugestoes || []).filter((x) => x.estado === "aguardando").length;
     // corredor
     for (const xb of [P.bx + 3 * T, P.bx + 12 * T, P.bx + 21 * T]) spr(bancoS(), xb, corrY + 2);
     spr(plantaS(3), P.bx + 9 * T, corrY + 1); spr(plantaS(3), P.bx + 18 * T, corrY + 1);
@@ -2186,7 +2184,7 @@
     P.salas.forEach((s) => { c.font = `800 ${5.4 * SC}px Inter, system-ui, sans-serif`; const lw = c.measureText(s.nome).width / SC + 10;
       px(s.x + s.w / 2 - lw / 2, s.y - 12, lw, 11, "#2a2440"); txt(s.nome, s.x + s.w / 2, s.y - 4.2, 5.4, "#ffffff", 800); });
     // ---- mesas da edição (uma por editor) e os bonequinhos
-    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: ze.x - 11, y: ze.y - 33, w: 22, h: 35 }];
+    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }];
     const pessoas = [];
     // cada um que não está trabalhando ganha um lugar fixo (o mesmo enquanto ficar assim): quem está online vai jogar,
     // tomar café ou mexer no celular; quem está fora cochila nos sofás e poltronas
@@ -2207,6 +2205,13 @@
           if (lugarDe[m.ed.slug]) break;
         }
       }
+    }
+    {   // Zé Algoritmo trabalhando na mesa dele: monitor com o gráfico do canal subindo
+      const mx = mesaZe.x, my = mesaZe.y;
+      c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
+      px(mx - 9, my - 14, 18, 11, "#1c1c28");
+      for (let k = 0; k < 5; k++) { const hb = 2 + ((k * 3 + Math.floor(f / 6)) % 6); px(mx - 7 + k * 3, my - 5 - hb, 2, hb, k === 4 ? "#ff4d4d" : "#ffffffaa"); }
+      px(mx + 5, my - 13, 3, 2, "#ff0000"); px(mx + 6, my - 13, 1, 1, "#ffffff");   // o "play" do YouTube
     }
     for (const m of P.mesas) {
       const st = estadoSala(m.ed), seed = hashSlug(m.ed.slug);
@@ -2265,6 +2270,9 @@
         c.drawImage(bonecoFrente(cores, passo), (x - 11) * SC, (y - 33) * SC, 22 * SC, 35 * SC);
       }
     });
+    px(ze.x - 7, ze.y, 14, 2, "#00000026");
+    c.drawImage(bonecoCostas(ZE, f % 4 < 2 ? 1 : 2), (ze.x - 11) * SC, (ze.y - 24) * SC, 22 * SC, 27 * SC);
+    c.drawImage(cadeiraCostas(), (ze.x - 10) * SC, (ze.y - 6) * SC, 20 * SC, 13 * SC);
     // plaquinhas e balões por cima de tudo
     if (noite) { c.fillStyle = "rgba(18,24,70,0.38)"; c.fillRect(0, 0, cv.width, cv.height);
       for (let x = 2 * T; x < P.W; x += 7 * T) { c.fillStyle = "rgba(255,226,140,0.22)"; c.beginPath(); c.arc((x + 0.5) * SC, (calc - 10) * SC, 18 * SC, 0, 6.283); c.fill(); } }
@@ -2295,7 +2303,7 @@
     const falaZe = zeIdeias ? `📈 ${zeIdeias} ideia${zeIdeias > 1 ? "s" : ""} de SEO` : (f % 220 < 70 ? "🔎 análise às 22h" : null);
     if (falaZe && SALA.seo) {
       c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
-      const bwZ = c.measureText(falaZe).width / SC + 10, bxZ = Math.max(lou.x + 2, Math.min(ze.x - bwZ / 2, lou.x + lou.w - bwZ - 2)), byZ = ze.y - 46, corZ = zeIdeias ? "#ffb800" : "#ffffff";
+      const sE = P.salas[4], bwZ = c.measureText(falaZe).width / SC + 10, bxZ = Math.max(sE.x + 2, Math.min(ze.x - bwZ / 2, sE.x + sE.w - bwZ - 2)), byZ = ze.y - 50, corZ = zeIdeias ? "#ffb800" : "#ffffff";
       px(bxZ, byZ, bwZ, 11, corZ); px(ze.x - 1, byZ + 11, 3, 2, corZ); txt(falaZe, bxZ + bwZ / 2, byZ + 8, 4.6, "#2a1b40", 600);
     }
     // Chico Moelas: plaquinha e o que ele está fazendo
@@ -2566,15 +2574,28 @@
     fecha();
     return h("div", { style: "display:grid;gap:6px;font-size:14px;line-height:1.5" }, blocos);
   }
+  // dispara o robô na hora pela função "robo" da central; sem a chave do GitHub ligada, fica para a próxima passada da agenda
+  async function dispararRobo(acao) {
+    try { const { data, error } = await db.functions.invoke("robo", { body: { acao } }); return !error && data && data.ok; }
+    catch { return false; }
+  }
   async function recarregarSeo() {
-    const [ss, sl, sq] = await Promise.all([db.rpc("cw_seo_situacao"), db.from("seo_sugestoes").select("*").neq("estado", "substituido").order("id", { ascending: false }).limit(60),
-      db.from("seo_perguntas").select("*").order("id", { ascending: false }).limit(20)]);
-    SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [] };
+    const [ss, sl, sq, sr] = await Promise.all([db.rpc("cw_seo_situacao"), db.from("seo_sugestoes").select("*").neq("estado", "substituido").order("id", { ascending: false }).limit(120),
+      db.from("seo_perguntas").select("*").order("id", { ascending: false }).limit(20), db.from("seo_relatorios").select("*").order("dia", { ascending: false }).limit(60)]);
+    SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [],
+                 relatorios: Array.isArray(sr.data) ? sr.data : [] };
   }
   async function abrirSeo() {
     if (!["gestor", "producao", "editor"].includes(eu.papel)) return;
-    if (!SALA.seo) await recarregarSeo();
-    const { st, sugestoes, perguntas } = SALA.seo, pode = ["gestor", "producao"].includes(eu.papel);
+    if (!SALA.seo || !SALA.seo.relatorios) await recarregarSeo();
+    const { sugestoes, perguntas } = SALA.seo, relatorios = SALA.seo.relatorios || [], pode = ["gestor", "producao"].includes(eu.papel);
+    // relatório do dia escolhido (o mais recente por padrão)
+    const diaSel = SALA.seoDia && relatorios.some((r) => r.dia === SALA.seoDia) ? SALA.seoDia : (relatorios[0] || {}).dia;
+    const st = (relatorios.find((r) => r.dia === diaSel) || {}).dados || SALA.seo.st || {};
+    const seletor = relatorios.length ? h("select", { "aria-label": "Dia do relatório", style: "max-width:220px", onchange: (ev) => { SALA.seoDia = ev.target.value; abrirSeo(); } },
+      relatorios.map((r) => h("option", { value: r.dia }, `${r.dia.slice(8, 10)}/${r.dia.slice(5, 7)}/${r.dia.slice(0, 4)}${r === relatorios[0] ? " (mais recente)" : ""}`))) : null;
+    if (seletor && diaSel) seletor.value = diaSel;
+    const daquele = sugestoes.filter((x) => x.rodada === diaSel && x.estado !== "aguardando");
     const retrato = h("canvas", { width: 22, height: 35, style: "width:88px;height:140px;image-rendering:pixelated;background:var(--surface-2);border-radius:16px;padding:8px;flex:none", "aria-hidden": "true" });
     retrato.getContext("2d").drawImage(bonecoFrente(ZE, 0), 0, 0);
     const mc = st.metricas_canal || {}, at = mc.atual || {}, an = mc.anterior || {};
@@ -2588,6 +2609,7 @@
     const decidir = async (sg, aprovar, texto) => {
       const { error } = await db.rpc("cw_seo_decidir", { p_id: sg.id, p_aprovar: aprovar, p_texto: texto || null });
       if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+      if (aprovar) dispararRobo("responder");   // aplica no canal agora
       await recarregarSeo(); abrirSeo();
     };
     const cartao = (sg) => {
@@ -2608,14 +2630,28 @@
       if (pergunta.value.trim().length < 3) return;
       const { error } = await db.rpc("cw_seo_perguntar", { p_texto: pergunta.value });
       if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+      SALA.seoNaHora = await dispararRobo("responder");
       await recarregarSeo(); abrirSeo();
+      // espera a resposta (o robô leva ~1 min) e atualiza a janela sozinha
+      clearInterval(SALA.seoEspera);
+      SALA.seoEspera = setInterval(async () => {
+        if (!$("#detalhe").open) return clearInterval(SALA.seoEspera);
+        const antes = (SALA.seo.perguntas || []).filter((q) => !q.resposta).length;
+        await recarregarSeo();
+        const agora = (SALA.seo.perguntas || []).filter((q) => !q.resposta).length;
+        if (agora < antes && $("#detalhe").open) abrirSeo();
+        if (!agora) clearInterval(SALA.seoEspera);
+      }, 8000);
     };
     encher($("#detalhe-corpo"),
       h("div", { style: "display:flex;gap:16px;align-items:center;flex-wrap:wrap" }, retrato,
         h("div", { style: "display:grid;gap:6px;flex:1 1 260px;min-width:0" },
           h("h2", { style: "margin:0" }, "Fala, chefe! Zé Algoritmo aqui."),
           h("p", { style: "margin:0" }, "Todo dia às 22h eu olho o canal do CW Cast: títulos, descrições, tags e o que as pessoas buscam. Só sugiro mudar quando os números mostram motivo, e nada muda sem você aprovar."),
-          h("p", { class: "nota", style: "margin:0" }, st.visto ? `Última análise: ${horaBR(st.visto)} · ${st.videos || 0} vídeos · ${st.sugestoes || 0} sugestão(ões) · período ${st.periodo || "—"}` : "Ainda não fiz a primeira análise (preciso do token do Claude no robô)."))),
+          h("p", { class: "nota", style: "margin:0" }, st.visto ? `Análise de ${horaBR(st.visto)} · ${st.videos || 0} vídeos · ${st.sugestoes || 0} sugestão(ões) · período ${st.periodo || "—"}` : "Ainda não fiz a primeira análise."))),
+      h("div", { style: "display:flex;gap:8px;flex-wrap:wrap;align-items:center" }, seletor ? h("b", {}, "Relatório do dia") : null, seletor,
+        eu.papel === "gestor" ? h("button", { class: "botao leve peq", onclick: async (ev) => { ev.target.disabled = true; const ok = await dispararRobo("seo");
+          ev.target.textContent = ok ? "Analisando… (uns 5 min)" : "Disparo na hora ainda não ligado"; } }, "🔎 Analisar agora") : null),
       st.visto ? h("div", { class: "seo-kpis" },
         h("div", {}, h("span", {}, "Views (28 dias)"), h("b", {}, fN(at.views)), h("small", {}, "vs 28 anteriores" + delta(at.views, an.views))),
         h("div", {}, h("span", {}, "Horas assistidas"), h("b", {}, fN(at.horas)), h("small", {}, delta(at.horas, an.horas).trim() || "—")),
@@ -2627,6 +2663,10 @@
         (st.termos_canal || []).length ? h("div", { style: "display:flex;gap:4px;flex-wrap:wrap" }, h("span", { class: "nota" }, "O que mais buscam:"),
           st.termos_canal.slice(0, 10).map((t) => h("span", { class: "chip" }, typeof t === "string" ? t : `${t.termo} · ${fN(t.views)}`))) : null) : null,
       st.relatorio ? h("details", { open: true }, h("summary", { style: "font-weight:800;cursor:pointer" }, "Relatório da última análise"), mdSimples(st.relatorio)) : null,
+      diaSel !== (relatorios[0] || {}).dia && daquele.length ? h("details", {}, h("summary", { style: "font-weight:800;cursor:pointer" }, `Sugestões dessa análise (${daquele.length})`),
+        h("div", { style: "display:grid;gap:6px;margin-top:6px" }, daquele.map((sg) => h("div", { class: "nota" },
+          h("span", { class: "chip " + (sg.estado === "aplicado" ? "tom-ok" : sg.estado === "ignorado" ? "tom-neutro" : "tom-aviso") }, { aplicado: "Aplicada", ignorado: "Ignorada", aprovado: "Aprovada", erro: "Erro" }[sg.estado] || sg.estado),
+          ` ${CAMPO[sg.campo]} · ${sg.video_titulo || ""} → `, h("span", { style: "color:var(--text)" }, sg.sugerido.slice(0, 120)))))) : null,
       h("b", {}, pend.length ? `Sugestões para aprovar (${pend.length})` : "Nenhuma sugestão esperando aprovação."),
       pend.length ? h("div", { class: "subir-lista", style: "max-height:none" }, pend.map(cartao)) : null,
       hist.length ? h("details", {}, h("summary", { style: "font-weight:800;cursor:pointer" }, "O que já foi mudado"),
@@ -2636,9 +2676,9 @@
           sg.antes && sg.depois ? ` · busca: ${fN(sg.antes.busca)} → ${fN(sg.depois.busca)} views/semana` : sg.estado === "aplicado" ? " · resultado em 7 dias" : "")))) : null,
       h("b", {}, "Pergunte para o Zé"),
       h("div", { style: "display:grid;gap:6px" }, pergunta, h("div", { class: "acoes" }, h("button", { class: "botao amarelo peq", onclick: perguntar }, "Perguntar"),
-        h("span", { class: "nota" }, "Eu respondo na próxima passada do robô (em até ~30 min) com os dados da última análise."))),
+        h("span", { class: "nota" }, SALA.seoNaHora === false ? "O disparo na hora ainda não está ligado: respondo na próxima passada do robô (até ~30 min)." : "Respondo em cerca de 1 minuto, com os dados da última análise. Pode deixar esta janela aberta."))),
       perguntas.length ? h("div", { style: "display:grid;gap:8px" }, perguntas.slice(0, 6).map((q) => h("div", { class: "subir-item" },
-        h("div", {}, h("b", {}, "Você: "), q.pergunta), q.resposta ? h("div", {}, h("b", {}, "Zé: "), mdSimples(q.resposta)) : h("span", { class: "nota" }, "⏳ vou responder na próxima passada")))) : null,
+        h("div", {}, h("b", {}, "Você: "), q.pergunta), q.resposta ? h("div", {}, h("b", {}, "Zé: "), mdSimples(q.resposta)) : h("span", { class: "nota" }, "⏳ pensando… (cerca de 1 minuto)")))) : null,
       h("details", {}, h("summary", { style: "font-weight:800;cursor:pointer" }, "De onde vêm os meus dados e como eu decido"),
         h("div", { style: "display:grid;gap:6px;margin-top:6px;font-size:14px" },
           h("p", { style: "margin:0" }, "Dados (direto do YouTube, com a conta do canal): título, descrição e tags de cada vídeo (YouTube Data API); views, horas, retenção e inscritos dos últimos 28 dias, por vídeo e do canal, comparando com os 28 anteriores; de onde vêm as views (busca, sugeridos, Shorts, anúncio…); e os termos de busca reais que trouxeram gente para cada vídeo (YouTube Analytics)."),
@@ -3221,6 +3261,7 @@
         p_opcoes: { tiktok: { privacidade: ttPriv.value, comentarios: ttCom.checked, dueto: ttDue.checked, stitch: ttSti.checked,
           sua_marca: ttSua.checked, conteudo_marca: ttParc.checked, aceite: ttAce.checked } } });
       if (error) return erro(error);
+      if (aprovar && !quando.value) dispararRobo("publicar");   // o Chico posta agora, sem esperar a próxima passada
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
     }
     async function mudar(acao) {
