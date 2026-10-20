@@ -652,7 +652,7 @@
 
   <section id="aba-sala" hidden>
     <header class="cabeca"><p class="kicker">Operação</p><h1>Sala do CW Studios</h1>
-      <p class="sub" id="sala-sub">O time ao vivo. Na mesa e digitando é edição acontecendo agora; circulando pela sala é online sem vídeo aberto; mesa vazia é fora. Clique num bonequinho para ver o que ele está fazendo.</p></header>
+      <p class="sub" id="sala-sub">O time ao vivo. Na mesa e digitando é edição acontecendo agora; na copa, no sofá ou jogando é online sem vídeo aberto; cochilando é fora. Clique num bonequinho para ver o que ele está fazendo, ou na Dinha, da recepção, para o resumo do dia.</p></header>
     <div class="acoes"><button class="botao leve" id="sala-cheia">Tela cheia (para TV)</button></div>
     <div class="sala-topo" id="sala-topo"></div>
     <div class="sala-palco" id="sala-palco"><canvas id="sala-canvas" aria-label="Sala do CW Studios com o time ao vivo" role="img"></canvas></div>
@@ -1033,7 +1033,7 @@
   // ---------------------------------------------------------------- dados (cada papel busca só o que o banco deixa ver)
   async function carregar() {
     const p = eu.papel;
-    const pedidos = [db.from("demandas").select("*").order("criado", { ascending: false }).limit(1000), db.from("editores").select("slug,nome,email,ativo,criado,jira_id").order("nome")];
+    const pedidos = [db.from("demandas").select("*").order("criado", { ascending: false }).limit(1000), db.from("editores").select("slug,nome,email,ativo,criado,jira_id,visual").order("nome")];
     const jiraPedido = p === "solicitante" ? null : Promise.all([db.from("jira_cards").select("*").eq("na_sprint", true).order("status_ordem").limit(1000),
                                                                 db.from("jira_sync").select("*").eq("id", 1).maybeSingle(),
                                                                 db.from("previas").select("editor_slug,trabalho_id,arquivo,imagem,ts").gte("ts", new Date(Date.now() - 3 * 864e5).toISOString())]);
@@ -1716,9 +1716,9 @@
         db.from("estacoes").select("editor_slug,maquina,visto")]);
       SALA.conversas = Array.isArray(cv.data) ? cv.data : []; SALA.estacoes = Array.isArray(es.data) ? es.data : [];
     }
-    encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo aberto"],
-      ["#6b5a87", "Fora"], ["#7d6bff", "No Premiere"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
-    if (meuSlug()) $("#sala-sub").textContent = "O time ao vivo. Clique no seu bonequinho para conversar com o Claude da sua máquina — ele edita aí mesmo, e você acompanha tudo daqui.";
+    encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo (copa, sofá, jogos)"],
+      ["#6b5a87", "Fora (cochilando)"], ["#7d6bff", "No Premiere"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
+    if (meuSlug()) $("#sala-sub").textContent = "O time ao vivo. Clique no seu bonequinho para conversar com o Claude da sua máquina (ele edita aí mesmo) e, no chat, em \"Meu bonequinho\" para mudar roupa e estilo. A Dinha, da recepção, dá o resumo do dia.";
     painelSala();
     $("#sala-cheia").onclick = () => { const el = $("#sala-palco"); (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {}); };
     $("#sala-canvas").onclick = cliqueSala;
@@ -1775,8 +1775,21 @@
   }
   const tom = (hex, k) => { const n = parseInt(hex.slice(1, 7), 16), f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
     return "#" + ((1 << 24) | (f((n >> 16) & 255) << 16) | (f((n >> 8) & 255) << 8) | f(n & 255)).toString(16).slice(1); };
+  const CALCAS = ["#3b4a6b", "#2a2a33", "#6b4a2f", "#7a8a9a", "#3f6b3a", "#8a3b5a"];
+  const ESTILOS = ["Curto", "Comprido", "Coque", "Cacheado", "Raspado", "Moicano"];
+  const ACESSORIOS = [["", "Nenhum"], ["oculos", "Óculos"], ["bone", "Boné"], ["fone", "Fone"], ["brinco", "Brinco"]];
+  // visual do bonequinho: o que o editor escolheu (editores.visual) ou um padrão tirado do nome
+  function coresDe(ed) {
+    const seed = hashSlug(ed.slug), v = ed.visual || {};
+    return { cabelo: v.cabelo || CABELOS[seed % CABELOS.length], pele: v.pele || PELES[(seed >>> 3) % PELES.length],
+             camisa: v.camisa || CAMISAS[(seed >>> 6) % CAMISAS.length], calca: v.calca || CALCAS[(seed >>> 12) % CALCAS.length],
+             estilo: v.estilo != null ? v.estilo : (seed >>> 9) % 4, acessorio: v.acessorio || "", feminino: !!v.feminino };
+  }
+  const chaveCores = (c) => [c.cabelo, c.pele, c.camisa, c.calca, c.estilo, c.acessorio, c.feminino ? 1 : 0].join("|");
   function cabelo(p, c, est, costas) {
     const claro = tom(c, 1.35), escuro = tom(c, 0.75);
+    if (est === 4) { p(4, 3, 14, 2, tom(c, 0.9)); p(5, 2, 12, 1, tom(c, 0.9)); return; }                    // raspado
+    if (est === 5) { p(9, 0, 4, costas ? 14 : 6, c); p(10, 0, 2, 1, claro); p(4, 4, 14, 1, tom(c, 0.9)); return; }   // moicano
     if (est === 1) { p(3, 5, 3, costas ? 16 : 15, c); p(16, 5, 3, costas ? 16 : 15, escuro); }            // comprido
     p(4, 2, 14, costas ? 13 : 5, c); p(3, 4, 1, costas ? 9 : 5, c); p(18, 4, 1, costas ? 9 : 5, escuro);
     p(6, 3, 5, 1, claro); p(5, 4, 2, 1, claro);
@@ -1784,34 +1797,82 @@
     if (est === 2) { p(8, 0, 6, 3, c); p(9, 0, 3, 1, claro); }                                            // coque
     if (est === 3) { for (const bx of [3, 7, 11, 15]) p(bx, 1, 4, 2, c); p(2, 5, 2, 4, c); p(18, 5, 2, 4, escuro); }   // cacheado
   }
+  function acessorio(p, cores, costas) {
+    const a = cores.acessorio;
+    if (a === "bone") { p(4, 1, 14, 4, cores.camisa); p(4, 1, 14, 1, tom(cores.camisa, 1.25)); if (!costas) p(2, 5, 11, 2, tom(cores.camisa, 0.75)); else p(9, 5, 4, 1, tom(cores.camisa, 0.75)); }
+    if (a === "fone") { p(3, 1, 16, 2, "#2a2a33"); p(2, 7, 3, 6, "#2a2a33"); p(17, 7, 3, 6, "#2a2a33"); p(2, 8, 1, 4, "#e85d4f"); p(19, 8, 1, 4, "#e85d4f"); }
+    if (a === "oculos" && !costas) { p(6, 9, 4, 3, "#2a2235"); p(12, 9, 4, 3, "#2a2235"); p(10, 10, 2, 1, "#2a2235"); p(7, 10, 2, 1, "#cfe8ff"); p(13, 10, 2, 1, "#cfe8ff"); }
+    if (a === "brinco" && !costas) { p(3, 13, 1, 2, "#ffd166"); p(18, 13, 1, 2, "#ffd166"); }
+  }
+  function rosto(p, cores) {
+    const peleS = tom(cores.pele, 0.85);
+    p(17, 8, 1, 7, peleS);
+    p(7, 10, 2, 2, "#ffffff"); p(13, 10, 2, 2, "#ffffff"); p(8, 10, 1, 2, "#2a2235"); p(14, 10, 1, 2, "#2a2235");
+    if (cores.feminino) { p(7, 9, 2, 1, "#2a2235"); p(13, 9, 2, 1, "#2a2235"); p(9, 13, 4, 1, "#d94f6b"); }   // cílios e batom
+    else p(10, 13, 2, 1, "#b5525a");
+    p(5, 13, 2, 1, "#f2a3a3"); p(15, 13, 2, 1, "#f2a3a3");
+  }
   function bonecoFrente(cores, passo) {
-    return sprite(`f|${cores.cabelo}|${cores.pele}|${cores.camisa}|${cores.estilo}|${passo}`, 22, 35, (p, apaga) => {
+    return sprite(`f|${chaveCores(cores)}|${passo}`, 22, 35, (p, apaga) => {
       const pele = cores.pele, peleS = tom(pele, 0.85), cam = cores.camisa, camS = tom(cam, 0.78);
       if (cores.estilo === 1) p(3, 5, 16, 13, tom(cores.cabelo, 0.85));
       p(4, 3, 14, 13, pele); apaga(4, 3, 1, 1); apaga(17, 3, 1, 1); apaga(4, 15, 1, 1); apaga(17, 15, 1, 1);
-      p(17, 8, 1, 7, peleS);
-      cabelo(p, cores.cabelo, cores.estilo, false);
-      p(7, 10, 2, 2, "#ffffff"); p(13, 10, 2, 2, "#ffffff"); p(8, 10, 1, 2, "#2a2235"); p(14, 10, 1, 2, "#2a2235");
-      p(5, 13, 2, 1, "#f2a3a3"); p(15, 13, 2, 1, "#f2a3a3"); p(10, 13, 2, 1, "#b5525a");
+      cabelo(p, cores.cabelo, cores.estilo, false); rosto(p, cores); acessorio(p, cores, false);
       p(9, 16, 4, 2, peleS);
       p(5, 17, 12, 8, cam); p(14, 17, 3, 8, camS); p(9, 17, 4, 2, tom(cam, 1.3));
       p(3, 18, 2, 6, cam); p(17, 18, 2, 6, camS); p(3, 24, 2, 2, pele); p(17, 24, 2, 2, peleS);
-      const calca = "#3b4a6b", calcaS = "#2f3b56";
+      const calca = cores.calca || "#3b4a6b", calcaS = tom(calca, 0.8);
       p(6, 25, 4, 6 + passo, calca); p(12, 25, 4, 6 - passo, calcaS);
       p(5, 31 + passo, 5, 2, "#2a2a33"); p(12, 31 - passo, 5, 2, "#2a2a33");
     });
   }
+  // sentado de frente (sofá, poltrona, banqueta da copa): segura o celular, um café ou dorme
+  function bonecoSentado(cores, item) {
+    return sprite(`s|${chaveCores(cores)}|${item}`, 22, 31, (p, apaga) => {
+      const pele = cores.pele, peleS = tom(pele, 0.85), cam = cores.camisa, camS = tom(cam, 0.78), calca = cores.calca || "#3b4a6b";
+      if (cores.estilo === 1) p(3, 5, 16, 13, tom(cores.cabelo, 0.85));
+      p(4, 3, 14, 13, pele); apaga(4, 3, 1, 1); apaga(17, 3, 1, 1); apaga(4, 15, 1, 1); apaga(17, 15, 1, 1);
+      cabelo(p, cores.cabelo, cores.estilo, false);
+      if (item === "dorme") { p(17, 8, 1, 7, peleS); p(7, 11, 2, 1, "#2a2235"); p(13, 11, 2, 1, "#2a2235"); p(10, 13, 2, 1, "#b5525a"); }
+      else rosto(p, cores);
+      acessorio(p, cores, false);
+      p(9, 16, 4, 2, peleS);
+      p(5, 17, 12, 8, cam); p(14, 17, 3, 8, camS); p(9, 17, 4, 2, tom(cam, 1.3));
+      p(3, 18, 2, 5, cam); p(17, 18, 2, 5, camS);
+      p(5, 25, 12, 3, calca); p(5, 25, 12, 1, tom(calca, 1.15));       // coxas, de frente
+      p(6, 28, 4, 1, calca); p(12, 28, 4, 1, tom(calca, 0.8)); p(5, 29, 5, 2, "#2a2a33"); p(12, 29, 5, 2, "#2a2a33");
+      if (item === "celular") { p(8, 21, 6, 4, pele); p(9, 19, 4, 4, "#2a2a33"); p(10, 20, 2, 2, "#7fd3ff"); }
+      else if (item === "cafe") { p(4, 21, 3, 3, pele); p(16, 21, 3, 3, peleS); p(15, 18, 4, 4, "#ffffff"); p(16, 18, 2, 1, "#6b4a2f"); p(19, 19, 1, 2, "#ffffff"); }
+      else { p(3, 23, 3, 2, pele); p(16, 23, 3, 2, peleS); }
+    });
+  }
   function bonecoCostas(cores, braco) {
-    return sprite(`c|${cores.cabelo}|${cores.pele}|${cores.camisa}|${cores.estilo}|${braco}`, 22, 27, (p) => {
+    return sprite(`c|${chaveCores(cores)}|${braco}`, 22, 27, (p) => {
       const cam = cores.camisa, camS = tom(cam, 0.78);
       p(3, 8, 1, 3, cores.pele); p(18, 8, 1, 3, tom(cores.pele, 0.85));
-      cabelo(p, cores.cabelo, cores.estilo, true);
+      cabelo(p, cores.cabelo, cores.estilo, true); acessorio(p, cores, true);
       p(9, 15, 4, 2, tom(cores.pele, 0.85));
       p(4, 16, 14, 10, cam); p(14, 16, 4, 10, camS);
       const e = braco === 1 ? 2 : 0, d = braco === 2 ? 2 : 0;
       p(1, 14 - e, 3, 8, cam); p(18, 14 - d, 3, 8, camS); p(1, 13 - e, 3, 2, cores.pele); p(18, 13 - d, 3, 2, cores.pele);
     });
   }
+  // de costas e em pé (sinuca, fliperama, bebedouro)
+  function bonecoCostasEmPe(cores, braco) {
+    return sprite(`ce|${chaveCores(cores)}|${braco}`, 22, 35, (p) => {
+      const cam = cores.camisa, camS = tom(cam, 0.78), calca = cores.calca || "#3b4a6b";
+      if (cores.estilo === 1) p(3, 5, 16, 14, cores.cabelo);
+      p(4, 3, 14, 13, tom(cores.pele, 0.9));
+      cabelo(p, cores.cabelo, cores.estilo, true); acessorio(p, cores, true);
+      p(9, 16, 4, 2, tom(cores.pele, 0.85));
+      p(5, 17, 12, 8, cam); p(14, 17, 3, 8, camS);
+      const e = braco === 1 ? 3 : 0, d = braco === 2 ? 3 : 0;
+      p(3, 18 - e, 2, 6, cam); p(17, 18 - d, 2, 6, camS); p(3, 24 - e, 2, 2, cores.pele); p(17, 24 - d, 2, 2, cores.pele);
+      p(6, 25, 4, 6, calca); p(12, 25, 4, 6, tom(calca, 0.8)); p(5, 31, 5, 2, "#2a2a33"); p(12, 31, 5, 2, "#2a2a33");
+    });
+  }
+  // a recepcionista do CW Studios
+  const DINHA = { cabelo: "#3b2a1e", pele: "#c98a5e", camisa: "#f25aa8", calca: "#2a2a33", estilo: 1, acessorio: "brinco", feminino: true };
   const cadeiraCostas = () => sprite("cadeira", 20, 13, (p) => { p(2, 0, 16, 8, "#4067c4"); p(2, 0, 16, 2, "#5a82dc"); p(14, 2, 4, 6, "#3355a6"); p(8, 8, 4, 3, "#2d3448"); p(4, 11, 12, 2, "#2d3448"); });
   const mesaEstacao = () => sprite("mesa", 46, 27, (p) => {
     p(0, 9, 46, 10, "#f4f5f7"); p(0, 9, 46, 2, "#ffffff"); p(0, 19, 46, 6, "#d6dae2"); p(2, 19, 42, 1, "#c3c8d2");
@@ -2026,6 +2087,8 @@
     px(rec.x + (rec.w - 44) / 2, rec.y + 5, 44, 9, "#59327a"); px(rec.x + (rec.w - 44) / 2, rec.y + 13, 44, 1, "#3e2257"); txt("CW STUDIOS", rec.x + rec.w / 2, rec.y + 11.4, 4.6, "#ffb800", 900);
     relogio(rec.x + rec.w - 10, rec.y + 9);
     spr(plantaS(1), rec.x + 3, rec.y + 18); spr(plantaS(1), rec.x + rec.w - 17, rec.y + 18);
+    const dinha = { x: rec.x + (rec.w - 46) / 2 + 35, y: rec.y + 30 };   // a recepcionista fica atrás do balcão
+    c.drawImage(bonecoFrente(DINHA, 0), (dinha.x - 11) * SC, (dinha.y - 22) * SC, 22 * SC, 35 * SC);
     spr(balcaoS(), rec.x + (rec.w - 46) / 2, rec.y + 25);
     spr(bebedouroS(), rec.x + 5, rec.y + 52);
     spr(tapeteS(46, 30, "#d9604f", "#b8473a"), rec.x + rec.w - 54, rec.y + 60);
@@ -2066,15 +2129,44 @@
     relogio(sEd.x + sEd.w - 20, sEd.y + 8);
     spr(estanteS(), sEd.x + sEd.w - 40, sEd.y + 14); spr(impressoraS(), sEd.x + sEd.w - 60, sEd.y + 22); spr(bebedouroS(), sEd.x + 6, sEd.y + 20);
     spr(plantaS(1), sEd.x + 3, sEd.y + sEd.h - 24); spr(plantaS(3), sEd.x + sEd.w - 17, sEd.y + sEd.h - 24);
+    // lugares de descanso: quem está online sem vídeo (ou fora) fica aqui fazendo alguma coisa
+    const LUGARES = [
+      { id: "sinuca", x: lou.x + lou.w - 26, y: lou.y + 104, pose: "costas", item: "sinuca" },
+      { id: "arcade", x: lou.x + 11, y: lou.y + 100, pose: "costas", item: "arcade" },
+      { id: "copa1", x: copa.x + 8, y: copa.y + 61, pose: "sentado", item: "cafe" },
+      { id: "copa2", x: copa.x + copa.w - 40, y: copa.y + 61, pose: "sentado", item: "cafe" },
+      { id: "copa3", x: copa.x + 8, y: copa.y + 93, pose: "sentado", item: "cafe" },
+      { id: "copa4", x: copa.x + copa.w - 40, y: copa.y + 93, pose: "sentado", item: "cafe" },
+      { id: "sofa1", x: lou.x + 18, y: lou.y + 40, pose: "sentado", item: "celular", descanso: true },
+      { id: "sofa2", x: lou.x + 36, y: lou.y + 40, pose: "sentado", item: "celular", descanso: true },
+      { id: "sofa3", x: rec.x + 17, y: rec.y + 108, pose: "sentado", item: "celular", descanso: true },
+      { id: "sofa4", x: rec.x + 33, y: rec.y + 108, pose: "sentado", item: "celular", descanso: true },
+      { id: "poltrona1", x: rec.x + rec.w - 43, y: rec.y + 78, pose: "sentado", item: "cafe", descanso: true },
+      { id: "poltrona2", x: rec.x + rec.w - 15, y: rec.y + 78, pose: "sentado", item: "cafe", descanso: true }];
     // nomes das salas
     P.salas.forEach((s) => { c.font = `800 ${5.4 * SC}px Inter, system-ui, sans-serif`; const lw = c.measureText(s.nome).width / SC + 10;
       px(s.x + s.w / 2 - lw / 2, s.y - 12, lw, 11, "#2a2440"); txt(s.nome, s.x + s.w / 2, s.y - 4.2, 5.4, "#ffffff", 800); });
     // ---- mesas da edição (uma por editor) e os bonequinhos
-    SALA.alvos = [];
+    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }];
     const pessoas = [];
+    // cada um que não está trabalhando ganha um lugar fixo (o mesmo enquanto ficar assim): quem está online vai jogar,
+    // tomar café ou mexer no celular; quem está fora cochila nos sofás e poltronas
+    const ocupado = new Set(), lugarDe = {};
+    for (const quer of ["livre", "fora"]) {
+      for (const m of P.mesas.slice().sort((a, b2) => a.ed.slug.localeCompare(b2.ed.slug))) {
+        if (estadoSala(m.ed).modo !== quer) continue;
+        // fora: primeiro sofás e poltronas (cochilando); online: qualquer lugar, começando por um sorteado pelo nome
+        const grupos = quer === "fora" ? [LUGARES.filter((l) => l.descanso), LUGARES.filter((l) => !l.descanso)] : [LUGARES];
+        for (const g of grupos) {
+          const ini = hashSlug(m.ed.slug) % g.length;
+          for (let k = 0; k < g.length && !lugarDe[m.ed.slug]; k++) { const l = g[(ini + k) % g.length]; if (!ocupado.has(l.id)) { ocupado.add(l.id); lugarDe[m.ed.slug] = l; } }
+          if (lugarDe[m.ed.slug]) break;
+        }
+      }
+    }
     for (const m of P.mesas) {
       const st = estadoSala(m.ed), seed = hashSlug(m.ed.slug);
-      const cores = { cabelo: CABELOS[seed % CABELOS.length], pele: PELES[(seed >>> 3) % PELES.length], camisa: CAMISAS[(seed >>> 6) % CAMISAS.length], estilo: (seed >>> 9) % 4 };
+      const cores = coresDe(m.ed);
       const tela = st.modo === "fora" ? "#15151c" : st.premiere ? "#2a1a5e" : st.modo === "editando" ? COR_ETAPA[st.etapa] || "#4cd07d" : st.modo === "parado" ? "#3a3550" : "#24203a";
       c.drawImage(mesaEstacao(), (m.x - 23) * SC, (m.y - 15) * SC, 46 * SC, 27 * SC);
       px(m.x - 9, m.y - 14, 18, 11, tela);
@@ -2092,18 +2184,30 @@
       SALA.alvos.push({ ed: m.ed, x: m.x - 22, y: m.y - 18, w: 44, h: 50 });
       let b = SALA.bonecos[m.ed.slug];
       if (!b) b = SALA.bonecos[m.ed.slug] = { x: m.x, y: m.y + 22, alvo: null, espera: 0 };
-      if (st.modo === "fora") { b.x = m.x; b.y = m.y + 22; pessoas.push({ fora: true, m, st }); continue; }
-      const naMesa = st.modo !== "livre";
-      if (naMesa) b.alvo = { x: m.x, y: m.y + 22 };
-      else if (!b.alvo || (Math.hypot(b.alvo.x - b.x, b.alvo.y - b.y) < 2 && --b.espera <= 0)) { b.alvo = P.lazer[(seed + f) % P.lazer.length]; b.espera = 25 + (seed % 40); }
+      const naMesa = st.modo === "editando" || st.modo === "parado", lugar = naMesa ? null : lugarDe[m.ed.slug];
+      if (!naMesa && !lugar) { b.x = m.x; b.y = m.y + 22; pessoas.push({ fora: true, m, st }); continue; }   // sem lugar livre: fica fora da sala
+      if (st.modo === "fora" && !b.chegou) { b.x = lugar.x; b.y = lugar.y; }   // quem já estava fora aparece direto no lugar
+      b.alvo = naMesa ? { x: m.x, y: m.y + 22 } : { x: lugar.x, y: lugar.y };
       const dx = b.alvo.x - b.x, dy = b.alvo.y - b.y, d = Math.hypot(dx, dy), andando = d > 1.5;
       if (andando) { b.x += dx / d * Math.min(2.4, d); b.y += dy / d * Math.min(2.4, d); }
-      pessoas.push({ b, st, cores, m, sentado: naMesa && !andando, andando });
+      b.chegou = true;
+      pessoas.push({ b, st, cores, m, sentado: naMesa && !andando, andando, lugar: !naMesa && !andando ? lugar : null, dormindo: st.modo === "fora" });
       SALA.alvos.push({ ed: m.ed, x: b.x - 11, y: b.y - 33, w: 22, h: 35 });
     }
-    pessoas.filter((p) => !p.fora).sort((a, b2) => a.b.y - b2.b.y).forEach(({ b, st, cores, sentado, andando }) => {
+    pessoas.filter((p) => !p.fora).sort((a, b2) => a.b.y - b2.b.y).forEach(({ b, st, cores, sentado, andando, lugar, dormindo }) => {
       const x = Math.round(b.x), y = Math.round(b.y);
+      if (lugar && lugar.pose === "sentado") {   // no sofá, poltrona ou banqueta da copa
+        c.drawImage(bonecoSentado(cores, dormindo ? "dorme" : lugar.item), (x - 11) * SC, (y - 31) * SC, 22 * SC, 31 * SC);
+        if (!dormindo && lugar.item === "cafe" && f % 20 < 10) px(x + 6, y - 15 - (f % 10) / 4, 1, 3, "#ffffffaa");
+        if (!dormindo && lugar.item === "celular" && f % 30 < 4) px(x - 1, y - 11, 2, 2, "#ffffff");
+        return;
+      }
       px(x - 7, y, 14, 2, "#00000026");   // sombra
+      if (lugar && lugar.pose === "costas") {   // jogando sinuca ou fliperama
+        const braco = lugar.item === "arcade" ? (f % 4 < 2 ? 1 : 2) : (f % 24 < 12 ? 0 : 1);
+        c.drawImage(bonecoCostasEmPe(cores, braco), (x - 11) * SC, (y - 33) * SC, 22 * SC, 35 * SC);
+        return;
+      }
       if (sentado) {   // de costas, olhando o monitor, com a cadeira na frente
         const braco = st.modo === "editando" ? 1 + (f % 4 < 2 ? 0 : 1) : 0;
         c.drawImage(bonecoCostas(cores, braco), (x - 11) * SC, (y - 24) * SC, 22 * SC, 27 * SC);
@@ -2117,13 +2221,14 @@
     if (noite) { c.fillStyle = "rgba(18,24,70,0.38)"; c.fillRect(0, 0, cv.width, cv.height);
       for (let x = 2 * T; x < P.W; x += 7 * T) { c.fillStyle = "rgba(255,226,140,0.22)"; c.beginPath(); c.arc((x + 0.5) * SC, (calc - 10) * SC, 18 * SC, 0, 6.283); c.fill(); } }
     for (const p of pessoas) {
-      const { st } = p, x = p.fora ? p.m.x : Math.round(p.b.x), y = p.fora ? p.m.y + 22 : Math.round(p.b.y);
+      if (p.fora) continue;   // sem lugar na sala (muita gente fora ao mesmo tempo)
+      const { st } = p, x = Math.round(p.b.x), y = Math.round(p.b.y);
       const nome = p.m.ed.nome.split(" ")[0];
       c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
       const lw = c.measureText(nome).width / SC + 12, cor = st.modo === "fora" ? "#9aa0aa" : st.conv && st.conv.estado === "esperando_ok" ? "#ffb800" : st.modo === "editando" ? "#4cd07d" : st.modo === "parado" ? "#f5d04a" : "#c9bfe0";
       px(x - lw / 2, y + 6, lw, 10, st.modo === "fora" ? "#3b3f4acc" : "#2a2440"); px(x - lw / 2 + 3, y + 9.5, 4, 4, cor);
       txt(nome, x + 2.5, y + 13.6, 4.8, st.modo === "fora" ? "#c9ccd3" : "#ffffff", 700);
-      if (p.fora) continue;
+      if (p.dormindo) { if (f % 30 < 20) txt(f % 30 < 10 ? "z" : "zZ", x + 9, y - 30 - (f % 30) / 6, 5, "#6b5a87", 900, "left"); continue; }
       const alerta = st.conv && st.conv.estado === "esperando_ok";
       const balao = alerta ? "❗ precisa de você" : st.modo === "editando" ? "✏️ " + (st.rotulo || "editando") : st.modo === "parado" ? "…"
         : p.m.ed.slug === meuSlug() ? "💬 fala comigo!" : null;
@@ -2133,6 +2238,16 @@
         px(x - bw2 / 2, by2, bw2, 11, alerta ? "#ffb800" : "#ffffff"); px(x - bw2 / 2, by2 + 11, bw2, 1, "#00000022"); px(x - 1, by2 + 11, 3, 2, alerta ? "#ffb800" : "#ffffff");
         txt(curto, x, by2 + 8, 4.6, "#2a1b40", 600);
       }
+    }
+    // Dinha: plaquinha e um balão de vez em quando
+    c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
+    const lwD = c.measureText("Dinha").width / SC + 12;
+    px(dinha.x - lwD / 2, rec.y + 47, lwD, 10, "#2a2440"); px(dinha.x - lwD / 2 + 3, rec.y + 50.5, 4, 4, "#f25aa8"); txt("Dinha", dinha.x + 2.5, rec.y + 54.6, 4.8, "#ffffff", 700);
+    if (f % 160 < 55) {
+      const hh = new Date().getHours(), oi = f % 320 < 160 ? (hh < 12 ? "Bom dia! ☀️" : hh < 18 ? "Boa tarde! 👋" : "Boa noite! 🌙") : "Bem-vindo ao CW Studios!";
+      c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
+      const bw3 = c.measureText(oi).width / SC + 10, bx3 = Math.min(dinha.x + 8, rec.x + rec.w - bw3 - 2), by3 = dinha.y - 28;   // ao lado da cabeça
+      px(bx3, by3, bw3, 11, "#ffffff"); px(bx3 - 2, by3 + 7, 3, 2, "#ffffff"); txt(oi, bx3 + bw3 / 2, by3 + 8, 4.6, "#2a1b40", 600);
     }
     if (!editores.length) txt("Cadastre os editores em Pessoas", P.W / 2, P.by + P.bh - 30, 7, "#59327a", 800);
     if (f % 27 === 1) painelSala();
@@ -2161,8 +2276,7 @@
   }
   // ---- chat com o bonequinho: o editor clica nele mesmo na Sala e conversa com o Claude da máquina dele
   const CHAT = { timer: null, tique: 0 };
-  const coresBoneco = (slug) => { const seed = hashSlug(slug);
-    return { cabelo: CABELOS[seed % CABELOS.length], pele: PELES[(seed >>> 3) % PELES.length], camisa: CAMISAS[(seed >>> 6) % CAMISAS.length], estilo: (seed >>> 9) % 4 }; };
+  const coresBoneco = (slug) => coresDe(D.editores.find((e) => e.slug === slug) || { slug });
   async function abrirChatSala() {
     const slug = meuSlug(); if (!slug) return;
     if (ESC.slug !== slug) { ESC.slug = slug; ESC.sel = null; ESC.msgs = {}; ESC.ultimo = {}; }
@@ -2214,6 +2328,7 @@
       h("div", { class: "chat-barra" }, sel,
         c ? h("button", { class: "botao " + (c.aprova_tudo ? "amarelo" : "leve") + " peq", onclick: () => escAprovarTudo(c) }, c.aprova_tudo ? "Desligar aprovar tudo" : "Aprovar tudo") : null,
         ativa ? h("button", { class: "botao perigo peq", onclick: () => escParar(c) }, "Parar") : null,
+        h("button", { class: "botao leve peq", onclick: abrirPersonalizar }, "🎨 Meu bonequinho"),
         h("button", { class: "botao leve peq", title: "Abrir a tela completa do seu computador", onclick: () => { $("#chat-sala").close(); abrirComputador(ESC.slug); } }, "Tela completa")),
       msgs,
       c ? h("div", { class: "esc-escrever" }, area, h("div", { class: "acoes" },
@@ -2222,11 +2337,80 @@
     if (rolar || noFim) msgs.scrollTop = msgs.scrollHeight;
     if (focado) area.focus();
   }
+  // ---- personalizar o próprio bonequinho (cabelo, estilo, pele, roupa, acessório)
+  const MAIS_CAMISAS = ["#1c1c28", "#ffffff", "#e9e4dc", "#2f8f5b", "#c64b3c", "#59327a"];
+  const MAIS_CABELOS = ["#e8e2d6", "#f25aa8", "#4a8df5", "#7ac943"];
+  function abrirPersonalizar() {
+    const ed = D.editores.find((e) => e.slug === meuSlug());
+    if (!ed) return;
+    const v = coresDe(ed);
+    const prev = h("canvas", { width: 22, height: 35, style: "width:110px;height:175px;image-rendering:pixelated;background:var(--surface-2);border-radius:16px;padding:10px", "aria-label": "Prévia do bonequinho" });
+    const desenhar = () => { const g = prev.getContext("2d"); g.clearRect(0, 0, 22, 35); g.drawImage(bonecoFrente(v, 0), 0, 0); };
+    const linha = (rot, chave, opcoes) => {
+      const caixa = h("div", { style: "display:flex;gap:6px;flex-wrap:wrap;align-items:center" });
+      const pinta = () => encher(caixa, opcoes.map(([valor, nome]) => {
+        const sel = v[chave] === valor, cor = /^#/.test(valor);
+        return h("button", { type: "button", "aria-pressed": String(sel), title: nome || valor, onclick: () => { v[chave] = valor; pinta(); desenhar(); },
+          style: cor ? `width:28px;height:28px;border-radius:50%;background:${valor};border:3px solid ${sel ? "var(--brand)" : "var(--line)"};cursor:pointer`
+            : `padding:5px 10px;border-radius:99px;border:2px solid ${sel ? "var(--brand)" : "var(--line)"};background:${sel ? "var(--brand-soft)" : "var(--surface)"};color:${sel ? "#fff" : "var(--text)"};font:inherit;font-size:13px;cursor:pointer` },
+          cor ? "" : nome);
+      }));
+      pinta();
+      return h("div", { style: "display:grid;gap:6px" }, h("b", { style: "font-size:13px" }, rot), caixa);
+    };
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    encher($("#detalhe-corpo"), h("h2", {}, "Meu bonequinho"),
+      h("div", { style: "display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start" }, prev,
+        h("div", { style: "display:grid;gap:12px;flex:1 1 260px;min-width:0" },
+          linha("Cabelo", "estilo", ESTILOS.map((n, i) => [i, n])),
+          linha("Cor do cabelo", "cabelo", CABELOS.concat(MAIS_CABELOS).map((c2) => [c2])),
+          linha("Pele", "pele", PELES.map((c2) => [c2])),
+          linha("Camisa", "camisa", CAMISAS.concat(MAIS_CAMISAS).map((c2) => [c2])),
+          linha("Calça", "calca", CALCAS.map((c2) => [c2])),
+          linha("Acessório", "acessorio", ACESSORIOS))),
+      msg,
+      h("div", { class: "acoes" },
+        h("button", { class: "botao amarelo", onclick: async () => {
+          const visual = { cabelo: v.cabelo, pele: v.pele, camisa: v.camisa, calca: v.calca, estilo: v.estilo, acessorio: v.acessorio };
+          const { error } = await db.rpc("cw_avatar_salvar", { p_visual: visual });
+          if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+          ed.visual = visual; $("#detalhe").close(); if ($("#chat-sala").open) desenharChat();
+        } }, "Salvar"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    desenhar();
+    $("#detalhe").showModal();
+  }
+  // ---- Dinha, a recepcionista: dá o resumo do dia e leva para onde a pessoa precisa
+  function abrirDinha() {
+    const eds = D.editores.filter((e) => e.ativo).map((e) => [e, estadoSala(e)]);
+    const n = (fn) => eds.filter(([, st]) => fn(st)).length, hh = new Date().getHours();
+    const retrato = h("canvas", { width: 22, height: 35, style: "width:88px;height:140px;image-rendering:pixelated;background:var(--surface-2);border-radius:16px;padding:8px;flex:none", "aria-hidden": "true" });
+    retrato.getContext("2d").drawImage(bonecoFrente(DINHA, 0), 0, 0);
+    const aguardando = (PUB.lista || []).filter((x) => x.estado === "aguardando").length;
+    const primeiro = ((eu.editor && eu.editor.nome) || eu.email || "").split(/[ @.]/)[0];
+    const linhas = [`${n((st) => st.modo !== "fora")} pessoa(s) online agora, ${n((st) => st.modo === "editando")} editando.`, `${feitosHoje().length} vídeo(s) feito(s) hoje.`];
+    if (aguardando && ["gestor", "producao"].includes(eu.papel)) linhas.push(`${aguardando} corte(s) esperando aprovação na Publicação.`);
+    const ir = (aba2) => { $("#detalhe").close(); trocarAba(aba2); };
+    encher($("#detalhe-corpo"),
+      h("div", { style: "display:flex;gap:16px;align-items:center;flex-wrap:wrap" }, retrato,
+        h("div", { style: "display:grid;gap:6px;flex:1 1 240px;min-width:0" },
+          h("h2", { style: "margin:0" }, `${hh < 12 ? "Bom dia" : hh < 18 ? "Boa tarde" : "Boa noite"}${primeiro ? ", " + primeiro.charAt(0).toUpperCase() + primeiro.slice(1) : ""}!`),
+          h("p", { style: "margin:0" }, "Eu sou a Dinha, recepcionista do CW Studios. Olha como está o escritório:"),
+          h("ul", { style: "margin:0;padding-left:18px;display:grid;gap:2px" }, linhas.map((t) => h("li", {}, t))))),
+      h("div", { class: "acoes" },
+        meuSlug() ? h("button", { class: "botao amarelo", onclick: () => { $("#detalhe").close(); abrirChatSala(); } }, "Falar com meu Claude") : null,
+        meuSlug() ? h("button", { class: "botao leve", onclick: abrirPersonalizar }, "🎨 Meu bonequinho") : null,
+        h("button", { class: "botao leve", onclick: () => ir("aovivo") }, "Ver o Ao vivo"),
+        aguardando && ["gestor", "producao"].includes(eu.papel) ? h("button", { class: "botao leve", onclick: () => ir("publicacao") }, "Ir para a Publicação") : null,
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
   function cliqueSala(ev) {
     const cv = ev.currentTarget, r = cv.getBoundingClientRect();
     const x = (ev.clientX - r.left) * (cv.width / r.width) / SC, y = (ev.clientY - r.top) * (cv.height / r.height) / SC;
     const alvo = SALA.alvos.slice().reverse().find((a) => x >= a.x && x <= a.x + a.w && y >= a.y && y <= a.y + a.h);
     if (!alvo) return;
+    if (alvo.dinha) return abrirDinha();
     if (alvo.ed.slug === meuSlug()) return abrirChatSala();   // o editor clica no próprio bonequinho (ou mesa) e conversa com o Claude dele
     const st = estadoSala(alvo.ed);
     const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
