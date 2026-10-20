@@ -2444,6 +2444,7 @@
         h("button", { class: "fechar", "aria-label": "Fechar", onclick: () => $("#chat-sala").close() }, "✕")),
       h("div", { class: "chat-barra" }, sel,
         c ? h("button", { class: "botao " + (c.aprova_tudo ? "amarelo" : "leve") + " peq", onclick: () => escAprovarTudo(c) }, c.aprova_tudo ? "Desligar aprovar tudo" : "Aprovar tudo") : null,
+        c ? seletorModelo(c.modelo, async (v) => { const { error } = await db.rpc("cw_esc_modelo", { p_conversa: c.id, p_modelo: v }); if (error) return alert(error.message); c.modelo = v; }) : null,
         ativa ? h("button", { class: "botao perigo peq", onclick: () => escParar(c) }, "Parar") : null,
         minhaGravacao() ? h("button", { class: "botao perigo peq", onclick: () => terminarGravacao(minhaGravacao()) }, "⏹ Terminei a gravação")
           : h("button", { class: "botao leve peq", onclick: iniciarGravacao }, "🎬 Estou gravando"),
@@ -3732,6 +3733,13 @@
   }
   async function escParar(c) { await db.rpc("cw_esc_parar", { p_conversa: c.id }); await escCarregar(); escDesenharTudo(); }
   async function escArquivar(c) { await db.rpc("cw_esc_arquivar", { p_conversa: c.id }); ESC.sel = null; await escCarregar(); escDesenharTudo(); }
+  // modelo do Claude na estação, por conversa (economia de limite)
+  const MODELOS_CLAUDE = [["", "Padrão do meu Claude"], ["sonnet", "Sonnet · cortar, renderizar, corrigir"], ["haiku", "Haiku · tarefas simples"], ["opus", "Opus · seleção e revisão caprichadas"]];
+  function seletorModelo(atual, aoMudar) {
+    const sel = h("select", { "aria-label": "Modelo do Claude", onchange: aoMudar ? (ev) => aoMudar(ev.target.value) : null }, MODELOS_CLAUDE.map(([v, n]) => h("option", { value: v }, n)));
+    sel.value = atual || "";
+    return sel;
+  }
   function novaConversa() {
     const ed = D.editores.find((e) => e.slug === ESC.slug) || {};
     const cards = D.jira.filter((j) => ed.jira_id && j.responsavel_id === ed.jira_id && j.status_categoria !== "done");
@@ -3742,6 +3750,7 @@
     const titulo = h("input", { id: "esc-titulo", placeholder: "Ex.: Reel do painel novo" });
     trab.onchange = () => { const o = trab.selectedOptions[0]; if (o && o.dataset.titulo && !titulo.value) titulo.value = o.dataset.titulo; };
     const pasta = h("input", { id: "esc-pasta", placeholder: "~/CW-Work/escritorio/<card> (padrão)" });
+    const modeloSel = seletorModelo("");
     const primeiro = h("textarea", { id: "esc-primeiro", placeholder: "Ex.: Edita o reel no padrão Reels-CW-01 a partir do bruto que está em Downloads." });
     const msg = h("div", { class: "aviso erro", hidden: true });
     // mais de um computador: a conversa fica presa ao escolhido (a sessão do Claude e a pasta ficam nele)
@@ -3751,6 +3760,7 @@
       h("label", { for: "esc-trab" }, "Trabalho", trab), h("label", { for: "esc-titulo" }, "Título", titulo),
       maqs.length > 1 ? h("label", { for: "esc-maquina" }, "Em qual computador", maquina) : null,
       h("label", { for: "esc-primeiro" }, "Primeiro pedido", primeiro),
+      h("label", {}, "Modelo do Claude", modeloSel, h("span", { class: "nota" }, "Sonnet faz cortes, renders e correções gastando bem menos do seu limite. Deixe o Opus para a seleção e a revisão caprichadas.")),
       h("details", {}, h("summary", { class: "nota" }, "Pasta do trabalho (opcional)"),
         h("label", { for: "esc-pasta" }, "Pasta na sua máquina (dentro da sua pasta de usuário)", pasta),
         h("p", { class: "nota" }, "Sem pasta, a estação usa a do preparo do card (~/CW-Work/preparo/<card>) ou cria ~/CW-Work/escritorio/<card>. O Claude age sozinho só dentro dela.")),
@@ -3760,6 +3770,7 @@
           const { data, error } = await db.rpc("cw_esc_nova", { p_titulo: titulo.value || (trab.value || "Conversa"), p_trabalho: trab.value, p_pasta: pasta.value,
             p_maquina: maqs.length ? (maqs.length > 1 ? maquina.value : maqs[0].maquina) : null });
           if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+          if (modeloSel.value) await db.rpc("cw_esc_modelo", { p_conversa: data, p_modelo: modeloSel.value });
           if (primeiro.value.trim()) await db.rpc("cw_esc_enviar", { p_conversa: data, p_texto: primeiro.value.trim() });
           $("#detalhe").close(); ESC.sel = data; await escCarregar(); escDesenharTudo();
         } }, "Começar"),
