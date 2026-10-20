@@ -733,10 +733,10 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["escritorio", "Escritório"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
              ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["gestao", "Pessoas"]]]],
     producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
   };
   const EXTRAS = { gestor: ["pedir"], producao: ["pedir"], editor: [], solicitante: [] };
@@ -1587,7 +1587,7 @@
       SALA.conversas = data || [];
     }
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo aberto"],
-      ["#6b5a87", "Fora"], ["#7d6bff", "No Premiere"], ["#ffb800", "Claude da estação esperando OK"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
+      ["#6b5a87", "Fora"], ["#7d6bff", "No Premiere"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
     $("#sala-cheia").onclick = () => { const el = $("#sala-palco"); (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {}); };
     $("#sala-canvas").onclick = cliqueSala;
     if (!SALA.raf) SALA.raf = requestAnimationFrame(quadroSala);
