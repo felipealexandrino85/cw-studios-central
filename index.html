@@ -1693,6 +1693,71 @@
                    { x: bx + 19 * T, y: by + topoH + 1.4 * T }];
     return { W, H, bx, by, bw, bh, topoH, corrH, salas, mesas, lazer };
   }
+  // Sprites com contorno automático (estilo Habblaud): cada peça é desenhada uma vez num canvas pequeno,
+  // ganha o contorno escuro em volta e fica guardada; a cena só copia, ampliando sem suavizar.
+  const SPRITES = new Map();
+  function sprite(chave, w, h, desenhar, contorno) {
+    if (SPRITES.has(chave)) return SPRITES.get(chave);
+    const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    const g = cv.getContext("2d");
+    desenhar((x, y, ww, hh, cor) => { g.fillStyle = cor; g.fillRect(x, y, ww, hh); }, (x, y, ww, hh) => g.clearRect(x, y, ww, hh));
+    if (contorno !== null) {
+      const d = g.getImageData(0, 0, w, h).data, cheio = (x, y) => x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 0;
+      g.fillStyle = contorno || "#2a2235";
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+        if (!cheio(x, y) && (cheio(x - 1, y) || cheio(x + 1, y) || cheio(x, y - 1) || cheio(x, y + 1))) g.fillRect(x, y, 1, 1);
+    }
+    SPRITES.set(chave, cv);
+    return cv;
+  }
+  const tom = (hex, k) => { const n = parseInt(hex.slice(1, 7), 16), f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
+    return "#" + ((1 << 24) | (f((n >> 16) & 255) << 16) | (f((n >> 8) & 255) << 8) | f(n & 255)).toString(16).slice(1); };
+  function cabelo(p, c, est, costas) {
+    const claro = tom(c, 1.35), escuro = tom(c, 0.75);
+    if (est === 1) { p(3, 5, 3, costas ? 16 : 15, c); p(16, 5, 3, costas ? 16 : 15, escuro); }            // comprido
+    p(4, 2, 14, costas ? 13 : 5, c); p(3, 4, 1, costas ? 9 : 5, c); p(18, 4, 1, costas ? 9 : 5, escuro);
+    p(6, 3, 5, 1, claro); p(5, 4, 2, 1, claro);
+    if (!costas) { p(5, 7, 4, 1, c); p(12, 7, 5, 1, c); p(4, 6, 1, 3, c); p(17, 6, 1, 3, escuro); }
+    if (est === 2) { p(8, 0, 6, 3, c); p(9, 0, 3, 1, claro); }                                            // coque
+    if (est === 3) { for (const bx of [3, 7, 11, 15]) p(bx, 1, 4, 2, c); p(2, 5, 2, 4, c); p(18, 5, 2, 4, escuro); }   // cacheado
+  }
+  function bonecoFrente(cores, passo) {
+    return sprite(`f|${cores.cabelo}|${cores.pele}|${cores.camisa}|${cores.estilo}|${passo}`, 22, 35, (p, apaga) => {
+      const pele = cores.pele, peleS = tom(pele, 0.85), cam = cores.camisa, camS = tom(cam, 0.78);
+      if (cores.estilo === 1) p(3, 5, 16, 13, tom(cores.cabelo, 0.85));
+      p(4, 3, 14, 13, pele); apaga(4, 3, 1, 1); apaga(17, 3, 1, 1); apaga(4, 15, 1, 1); apaga(17, 15, 1, 1);
+      p(17, 8, 1, 7, peleS);
+      cabelo(p, cores.cabelo, cores.estilo, false);
+      p(7, 10, 2, 2, "#ffffff"); p(13, 10, 2, 2, "#ffffff"); p(8, 10, 1, 2, "#2a2235"); p(14, 10, 1, 2, "#2a2235");
+      p(5, 13, 2, 1, "#f2a3a3"); p(15, 13, 2, 1, "#f2a3a3"); p(10, 13, 2, 1, "#b5525a");
+      p(9, 16, 4, 2, peleS);
+      p(5, 17, 12, 8, cam); p(14, 17, 3, 8, camS); p(9, 17, 4, 2, tom(cam, 1.3));
+      p(3, 18, 2, 6, cam); p(17, 18, 2, 6, camS); p(3, 24, 2, 2, pele); p(17, 24, 2, 2, peleS);
+      const calca = "#3b4a6b", calcaS = "#2f3b56";
+      p(6, 25, 4, 6 + passo, calca); p(12, 25, 4, 6 - passo, calcaS);
+      p(5, 31 + passo, 5, 2, "#2a2a33"); p(12, 31 - passo, 5, 2, "#2a2a33");
+    });
+  }
+  function bonecoCostas(cores, braco) {
+    return sprite(`c|${cores.cabelo}|${cores.pele}|${cores.camisa}|${cores.estilo}|${braco}`, 22, 27, (p) => {
+      const cam = cores.camisa, camS = tom(cam, 0.78);
+      p(3, 8, 1, 3, cores.pele); p(18, 8, 1, 3, tom(cores.pele, 0.85));
+      cabelo(p, cores.cabelo, cores.estilo, true);
+      p(9, 15, 4, 2, tom(cores.pele, 0.85));
+      p(4, 16, 14, 10, cam); p(14, 16, 4, 10, camS);
+      const e = braco === 1 ? 2 : 0, d = braco === 2 ? 2 : 0;
+      p(1, 14 - e, 3, 8, cam); p(18, 14 - d, 3, 8, camS); p(1, 13 - e, 3, 2, cores.pele); p(18, 13 - d, 3, 2, cores.pele);
+    });
+  }
+  const cadeiraCostas = () => sprite("cadeira", 20, 13, (p) => { p(2, 0, 16, 8, "#4067c4"); p(2, 0, 16, 2, "#5a82dc"); p(14, 2, 4, 6, "#3355a6"); p(8, 8, 4, 3, "#2d3448"); p(4, 11, 12, 2, "#2d3448"); });
+  const mesaEstacao = () => sprite("mesa", 46, 27, (p) => {
+    p(0, 9, 46, 10, "#f4f5f7"); p(0, 9, 46, 2, "#ffffff"); p(0, 19, 46, 6, "#d6dae2"); p(2, 19, 42, 1, "#c3c8d2");
+    p(2, 25, 3, 2, "#9aa0ac"); p(41, 25, 3, 2, "#9aa0ac");
+    p(13, 0, 20, 13, "#2b2f3a"); p(21, 13, 4, 2, "#2b2f3a");
+    p(14, 15, 18, 3, "#c9cdd6"); p(15, 16, 16, 1, "#b3b8c3");
+    p(36, 12, 5, 4, "#ffffff"); p(37, 13, 3, 2, "#e85d4f");
+    p(4, 12, 7, 5, "#fff6d6"); p(5, 13, 5, 1, "#c9b98a");
+  });
   function quadroSala(t) {
     SALA.raf = null;
     if (aba !== "sala") return;
@@ -1793,12 +1858,11 @@
     const pessoas = [];
     for (const m of P.mesas) {
       const st = estadoSala(m.ed), seed = hashSlug(m.ed.slug);
-      const cores = { cabelo: CABELOS[seed % CABELOS.length], pele: PELES[(seed >> 3) % PELES.length], camisa: CAMISAS[(seed >> 6) % CAMISAS.length], estilo: (seed >> 9) % 3 };
+      const cores = { cabelo: CABELOS[seed % CABELOS.length], pele: PELES[(seed >>> 3) % PELES.length], camisa: CAMISAS[(seed >>> 6) % CAMISAS.length], estilo: (seed >>> 9) % 4 };
       const tela = st.modo === "fora" ? "#15151c" : st.premiere ? "#2a1a5e" : st.modo === "editando" ? COR_ETAPA[st.etapa] || "#4cd07d" : st.modo === "parado" ? "#3a3550" : "#24203a";
-      px(m.x - 20, m.y - 4, 40, 12, "#8d5b3a"); px(m.x - 20, m.y - 4, 40, 2, "#a36d48"); px(m.x - 20, m.y + 8, 40, 4, "#6e4429");
-      px(m.x - 18, m.y + 12, 2, 6, "#5a3820"); px(m.x + 16, m.y + 12, 2, 6, "#5a3820");
-      px(m.x - 9, m.y - 15, 18, 12, "#23202e"); px(m.x - 8, m.y - 14, 16, 9, tela); px(m.x - 2, m.y - 4, 4, 1, "#23202e");
-      px(m.x + 11, m.y - 2, 6, 3, "#e9e4dc");   // caneca
+      c.drawImage(mesaEstacao(), (m.x - 23) * SC, (m.y - 15) * SC, 46 * SC, 27 * SC);
+      px(m.x - 9, m.y - 14, 18, 11, tela);
+      if (st.modo !== "fora" && !st.premiere) { px(m.x - 9, m.y - 14, 18, 2, "#ffffff33"); px(m.x - 7, m.y - 10, 6, 1, "#ffffff66"); px(m.x - 7, m.y - 8, 10, 1, "#ffffff44"); }
       if (st.modo === "editando" && !st.premiere) {
         if (st.etapa === "render") { px(m.x - 6, m.y - 11, 12, 2, "#00000055"); px(m.x - 6, m.y - 11, 1 + (f % 12), 2, "#ffffff"); }
         else for (let k = 0; k < 3; k++) px(m.x - 6 + ((f + k * 4) % 9), m.y - 13 + k * 3, 4, 1, "#ffffffcc");
@@ -1808,7 +1872,7 @@
       if (estacaoOn && st.modo !== "editando" && !st.premiere) txt(f % 12 < 6 ? ">_" : ">", m.x - 4, m.y - 7.5, 4.4, "#4cd07d", 800, "left");
       if (st.conv) { const rx = m.x - 30, ry = m.y - 12 + (f % 8 < 4 ? 0 : 1); px(rx, ry, 8, 7, "#cfd8e6"); px(rx + 2, ry + 2, 1, 1, "#2a1b40"); px(rx + 5, ry + 2, 1, 1, "#2a1b40"); px(rx + 3, ry - 2, 2, 2, st.conv.estado === "esperando_ok" ? "#ffb800" : "#4cd07d"); }
       if (m.ed.slug === meuSlug() && f % 24 < 16) { px(m.x - 2, m.y - 26, 5, 3, "#ffb800"); px(m.x - 1, m.y - 23, 3, 2, "#ffb800"); }
-      px(m.x - 6, m.y + 22, 12, 5, "#2d2f3a"); px(m.x - 1, m.y + 27, 2, 3, "#2d2f3a");   // cadeira
+      if (st.modo === "fora" || st.modo === "livre") c.drawImage(cadeiraCostas(), (m.x - 10) * SC, (m.y + 14) * SC, 20 * SC, 13 * SC);   // cadeira vazia
       SALA.alvos.push({ ed: m.ed, x: m.x - 22, y: m.y - 18, w: 44, h: 50 });
       let b = SALA.bonecos[m.ed.slug];
       if (!b) b = SALA.bonecos[m.ed.slug] = { x: m.x, y: m.y + 22, alvo: null, espera: 0 };
@@ -1819,24 +1883,18 @@
       const dx = b.alvo.x - b.x, dy = b.alvo.y - b.y, d = Math.hypot(dx, dy), andando = d > 1.5;
       if (andando) { b.x += dx / d * Math.min(2.4, d); b.y += dy / d * Math.min(2.4, d); }
       pessoas.push({ b, st, cores, m, sentado: naMesa && !andando, andando });
-      SALA.alvos.push({ ed: m.ed, x: b.x - 9, y: b.y - 24, w: 18, h: 28 });
+      SALA.alvos.push({ ed: m.ed, x: b.x - 11, y: b.y - 33, w: 22, h: 35 });
     }
     pessoas.filter((p) => !p.fora).sort((a, b2) => a.b.y - b2.b.y).forEach(({ b, st, cores, sentado, andando }) => {
       const x = Math.round(b.x), y = Math.round(b.y);
-      px(x - 6, y + 1, 12, 2, "#00000022");   // sombra
-      if (sentado) {   // de costas, olhando o monitor
-        px(x - 6, y - 20, 12, 10, cores.cabelo); px(x - 7, y - 16, 1, 4, cores.pele); px(x + 6, y - 16, 1, 4, cores.pele);
-        px(x - 7, y - 10, 14, 9, cores.camisa); px(x - 7, y - 10, 14, 2, "#00000022");
-        const sobe = st.modo === "editando" && f % 4 < 2, desce = st.modo === "editando" && !sobe;
-        px(x - 10, y - 10 - (sobe ? 2 : 0), 3, 6, cores.camisa); px(x + 7, y - 10 - (desce ? 2 : 0), 3, 6, cores.camisa);
-      } else {         // de frente: cabeção (chibi), andando
-        px(x - 6, y - 24, 12, 4, cores.cabelo); px(x - 6, y - 20, 12, 8, cores.pele);
-        if (cores.estilo === 1) { px(x - 7, y - 22, 2, 9, cores.cabelo); px(x + 5, y - 22, 2, 9, cores.cabelo); } else { px(x - 6, y - 20, 1, 3, cores.cabelo); px(x + 5, y - 20, 1, 3, cores.cabelo); }
-        if (cores.estilo === 2) px(x - 7, y - 25, 14, 2, cores.cabelo);
-        px(x - 3, y - 17, 2, 2, "#2a1b40"); px(x + 2, y - 17, 2, 2, "#2a1b40"); px(x - 5, y - 15, 2, 1, "#f2a0a0"); px(x + 4, y - 15, 2, 1, "#f2a0a0");
-        px(x - 5, y - 12, 10, 7, cores.camisa); px(x - 7, y - 12, 2, 5, cores.pele); px(x + 5, y - 12, 2, 5, cores.pele);
-        const pp = andando ? (f % 4 < 2 ? 1 : -1) : 0;
-        px(x - 4, y - 5, 3, 5 + pp, "#3b3f52"); px(x + 1, y - 5, 3, 5 - pp, "#3b3f52");
+      px(x - 7, y, 14, 2, "#00000026");   // sombra
+      if (sentado) {   // de costas, olhando o monitor, com a cadeira na frente
+        const braco = st.modo === "editando" ? 1 + (f % 4 < 2 ? 0 : 1) : 0;
+        c.drawImage(bonecoCostas(cores, braco), (x - 11) * SC, (y - 24) * SC, 22 * SC, 27 * SC);
+        c.drawImage(cadeiraCostas(), (x - 10) * SC, (y - 6) * SC, 20 * SC, 13 * SC);
+      } else {         // de frente, andando
+        const passo = andando ? (f % 4 < 2 ? 1 : -1) : 0;
+        c.drawImage(bonecoFrente(cores, passo), (x - 11) * SC, (y - 33) * SC, 22 * SC, 35 * SC);
       }
     });
     // plaquinhas e balões por cima de tudo
@@ -1847,14 +1905,14 @@
       const nome = p.m.ed.nome.split(" ")[0];
       c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
       const lw = c.measureText(nome).width / SC + 12, cor = st.modo === "fora" ? "#9aa0aa" : st.conv && st.conv.estado === "esperando_ok" ? "#ffb800" : st.modo === "editando" ? "#4cd07d" : st.modo === "parado" ? "#f5d04a" : "#c9bfe0";
-      px(x - lw / 2, y + 4, lw, 10, st.modo === "fora" ? "#3b3f4acc" : "#2a2440"); px(x - lw / 2 + 3, y + 7.5, 4, 4, cor);
-      txt(nome, x + 2.5, y + 11.6, 4.8, st.modo === "fora" ? "#c9ccd3" : "#ffffff", 700);
+      px(x - lw / 2, y + 6, lw, 10, st.modo === "fora" ? "#3b3f4acc" : "#2a2440"); px(x - lw / 2 + 3, y + 9.5, 4, 4, cor);
+      txt(nome, x + 2.5, y + 13.6, 4.8, st.modo === "fora" ? "#c9ccd3" : "#ffffff", 700);
       if (p.fora) continue;
       const alerta = st.conv && st.conv.estado === "esperando_ok";
       const balao = alerta ? "❗ precisa de você" : st.modo === "editando" ? "✏️ " + (st.rotulo || "editando") : st.modo === "parado" ? "…" : null;
       if (balao) {
         c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
-        const curto = balao.length > 26 ? balao.slice(0, 25) + "…" : balao, bw2 = c.measureText(curto).width / SC + 10, by2 = y - (p.sentado ? 44 : 40);
+        const curto = balao.length > 26 ? balao.slice(0, 25) + "…" : balao, bw2 = c.measureText(curto).width / SC + 10, by2 = y - (p.sentado ? 50 : 50);
         px(x - bw2 / 2, by2, bw2, 11, alerta ? "#ffb800" : "#ffffff"); px(x - bw2 / 2, by2 + 11, bw2, 1, "#00000022"); px(x - 1, by2 + 11, 3, 2, alerta ? "#ffb800" : "#ffffff");
         txt(curto, x, by2 + 8, 4.6, "#2a1b40", 600);
       }
