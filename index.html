@@ -1715,13 +1715,15 @@
       const [cv, es] = await Promise.all([db.from("esc_conversas").select("editor_slug,estado").in("estado", ["rodando", "esperando_ok"]),
         db.from("estacoes").select("editor_slug,maquina,visto")]);
       SALA.conversas = Array.isArray(cv.data) ? cv.data : []; SALA.estacoes = Array.isArray(es.data) ? es.data : [];
+      const gv = await db.from("gravacoes").select("*").gte("inicio", new Date(Date.now() - 4 * 864e5).toISOString()).order("inicio", { ascending: false }).limit(100);
+      SALA.gravacoes = Array.isArray(gv.data) ? gv.data : [];
       if (["gestor", "producao", "editor"].includes(eu.papel)) {   // o que o Chico Moelas está fazendo
         const [pl, ps] = await Promise.all([db.from("publicacoes").select("id,titulo,estado,resultados,atualizado").order("atualizado", { ascending: false }).limit(60), db.rpc("cw_pub_situacao")]);
         SALA.pub = { lista: Array.isArray(pl.data) ? pl.data : [], st: ps.data || {} };
       }
     }
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo (copa, sofá, jogos)"],
-      ["#6b5a87", "Fora (cochilando)"], ["#7d6bff", "No Premiere"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
+      ["#6b5a87", "Fora (cochilando)"], ["#7d6bff", "No Premiere"], ["#ff3b3b", "Gravando (no estúdio)"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
     if (meuSlug()) $("#sala-sub").textContent = "O time ao vivo. Clique no seu bonequinho para conversar com o Claude da sua máquina (ele edita aí mesmo) e, no chat, em \"Meu bonequinho\" para mudar roupa e estilo. A Dinha, da recepção, dá o resumo do dia.";
     painelSala();
     $("#sala-cheia").onclick = () => { const el = $("#sala-palco"); (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {}); };
@@ -1735,8 +1737,9 @@
     const pr = ativo && ativo.premiere, premiere = !!(pr && pr.ultimo_ativo && minutosDesde(pr.ultimo_ativo) <= 3);
     const recente = ativo && ((ativo.agora_faz && minutosDesde(ativo.agora_faz.ts) <= 5) || premiere);
     const conv = SALA.conversas.find((c) => c.editor_slug === ed.slug);
-    const modo = !online(s) && !premiere ? "fora" : recente ? "editando" : ativo ? "parado" : "livre";
-    return { modo, trab: ativo, etapa: premiere ? "acabamento" : ativo && ativo.etapa, premiere, conv,
+    const grav = (SALA.gravacoes || []).find((g) => g.editor_slug === ed.slug && !g.fim);
+    const modo = grav ? "gravando" : !online(s) && !premiere ? "fora" : recente ? "editando" : ativo ? "parado" : "livre";
+    return { modo, grav, trab: ativo, etapa: premiere ? "acabamento" : ativo && ativo.etapa, premiere, conv,
              rotulo: premiere ? "acabamento no Premiere" : ativo && ativo.agora_faz && ativo.agora_faz.rotulo };
   }
   // Arte da Sala: pixel art gerada em código, no estilo do Habblaud (github.com/marmottajr/habblaud, MIT) — prédio
@@ -1787,9 +1790,10 @@
     const seed = hashSlug(ed.slug), v = ed.visual || {};
     return { cabelo: v.cabelo || CABELOS[seed % CABELOS.length], pele: v.pele || PELES[(seed >>> 3) % PELES.length],
              camisa: v.camisa || CAMISAS[(seed >>> 6) % CAMISAS.length], calca: v.calca || CALCAS[(seed >>> 12) % CALCAS.length],
-             estilo: v.estilo != null ? v.estilo : (seed >>> 9) % 4, acessorio: v.acessorio || "", feminino: !!v.feminino };
+             estilo: v.estilo != null ? v.estilo : (seed >>> 9) % 4, acessorio: v.acessorio || "", barba: v.barba || "", feminino: !!v.feminino };
   }
-  const chaveCores = (c) => [c.cabelo, c.pele, c.camisa, c.calca, c.estilo, c.acessorio, c.feminino ? 1 : 0, c.bigode ? 1 : 0].join("|");
+  const chaveCores = (c) => [c.cabelo, c.pele, c.camisa, c.calca, c.estilo, c.acessorio, c.barba || "", c.feminino ? 1 : 0, c.bigode ? 1 : 0].join("|");
+  const BARBAS = [["", "Sem barba"], ["curta", "Curta"], ["cheia", "Cheia"], ["cavanhaque", "Cavanhaque"]];
   function cabelo(p, c, est, costas) {
     const claro = tom(c, 1.35), escuro = tom(c, 0.75);
     if (est === 4) { p(4, 3, 14, 2, tom(c, 0.9)); p(5, 2, 12, 1, tom(c, 0.9)); return; }                    // raspado
@@ -1816,6 +1820,11 @@
     else p(10, 13, 2, 1, "#b5525a");
     if (cores.bigode || cores.acessorio === "bigode") { const bg = tom(cores.cabelo, 0.8); p(7, 12, 8, 1, bg); p(6, 13, 2, 2, bg); p(14, 13, 2, 2, bg); p(8, 12, 2, 1, tom(cores.cabelo, 1.1)); }
     p(5, 13, 2, 1, "#f2a3a3"); p(15, 13, 2, 1, "#f2a3a3");
+    const bc = tom(cores.cabelo, 0.85), boca = cores.feminino ? null : "#b5525a";
+    if (cores.barba === "curta") { p(5, 12, 1, 3, bc); p(16, 12, 1, 3, bc); p(6, 14, 10, 1, bc); p(7, 15, 8, 1, bc); p(8, 12, 6, 1, bc); }
+    if (cores.barba === "cheia") { p(4, 11, 2, 5, bc); p(16, 11, 2, 5, bc); p(6, 12, 10, 4, bc); p(7, 16, 8, 1, bc); p(8, 12, 1, 1, tom(cores.cabelo, 1.1)); }
+    if (cores.barba === "cavanhaque") { p(8, 12, 6, 1, bc); p(9, 14, 4, 2, bc); p(10, 16, 2, 1, bc); }
+    if (cores.barba && boca) p(10, 13, 2, 1, boca);   // a boca aparece por cima da barba
   }
   function bonecoFrente(cores, passo) {
     return sprite(`f|${chaveCores(cores)}|${passo}`, 22, 35, (p, apaga) => {
@@ -2109,8 +2118,8 @@
     }
     spr(plantaS(2), copa.x + copa.w / 2 - 7, copa.y + 90); spr(lixeiraS(), copa.x + 3, copa.y + 36);
     // estúdio CW Cast
-    const algumEditando = editores.some((e) => estadoSala(e).modo === "editando");
-    px(est.x + est.w / 2 - 17, est.y + 4, 34, 10, "#2a2235"); px(est.x + est.w / 2 - 16, est.y + 5, 32, 8, algumEditando && f % 16 < 12 ? "#ff3b3b" : "#5a1f1f"); txt("ON AIR", est.x + est.w / 2, est.y + 11.2, 4.6, "#fff", 900);
+    const algumEditando = editores.some((e) => estadoSala(e).modo === "editando"), algumGravando = editores.some((e) => estadoSala(e).modo === "gravando");
+    px(est.x + est.w / 2 - 17, est.y + 4, 34, 10, "#2a2235"); px(est.x + est.w / 2 - 16, est.y + 5, 32, 8, algumGravando && f % 16 < 12 ? "#ff3b3b" : "#5a1f1f"); txt("ON AIR", est.x + est.w / 2, est.y + 11.2, 4.6, "#fff", 900);
     spr(quadroS("#ffb800"), est.x + est.w - 20, est.y + 5); spr(quadroS("#a543fa"), est.x + 6, est.y + 5);
     spr(monitorS(), est.x + 6, est.y + 25); px(est.x + 8, est.y + 27, 18, 10, algumEditando ? "#a66bff" : "#2a2440"); if (algumEditando) px(est.x + 10, est.y + 29, 2 + (f % 12), 2, "#ffffffaa");
     spr(softboxS(), est.x + est.w - 18, est.y + 24);
@@ -2156,6 +2165,9 @@
       { id: "sofa4", x: rec.x + 33, y: rec.y + 108, pose: "sentado", item: "celular", descanso: true },
       { id: "poltrona1", x: rec.x + rec.w - 43, y: rec.y + 78, pose: "sentado", item: "cafe", descanso: true },
       { id: "poltrona2", x: rec.x + rec.w - 15, y: rec.y + 78, pose: "sentado", item: "cafe", descanso: true }];
+    // gravando: nas cadeiras da mesa de podcast do estúdio (e, se lotar, em pé perto da câmera)
+    const GRAVACAO = [0.25, 0.5, 0.75].map((k, i) => ({ id: "grav" + i, x: est.x + 18 + Math.round((est.w - 36) * k) + 1, y: est.y + 97, pose: "gravando" }))
+      .concat([{ id: "grav-cam", x: est.x + 24, y: est.y + 108, pose: "costas", item: "camera" }]);
     // nomes das salas
     P.salas.forEach((s) => { c.font = `800 ${5.4 * SC}px Inter, system-ui, sans-serif`; const lw = c.measureText(s.nome).width / SC + 10;
       px(s.x + s.w / 2 - lw / 2, s.y - 12, lw, 11, "#2a2440"); txt(s.nome, s.x + s.w / 2, s.y - 4.2, 5.4, "#ffffff", 800); });
@@ -2165,6 +2177,11 @@
     // cada um que não está trabalhando ganha um lugar fixo (o mesmo enquanto ficar assim): quem está online vai jogar,
     // tomar café ou mexer no celular; quem está fora cochila nos sofás e poltronas
     const ocupado = new Set(), lugarDe = {};
+    for (const m of P.mesas.slice().sort((a, b2) => a.ed.slug.localeCompare(b2.ed.slug))) {
+      if (estadoSala(m.ed).modo !== "gravando") continue;
+      const l = GRAVACAO.find((g) => !ocupado.has(g.id));
+      if (l) { ocupado.add(l.id); lugarDe[m.ed.slug] = l; }
+    }
     for (const quer of ["livre", "fora"]) {
       for (const m of P.mesas.slice().sort((a, b2) => a.ed.slug.localeCompare(b2.ed.slug))) {
         if (estadoSala(m.ed).modo !== quer) continue;
@@ -2193,7 +2210,7 @@
       if (estacaoOn && st.modo !== "editando" && !st.premiere) txt(f % 12 < 6 ? ">_" : ">", m.x - 4, m.y - 7.5, 4.4, "#4cd07d", 800, "left");
       if (st.conv) { const rx = m.x - 30, ry = m.y - 12 + (f % 8 < 4 ? 0 : 1); px(rx, ry, 8, 7, "#cfd8e6"); px(rx + 2, ry + 2, 1, 1, "#2a1b40"); px(rx + 5, ry + 2, 1, 1, "#2a1b40"); px(rx + 3, ry - 2, 2, 2, st.conv.estado === "esperando_ok" ? "#ffb800" : "#4cd07d"); }
       if (m.ed.slug === meuSlug() && f % 24 < 16) { px(m.x - 2, m.y - 26, 5, 3, "#ffb800"); px(m.x - 1, m.y - 23, 3, 2, "#ffb800"); }
-      if (st.modo === "fora" || st.modo === "livre") c.drawImage(cadeiraCostas(), (m.x - 10) * SC, (m.y + 14) * SC, 20 * SC, 13 * SC);   // cadeira vazia
+      if (st.modo === "fora" || st.modo === "livre" || st.modo === "gravando") c.drawImage(cadeiraCostas(), (m.x - 10) * SC, (m.y + 14) * SC, 20 * SC, 13 * SC);   // cadeira vazia
       SALA.alvos.push({ ed: m.ed, x: m.x - 22, y: m.y - 18, w: 44, h: 50 });
       let b = SALA.bonecos[m.ed.slug];
       if (!b) b = SALA.bonecos[m.ed.slug] = { x: m.x, y: m.y + 22, alvo: null, espera: 0 };
@@ -2209,6 +2226,10 @@
     }
     pessoas.filter((p) => !p.fora).sort((a, b2) => a.b.y - b2.b.y).forEach(({ b, st, cores, sentado, andando, lugar, dormindo }) => {
       const x = Math.round(b.x), y = Math.round(b.y);
+      if (lugar && lugar.pose === "gravando") {   // sentado na mesa de podcast, de costas, falando no microfone
+        c.drawImage(bonecoCostas(cores, f % 10 < 5 ? 0 : 1), (x - 11) * SC, (y - 24) * SC, 22 * SC, 27 * SC);
+        return;
+      }
       if (lugar && lugar.pose === "sentado") {   // no sofá, poltrona ou banqueta da copa
         c.drawImage(bonecoSentado(cores, dormindo ? "dorme" : lugar.item), (x - 11) * SC, (y - 31) * SC, 22 * SC, 31 * SC);
         if (!dormindo && lugar.item === "cafe" && f % 20 < 10) px(x + 6, y - 15 - (f % 10) / 4, 1, 3, "#ffffffaa");
@@ -2236,14 +2257,14 @@
     for (const p of pessoas) {
       if (p.fora) continue;   // sem lugar na sala (muita gente fora ao mesmo tempo)
       const { st } = p, x = Math.round(p.b.x), y = Math.round(p.b.y);
-      const nome = p.m.ed.nome.split(" ")[0];
+      const nome = (p.st.modo === "gravando" ? "🎬 " : "") + p.m.ed.nome.split(" ")[0];
       c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
-      const lw = c.measureText(nome).width / SC + 12, cor = st.modo === "fora" ? "#9aa0aa" : st.conv && st.conv.estado === "esperando_ok" ? "#ffb800" : st.modo === "editando" ? "#4cd07d" : st.modo === "parado" ? "#f5d04a" : "#c9bfe0";
+      const lw = c.measureText(nome).width / SC + 12, cor = st.modo === "fora" ? "#9aa0aa" : st.modo === "gravando" ? "#ff3b3b" : st.conv && st.conv.estado === "esperando_ok" ? "#ffb800" : st.modo === "editando" ? "#4cd07d" : st.modo === "parado" ? "#f5d04a" : "#c9bfe0";
       px(x - lw / 2, y + 6, lw, 10, st.modo === "fora" ? "#3b3f4acc" : "#2a2440"); px(x - lw / 2 + 3, y + 9.5, 4, 4, cor);
       txt(nome, x + 2.5, y + 13.6, 4.8, st.modo === "fora" ? "#c9ccd3" : "#ffffff", 700);
       if (p.dormindo) { if (f % 30 < 20) txt(f % 30 < 10 ? "z" : "zZ", x + 9, y - 30 - (f % 30) / 6, 5, "#6b5a87", 900, "left"); continue; }
       const alerta = st.conv && st.conv.estado === "esperando_ok";
-      const balao = alerta ? "❗ precisa de você" : st.modo === "editando" ? "✏️ " + (st.rotulo || "editando") : st.modo === "parado" ? "…"
+      const balao = alerta ? "❗ precisa de você" : st.modo === "gravando" ? null : st.modo === "editando" ? "✏️ " + (st.rotulo || "editando") : st.modo === "parado" ? "…"
         : p.m.ed.slug === meuSlug() ? "💬 fala comigo!" : null;
       if (balao) {
         c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
@@ -2353,6 +2374,9 @@
       h("div", { class: "chat-barra" }, sel,
         c ? h("button", { class: "botao " + (c.aprova_tudo ? "amarelo" : "leve") + " peq", onclick: () => escAprovarTudo(c) }, c.aprova_tudo ? "Desligar aprovar tudo" : "Aprovar tudo") : null,
         ativa ? h("button", { class: "botao perigo peq", onclick: () => escParar(c) }, "Parar") : null,
+        minhaGravacao() ? h("button", { class: "botao perigo peq", onclick: () => terminarGravacao(minhaGravacao()) }, "⏹ Terminei a gravação")
+          : h("button", { class: "botao leve peq", onclick: iniciarGravacao }, "🎬 Estou gravando"),
+        brutoPendente() ? h("button", { class: "botao leve peq", onclick: () => terminarGravacao(brutoPendente()) }, "⬆ Subir brutos") : null,
         h("button", { class: "botao leve peq", onclick: abrirPersonalizar }, "🎨 Meu bonequinho"),
         h("button", { class: "botao leve peq", title: "Abrir a tela completa do seu computador", onclick: () => { $("#chat-sala").close(); abrirComputador(ESC.slug); } }, "Tela completa")),
       msgs,
@@ -2392,11 +2416,12 @@
           linha("Pele", "pele", PELES.map((c2) => [c2])),
           linha("Camisa", "camisa", CAMISAS.concat(MAIS_CAMISAS).map((c2) => [c2])),
           linha("Calça", "calca", CALCAS.map((c2) => [c2])),
+          linha("Barba", "barba", BARBAS),
           linha("Acessório", "acessorio", ACESSORIOS))),
       msg,
       h("div", { class: "acoes" },
         h("button", { class: "botao amarelo", onclick: async () => {
-          const visual = { cabelo: v.cabelo, pele: v.pele, camisa: v.camisa, calca: v.calca, estilo: v.estilo, acessorio: v.acessorio };
+          const visual = { cabelo: v.cabelo, pele: v.pele, camisa: v.camisa, calca: v.calca, estilo: v.estilo, acessorio: v.acessorio, barba: v.barba };
           const { error } = await db.rpc("cw_avatar_salvar", { p_visual: visual });
           if (error) { msg.hidden = false; msg.textContent = error.message; return; }
           ed.visual = visual; $("#detalhe").close(); if ($("#chat-sala").open) desenharChat();
@@ -2413,7 +2438,7 @@
     retrato.getContext("2d").drawImage(bonecoFrente(DINHA, 0), 0, 0);
     const aguardando = (PUB.lista || []).filter((x) => x.estado === "aguardando").length;
     const primeiro = ((eu.editor && eu.editor.nome) || eu.email || "").split(/[ @.]/)[0];
-    const linhas = [`${n((st) => st.modo !== "fora")} pessoa(s) online agora, ${n((st) => st.modo === "editando")} editando.`, `${feitosHoje().length} vídeo(s) feito(s) hoje.`];
+    const linhas = [`${n((st) => st.modo !== "fora")} pessoa(s) online agora, ${n((st) => st.modo === "editando")} editando${n((st) => st.modo === "gravando") ? `, ${n((st) => st.modo === "gravando")} gravando no estúdio` : ""}.`, `${feitosHoje().length} vídeo(s) feito(s) hoje.`];
     if (aguardando && ["gestor", "producao"].includes(eu.papel)) linhas.push(`${aguardando} corte(s) esperando aprovação na Publicação.`);
     const ir = (aba2) => { $("#detalhe").close(); trocarAba(aba2); };
     encher($("#detalhe-corpo"),
@@ -2428,6 +2453,75 @@
         h("button", { class: "botao leve", onclick: () => ir("aovivo") }, "Ver o Ao vivo"),
         aguardando && ["gestor", "producao"].includes(eu.papel) ? h("button", { class: "botao leve", onclick: () => ir("publicacao") }, "Ir para a Publicação") : null,
         h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
+  // ---- gravação: o editor avisa pelo bonequinho; ao terminar, sobe os brutos para "0. GRAVAÇÕES/<data> - <título>" no Drive
+  const PASTA_GRAVACOES = "12isJw8rLuHoHmqH-0YeHOwJKXKbWNHmP";
+  const minhaGravacao = () => (SALA.gravacoes || []).find((g) => g.editor_slug === meuSlug() && !g.fim);
+  const brutoPendente = () => (SALA.gravacoes || []).find((g) => g.editor_slug === meuSlug() && g.fim && !(g.arquivos || []).length && Date.now() - new Date(g.fim) < 3 * 864e5);
+  async function recarregarGravacoes() {
+    const gv = await db.from("gravacoes").select("*").gte("inicio", new Date(Date.now() - 4 * 864e5).toISOString()).order("inicio", { ascending: false }).limit(100);
+    SALA.gravacoes = Array.isArray(gv.data) ? gv.data : SALA.gravacoes;
+    if ($("#chat-sala").open) desenharChat();
+  }
+  function iniciarGravacao() {
+    const titulo = h("input", { id: "grav-titulo", maxlength: 120, placeholder: "Ex.: Reels do painel novo com o Felipe" });
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    encher($("#detalhe-corpo"), h("h2", {}, "🎬 Estou gravando"),
+      h("p", { class: "nota", style: "margin:0" }, "Seu bonequinho vai para o estúdio e a placa ON AIR acende. Quando terminar, volte aqui em \"Terminei a gravação\" para subir os brutos."),
+      h("label", { for: "grav-titulo" }, "O que está gravando?", titulo), msg,
+      h("div", { class: "acoes" },
+        h("button", { class: "botao amarelo", onclick: async () => {
+          const { error } = await db.rpc("cw_gravacao_iniciar", { p_titulo: titulo.value });
+          if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+          $("#detalhe").close(); await recarregarGravacoes();
+        } }, "Começar"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    $("#detalhe").showModal(); setTimeout(() => titulo.focus(), 50);
+  }
+  function terminarGravacao(g) {
+    const lista = h("div", { class: "subir-lista" }), msg = h("div", { class: "aviso erro", hidden: true }), itens = [];
+    const entrada = h("input", { type: "file", accept: "video/*,audio/*,.mp4,.mov,.mxf,.wav,.mp3,.braw", multiple: true, id: "grav-arquivos" });
+    entrada.onchange = () => {
+      for (const arq of entrada.files) {
+        const barra = h("i"), estado = h("span", { class: "nota" }, `${mb(arq.size)} · pronto para subir`);
+        itens.push({ arq, barra, estado });
+        lista.append(h("div", { class: "subir-item" }, h("div", { class: "nome" }, arq.name), h("div", { class: "subir-barra" }, barra), estado));
+      }
+      entrada.value = "";
+    };
+    const terminar = async (subir) => {
+      msg.hidden = true;
+      try {
+        let pasta = g.drive_pasta, enviados = [];
+        if (subir) {
+          if (!itens.length) throw new Error("Escolha os arquivos da gravação (ou termine sem subir agora).");
+          botoes.forEach((b) => (b.disabled = true));
+          if (!pasta) {
+            const d = new Date(g.inicio), data = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            pasta = (await criarPastaDrive(`${data} - ${g.titulo} (${(nomeEditor(g.editor_slug) || "").split(" ")[0]})`, PASTA_GRAVACOES)).id;
+          }
+          for (const it of itens) {
+            const f = await subirNoDrive(it.arq, it.arq.name, (p2) => { it.barra.style.width = Math.round(p2 * 100) + "%"; it.estado.textContent = `Enviando… ${Math.round(p2 * 100)}%`; }, pasta);
+            it.estado.textContent = "✓ No Drive"; enviados.push({ nome: it.arq.name, id: f.id, tamanho: it.arq.size });
+          }
+        }
+        const { error } = await db.rpc("cw_gravacao_terminar", { p_id: g.id, p_pasta: pasta, p_arquivos: enviados });
+        if (error) throw new Error(error.message);
+        await recarregarGravacoes();
+        if (pasta && enviados.length) encher($("#detalhe-corpo"), h("h2", {}, "Gravação guardada ✓"),
+          h("p", {}, `${enviados.length} arquivo(s) na pasta da gravação. Para editar, peça ao seu Claude usando essa pasta.`),
+          h("div", { class: "acoes" }, h("a", { class: "botao amarelo", href: `https://drive.google.com/drive/folders/${pasta}`, target: "_blank", rel: "noopener" }, "Abrir a pasta no Drive"),
+            h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+        else $("#detalhe").close();
+      } catch (e) { msg.hidden = false; msg.textContent = e.message || e; botoes.forEach((b) => (b.disabled = false)); }
+    };
+    const botoes = [h("button", { class: "botao amarelo", onclick: () => terminar(true) }, g.fim ? "Subir" : "Terminar e subir"),
+      g.fim ? null : h("button", { class: "botao leve", onclick: () => terminar(false) }, "Terminar sem subir agora")].filter(Boolean);
+    encher($("#detalhe-corpo"), h("h2", {}, g.fim ? "⬆ Subir os brutos" : "⏹ Terminei a gravação"),
+      h("p", { class: "nota", style: "margin:0" }, `"${g.titulo}" · começou ${horaBR(g.inicio)}. Os arquivos vão para "0. GRAVAÇÕES" no Drive, numa pasta só desta gravação, com a sua conta Google.`),
+      h("label", { for: "grav-arquivos" }, "Brutos (vídeo e áudio)", entrada), lista, msg,
+      h("div", { class: "acoes" }, botoes, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
   }
   // ---- Chico Moelas: o agente que posta os cortes aprovados
@@ -2469,7 +2563,8 @@
     const st = estadoSala(alvo.ed);
     const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
     encher($("#detalhe-corpo"), h("h2", {}, alvo.ed.nome),
-      h("p", { class: "nota", style: "margin:0" }, { fora: "Fora agora", livre: "Online, sem vídeo aberto", parado: "Na mesa, parado", editando: "Editando agora" }[st.modo]
+      h("p", { class: "nota", style: "margin:0" }, ({ fora: "Fora agora", livre: "Online, sem vídeo aberto", parado: "Na mesa, parado", editando: "Editando agora",
+        gravando: `Gravando no estúdio: ${(st.grav && st.grav.titulo) || "gravação"} · desde ${st.grav ? horaBR(st.grav.inicio).slice(-5) : ""}` })[st.modo]
         + (st.conv ? ` · Claude da estação ${st.conv.estado === "esperando_ok" ? "esperando OK" : "trabalhando"}` : "")),
       blocos.length ? blocos.map(blocoEdicao) : h("div", { class: "vazio" }, "Nenhum vídeo aberto agora."),
       h("div", { class: "acoes" },
@@ -2747,11 +2842,11 @@
         error_callback: (e) => falha(new Error(e && e.type === "popup_closed" ? "A janela do Google foi fechada antes de liberar o Drive." : "Não consegui abrir a janela do Google (libere pop-ups para a Central).")) }).requestAccessToken();
     });
   }
-  async function iniciarEnvioDrive(token, arquivo, nome) {
+  async function iniciarEnvioDrive(token, arquivo, nome, pasta = PASTA_APROVAR) {
     const r = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,size,name", {
       method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json; charset=UTF-8",
         "X-Upload-Content-Type": arquivo.type || "video/mp4", "X-Upload-Content-Length": String(arquivo.size) },
-      body: JSON.stringify({ name: nome, parents: [PASTA_APROVAR] }) });
+      body: JSON.stringify({ name: nome, parents: [pasta] }) });
     if (!r.ok) { const e = new Error(`O Drive recusou (${r.status}): ${(await r.text()).slice(0, 200)}`); e.status = r.status; throw e; }
     return r.headers.get("Location");
   }
@@ -2765,15 +2860,25 @@
       x.send(arquivo);
     });
   }
-  async function subirNoDrive(arquivo, nome, progresso) {
+  async function comAcessoDrive(fazer) {
     // drive.file basta para criar arquivos; se o Drive não deixar usar a pasta compartilhada com ele, pede o acesso completo
-    let token = await pedirAcessoDrive("https://www.googleapis.com/auth/drive.file"), url;
-    try { url = await iniciarEnvioDrive(token, arquivo, nome); }
+    try { return await fazer(await pedirAcessoDrive("https://www.googleapis.com/auth/drive.file")); }
     catch (e) {
       if (e.status !== 404 && e.status !== 403) throw e;
-      token = await pedirAcessoDrive("https://www.googleapis.com/auth/drive");
-      url = await iniciarEnvioDrive(token, arquivo, nome);
+      return fazer(await pedirAcessoDrive("https://www.googleapis.com/auth/drive"));
     }
+  }
+  async function criarPastaDrive(nome, pai) {
+    return comAcessoDrive(async (token) => {
+      const r = await fetch("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name", { method: "POST",
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nome, mimeType: "application/vnd.google-apps.folder", parents: [pai] }) });
+      if (!r.ok) { const e = new Error(`O Drive não criou a pasta (${r.status})`); e.status = r.status; throw e; }
+      return r.json();
+    });
+  }
+  async function subirNoDrive(arquivo, nome, progresso, pasta = PASTA_APROVAR) {
+    const url = await comAcessoDrive((token) => iniciarEnvioDrive(token, arquivo, nome, pasta));
     if (!url) throw new Error("O Drive não devolveu o endereço de envio");
     return enviarParaDrive(url, arquivo, progresso);
   }
