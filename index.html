@@ -573,6 +573,9 @@
       <div class="acoes"><button class="botao">Salvar regra</button><button class="botao leve" type="button" id="regra-limpar">Limpar</button></div>
       <div id="msg-regra" class="aviso erro" hidden></div>
     </form>
+    <h3 class="grupo" id="tit-sug-editores" hidden>Sugestões dos editores</h3>
+    <p class="nota" style="margin:0" id="nota-sug-editores" hidden>Regras que o Claude de cada editor tirou do CLAUDE.md dele. Aceita vira regra do time e entra em todo Claude, inclusive na estação. Dá para ajustar o texto antes.</p>
+    <div class="alertas" id="sug-editores"></div>
     <h3 class="grupo">Ajustes que podem virar regra</h3>
     <p class="nota" style="margin:0">Pedidos de ajuste dos últimos 60 dias que ainda não viraram regra. Se o mesmo erro se repete, transforme em regra.</p>
     <div class="alertas" id="sugestoes-regra"></div>
@@ -1534,7 +1537,29 @@
     const top = Object.entries(fluxo || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k.replace(/^(skill|agente|mcp):/, "").split(":").pop());
     return top.length ? top.sort().join(" + ") : "sem skills ou agentes";
   }
+  async function desenharSugEditores() {
+    const { data } = await db.from("regras_sugeridas").select("*").eq("estado", "aguardando").order("id").limit(200);
+    const lista = Array.isArray(data) ? data : [];
+    $("#tit-sug-editores").hidden = $("#nota-sug-editores").hidden = !lista.length;
+    encher($("#sug-editores"), lista.map((sg) => {
+      const texto = h("textarea", { "aria-label": "Texto da regra", maxlength: 400, style: "min-height:52px;flex:1 1 320px" }); texto.value = sg.texto;
+      const tipo = h("select", { "aria-label": "Tipo de vídeo" }, h("option", { value: "" }, "Todo vídeo"),
+        Object.entries(TIPOS).map(([k, v]) => h("option", { value: k }, v)));
+      tipo.value = sg.tipo || "";
+      const decidir = async (aceitar) => {
+        const { error } = await db.rpc("cw_regra_sugestao", { p_id: sg.id, p_aceitar: aceitar, p_texto: texto.value, p_tipo: tipo.value || null });
+        if (error) return alert(error.message);
+        await desenharSugEditores(); if (aceitar) carregar();
+      };
+      return h("div", { class: "alerta", style: "flex-wrap:wrap" },
+        h("span", { class: "chip" }, nomeEditor(sg.editor_slug) || sg.editor_slug), texto, tipo,
+        h("button", { class: "botao amarelo peq", onclick: () => decidir(true) }, "Aceitar"),
+        h("button", { class: "botao leve peq", onclick: () => decidir(false) }, "Recusar"),
+        sg.origem ? h("span", { class: "nota", style: "flex-basis:100%" }, sg.origem) : null);
+    }));
+  }
   function desenharPadrao() {
+    if (eu.papel === "gestor") desenharSugEditores();
     const salvar = async (r, mudanca) => {
       const { error } = await db.rpc("cw_regra_salvar", { p_id: r.id, p_texto: r.texto, p_tipo: r.tipo, p_origem: r.origem, p_ativa: mudanca.ativa });
       const m = $("#msg-regra"); m.hidden = !error; m.textContent = error ? error.message : ""; if (!error) carregar();
