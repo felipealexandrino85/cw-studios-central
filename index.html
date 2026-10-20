@@ -178,6 +178,16 @@
   .redes-res { display: flex; flex-wrap: wrap; gap: 6px; }
   .pub-conexoes { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 10px 14px; font-size: 14px; }
   .pub-video { width: 100%; max-width: 340px; aspect-ratio: 9 / 16; border: 0; border-radius: 14px; background: #111; justify-self: center; }
+  .bib-filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .bib-filtros input[type=search] { flex: 1 1 240px; min-width: 0; }
+  .bib-card { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 16px; padding: 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .bib-card .tit { font-family: var(--font-display); font-weight: 800; font-size: 15px; word-break: break-word; cursor: pointer; }
+  .bib-card .desc { font-size: 13px; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .bib-card .rodape { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: space-between; }
+  .bib-repos { display: grid; gap: 8px; }
+  .bib-repo { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 14px; }
+  .bib-repo b { word-break: break-all; }
+  pre.bib-conteudo { margin: 0; white-space: pre-wrap; word-break: break-word; font: 12.5px/1.5 ui-monospace, Menlo, monospace; background: var(--surface-2); border-radius: 12px; padding: 12px; max-height: 50vh; overflow: auto; }
   .cabeca .sub { margin: 4px 0 0; color: var(--text-dim); max-width: 640px; }
   h3.grupo { font-family: var(--font-body); font-size: 12px; text-transform: uppercase; letter-spacing: 1.8px; font-weight: 800; margin: 12px 0 0; color: #8f7fb0; }
   .vazio { color: var(--text-faint); font-size: 14px; padding: 6px 2px; }
@@ -528,6 +538,27 @@
     <div class="pub-grade" id="pub-lista"></div>
   </section>
 
+  <section id="aba-biblioteca" hidden>
+    <header class="cabeca"><p class="kicker">Biblioteca</p><h1>Agentes e skills</h1>
+      <p class="sub">O que existe nos repositórios conectados. Escolha o que quer usar e o seu Claude instala sozinho na próxima vez que abrir (com o prefixo cw-bib-). O Kit do time continua chegando para todos.</p></header>
+    <div id="bib-gestao" hidden>
+      <h3 class="grupo">Repositórios conectados</h3>
+      <form class="bib-filtros" id="bib-form-repo">
+        <input id="bib-url" placeholder="github.com/dono/repositorio (público)" aria-label="Endereço do repositório no GitHub" style="flex:1 1 280px;min-width:0">
+        <button class="botao amarelo" type="submit">Conectar</button>
+      </form>
+      <div class="aviso erro" id="bib-msg" hidden></div>
+      <div class="bib-repos" id="bib-repos"></div>
+    </div>
+    <h3 class="grupo" id="bib-titulo">Itens</h3>
+    <div class="bib-filtros">
+      <input type="search" id="bib-busca" placeholder="Buscar por nome ou descrição" aria-label="Buscar na biblioteca">
+      <select id="bib-repo" class="pill" aria-label="Repositório"></select>
+    </div>
+    <div class="segmentos" role="tablist" id="bib-tipos"></div>
+    <div class="grade-cartoes" id="bib-lista"></div>
+  </section>
+
   <section id="aba-kit" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Kit do time</h1>
       <p class="sub">Os agentes e skills que viram o jeito oficial de editar. O que está no kit chega sozinho ao Claude de todos os editores, com o prefixo cw-kit-.</p></header>
@@ -676,9 +707,9 @@
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
     gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["escritorio", "Escritório"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
-             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["gestao", "Pessoas"]]]],
+             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["biblioteca", "Biblioteca"], ["gestao", "Pessoas"]]]],
     producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["biblioteca", "Biblioteca"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
   };
   const EXTRAS = { gestor: ["pedir"], producao: ["pedir"], editor: [], solicitante: [] };
@@ -698,6 +729,7 @@
     kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
     publicacao: "M22 2 11 13M22 2l-7 20-4-9-9-4z",
+    biblioteca: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5zM8 7h8M8 11h6",
   };
   function icone(d, cls) {
     const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), path = document.createElementNS(ns, "path");
@@ -941,7 +973,7 @@
   }
 
   function desenhar() {
-    ({ publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
+    ({ biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1509,6 +1541,108 @@
     m.textContent = `Importado: ${linhas.length} registros (${Object.entries(porCol).map(([c, n]) => `${c}: ${n}`).join(", ")}).`;
     castDb && castDb.puxar();
   });
+
+  // ---------------------------------------------------------------- biblioteca de repositórios
+  const BIB = { repos: [], itens: [], escolhas: [], tipo: "todos", carregado: 0, busca: "", repo: "" };
+  const TIPOS_BIB = [["todos", "Todos"], ["skill", "Skills"], ["agente", "Agentes"], ["comando", "Comandos"], ["plugin", "Plugins"]];
+  const NOME_TIPO = { skill: "Skill", agente: "Agente", comando: "Comando", plugin: "Plugin" };
+  async function carregarBiblioteca() {
+    const [r, b, e] = await Promise.all([db.from("repos").select("*").order("nome"),
+      db.from("biblioteca").select("id,repo_id,tipo,nome,descricao,caminho,atualizado").order("nome").limit(3000),
+      db.from("biblioteca_escolhas").select("editor_slug,item_id")]);
+    BIB.repos = r.data || []; BIB.itens = b.data || []; BIB.escolhas = e.data || []; BIB.carregado = Date.now();
+  }
+  const meuSlug = () => eu.papel === "editor" && eu.editor ? eu.editor.slug : null;
+  const escolhi = (id) => BIB.escolhas.some((x) => x.item_id === id && x.editor_slug === meuSlug());
+  async function desenharBiblioteca() {
+    if (Date.now() - BIB.carregado > 5000) await carregarBiblioteca();
+    const gestor = eu.papel === "gestor";
+    $("#bib-gestao").hidden = !gestor;
+    if (gestor) {
+      $("#bib-form-repo").onsubmit = async (ev) => {
+        ev.preventDefault();
+        const msg = $("#bib-msg"); msg.hidden = true;
+        const { data, error } = await db.rpc("cw_bib_repo", { p_url: $("#bib-url").value, p_remover: false });
+        if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+        $("#bib-url").value = ""; await sincronizarRepo(data);
+      };
+      encher($("#bib-repos"), BIB.repos.length ? BIB.repos.map((r) => h("div", { class: "bib-repo" },
+        h("b", {}, h("a", { href: r.url, target: "_blank", rel: "noopener" }, r.nome)),
+        h("span", { class: "chip" }, `${r.total} itens`),
+        r.marketplace && h("span", { class: "chip tom-neutro", title: "Este repositório é um catálogo de plugins" }, "catálogo " + r.marketplace),
+        r.erro ? h("span", { class: "chip tom-critico", title: r.erro }, "erro: " + r.erro) : h("span", { class: "nota" }, r.sincronizado ? "lido " + ha(r.sincronizado) : "ainda não lido"),
+        h("span", { style: "flex:1" }),
+        h("button", { class: "botao leve peq", onclick: (ev) => sincronizarRepo(r.id, ev.target) }, "Atualizar"),
+        h("button", { class: "botao perigo peq", onclick: async () => {
+          if (!confirm(`Desconectar ${r.nome}? Os itens dele saem da biblioteca e do Claude de quem tinha escolhido.`)) return;
+          await db.rpc("cw_bib_repo", { p_url: r.nome, p_remover: true }); BIB.carregado = 0; desenharBiblioteca();
+        } }, "Desconectar"))) : h("div", { class: "vazio" }, "Nenhum repositório ainda. Cole o endereço de um repositório público do GitHub com agentes ou skills."));
+    }
+    const sel = $("#bib-repo");
+    encher(sel, h("option", { value: "" }, "Todos os repositórios"), BIB.repos.map((r) => h("option", { value: r.id }, r.nome)),
+      meuSlug() && h("option", { value: "meus" }, "Só os que estão no meu Claude"));
+    sel.value = BIB.repo; sel.onchange = () => { BIB.repo = sel.value; desenharBiblioteca(); };
+    const busca = $("#bib-busca"); busca.value = BIB.busca;
+    busca.oninput = () => { BIB.busca = busca.value; clearTimeout(BIB.t); BIB.t = setTimeout(desenharListaBib, 150); };
+    desenharListaBib();
+  }
+  function desenharListaBib() {
+    const termo = semAcento(BIB.busca);
+    const base = BIB.itens.filter((x) => (!BIB.repo || (BIB.repo === "meus" ? escolhi(x.id) : String(x.repo_id) === BIB.repo))
+      && (!termo || semAcento(x.nome + " " + (x.descricao || "")).includes(termo)));
+    encher($("#bib-tipos"), TIPOS_BIB.map(([k, nome]) => h("button", { role: "tab", "aria-selected": String(BIB.tipo === k),
+      onclick: () => { BIB.tipo = k; desenharListaBib(); } }, nome, h("em", {}, base.filter((x) => k === "todos" || x.tipo === k).length))));
+    const lista = base.filter((x) => BIB.tipo === "todos" || x.tipo === BIB.tipo).slice(0, 300);
+    $("#bib-titulo").textContent = `Itens (${base.length})`;
+    encher($("#bib-lista"), lista.length ? lista.map(cartaoBib) : h("div", { class: "vazio" }, BIB.itens.length ? "Nada encontrado com esse filtro." : "A biblioteca está vazia: a gestão conecta os repositórios aqui."));
+  }
+  function botaoEscolha(x) {
+    if (!meuSlug()) return null;
+    if (x.tipo === "plugin") return h("button", { class: "botao leve peq", onclick: () => abrirItemBib(x) }, "Como instalar");
+    const tem = escolhi(x.id);
+    return h("button", { class: tem ? "botao leve peq" : "botao amarelo peq", onclick: async (ev) => {
+      ev.target.disabled = true;
+      const { error } = await db.rpc("cw_bib_escolher", { p_item: x.id, p_quer: !tem });
+      if (error) { alert(error.message); ev.target.disabled = false; return; }
+      if (tem) BIB.escolhas = BIB.escolhas.filter((e) => !(e.item_id === x.id && e.editor_slug === meuSlug()));
+      else BIB.escolhas.push({ item_id: x.id, editor_slug: meuSlug() });
+      desenharListaBib();
+    } }, tem ? "✓ No meu Claude · tirar" : "Puxar para meu Claude");
+  }
+  function cartaoBib(x) {
+    const repo = BIB.repos.find((r) => r.id === x.repo_id) || {};
+    const usam = BIB.escolhas.filter((e) => e.item_id === x.id).length;
+    return h("div", { class: "bib-card" },
+      h("div", { class: "chips" }, h("span", { class: "chip" }, NOME_TIPO[x.tipo] || x.tipo), h("span", { class: "chip tom-neutro" }, repo.nome || "")),
+      h("div", { class: "tit", role: "button", tabindex: 0, onclick: () => abrirItemBib(x), onkeydown: (ev) => { if (ev.key === "Enter") abrirItemBib(x); } }, x.nome),
+      x.descricao && h("div", { class: "desc" }, x.descricao),
+      h("div", { class: "rodape" }, eu.papel === "gestor" ? h("span", { class: "nota" }, usam ? `${usam} editor(es) usam` : "ninguém usa ainda") : h("span"), botaoEscolha(x)));
+  }
+  async function abrirItemBib(x) {
+    const repo = BIB.repos.find((r) => r.id === x.repo_id) || {};
+    const { data } = await db.from("biblioteca").select("conteudo,arquivos").eq("id", x.id).maybeSingle();
+    const extras = Object.keys((data && data.arquivos) || {});
+    const pasta = x.caminho.replace(/\/?\.claude-plugin\/plugin\.json$/, "");
+    const instalar = x.tipo === "plugin" ? (repo.marketplace
+      ? [`/plugin marketplace add ${repo.nome}`, `/plugin install ${x.nome}@${repo.marketplace}`]
+      : [`/plugin marketplace add ${repo.nome}`, `(se o repositório não tiver catálogo de plugins, peça ao Claude: "instala o plugin da pasta ${pasta || "raiz"} de github.com/${repo.nome}")`]) : null;
+    encher($("#detalhe-corpo"),
+      h("div", { class: "chips" }, h("span", { class: "chip" }, NOME_TIPO[x.tipo] || x.tipo), h("a", { class: "chip tom-neutro", href: `${repo.url}/blob/HEAD/${x.caminho}`, target: "_blank", rel: "noopener" }, repo.nome)),
+      h("h2", {}, x.nome),
+      x.descricao && h("p", { style: "margin:0;color:var(--text-dim)" }, x.descricao),
+      instalar && [h("p", { class: "nota", style: "margin:0" }, "Plugins se instalam pelo próprio Claude. Peça a ele para rodar:"), h("pre", { class: "bib-conteudo" }, instalar.join("\n"))],
+      extras.length > 0 && h("p", { class: "nota", style: "margin:0" }, `Vai junto: ${extras.slice(0, 12).join(", ")}${extras.length > 12 ? ` e mais ${extras.length - 12}` : ""}`),
+      data && data.conteudo && h("pre", { class: "bib-conteudo" }, data.conteudo),
+      h("div", { class: "acoes" }, x.tipo !== "plugin" && botaoEscolha(x), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
+  async function sincronizarRepo(id, botao) {
+    if (botao) { botao.disabled = true; botao.textContent = "Lendo…"; }
+    const { data, error } = await db.functions.invoke("biblioteca-sync", { body: { repo_id: id } });
+    const r = data && data.repos && data.repos[0];
+    if (error || (r && r.erro)) { const msg = $("#bib-msg"); msg.hidden = false; msg.textContent = "Não consegui ler: " + ((r && r.erro) || error.message); }
+    BIB.carregado = 0; await desenharBiblioteca();
+  }
 
   // ---------------------------------------------------------------- publicação (cortes → redes)
   const PUB = { lista: [], situacao: {}, seg: "aguardando", timer: null, carregado: 0 };
