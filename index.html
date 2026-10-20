@@ -188,6 +188,12 @@
   .bib-repo { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 14px; }
   .bib-repo b { word-break: break-all; }
   pre.bib-conteudo { margin: 0; white-space: pre-wrap; word-break: break-word; font: 12.5px/1.5 ui-monospace, Menlo, monospace; background: var(--surface-2); border-radius: 12px; padding: 12px; max-height: 50vh; overflow: auto; }
+  .sala-palco { position: relative; border-radius: 18px; overflow: hidden; background: #2a1b40; box-shadow: var(--shadow-card); }
+  .sala-palco canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; cursor: pointer; }
+  .sala-palco:fullscreen { display: grid; place-items: center; border-radius: 0; }
+  .sala-palco:fullscreen canvas { width: auto; height: 100vh; max-width: 100vw; object-fit: contain; }
+  .sala-legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--text-dim); align-items: center; }
+  .sala-legenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
   .cabeca .sub { margin: 4px 0 0; color: var(--text-dim); max-width: 640px; }
   h3.grupo { font-family: var(--font-body); font-size: 12px; text-transform: uppercase; letter-spacing: 1.8px; font-weight: 800; margin: 12px 0 0; color: #8f7fb0; }
   .vazio { color: var(--text-faint); font-size: 14px; padding: 6px 2px; }
@@ -572,6 +578,14 @@
     <div class="tabela"><table><thead><tr><th>Quando</th><th>Editor</th><th>Ferramenta</th><th>Modelo</th><th>Trabalho</th><th>Situação</th><th>Resultado</th></tr></thead><tbody id="ferr-usos"></tbody></table></div>
   </section>
 
+  <section id="aba-sala" hidden>
+    <header class="cabeca"><p class="kicker">Operação</p><h1>Sala do CW Studios</h1>
+      <p class="sub">O time ao vivo. Na mesa e digitando é edição acontecendo agora; circulando pela sala é online sem vídeo aberto; mesa vazia é fora. Clique num bonequinho para ver o que ele está fazendo.</p></header>
+    <div class="acoes"><button class="botao leve" id="sala-cheia">Tela cheia (para TV)</button></div>
+    <div class="sala-palco" id="sala-palco"><canvas id="sala-canvas" aria-label="Sala do CW Studios com o time ao vivo" role="img"></canvas></div>
+    <div class="sala-legenda" id="sala-legenda"></div>
+  </section>
+
   <section id="aba-kit" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Kit do time</h1>
       <p class="sub">Os agentes e skills que viram o jeito oficial de editar. O que está no kit chega sozinho ao Claude de todos os editores, com o prefixo cw-kit-.</p></header>
@@ -719,10 +733,10 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["aovivo", "Ao vivo"], ["escritorio", "Escritório"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["escritorio", "Escritório"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
              ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["gestao", "Pessoas"]]]],
-    producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
+    producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Escritório"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]]],
   };
   const EXTRAS = { gestor: ["pedir"], producao: ["pedir"], editor: [], solicitante: [] };
@@ -742,6 +756,7 @@
     kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
     publicacao: "M22 2 11 13M22 2l-7 20-4-9-9-4z",
+    sala: "M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5M9 11h.01M15 11h.01",
     ferramentas: "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z",
     biblioteca: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5zM8 7h8M8 11h6",
   };
@@ -981,13 +996,13 @@
     for (const e of data || []) D.eventos[e.demanda_id] = e;
   }
   async function atualizarAoVivo() {
-    if (document.hidden || !["inicio", "aovivo", "meudia", "cast"].includes(aba) || eu.papel === "solicitante") return;
+    if (document.hidden || !["inicio", "aovivo", "meudia", "cast", "sala"].includes(aba) || eu.papel === "solicitante") return;
     const { data } = await db.rpc("cw_ao_vivo");
     if (data) { D.aovivo = data; desenhar(); }
   }
 
   function desenhar() {
-    ({ ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
+    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1555,6 +1570,160 @@
     m.textContent = `Importado: ${linhas.length} registros (${Object.entries(porCol).map(([c, n]) => `${c}: ${n}`).join(", ")}).`;
     castDb && castDb.puxar();
   });
+
+  // ---------------------------------------------------------------- sala (escritório em pixel art com o time ao vivo)
+  const SALA = { conversas: [], convTs: 0, bonecos: {}, alvos: [], raf: null, quadro: 0, ultimo: 0 };
+  const SC = 3, TILE = 16;   // 1 "pixel" da arte = 3 px do canvas
+  const COR_ETAPA = { preparo: "#7fa4c9", transcricao: "#3fc1b0", corte: "#f59f4a", montagem: "#4a8df5", motion: "#f25aa8",
+                      render: "#a66bff", acabamento: "#7d6bff", revisao: "#f5d04a", entrega: "#4cd07d" };
+  const CABELOS = ["#2b1d14", "#5a3a22", "#c58b4b", "#1c1c28", "#8a3b2f", "#d9c08a", "#3b2a4f"];
+  const PELES = ["#f2c9a5", "#e0a97f", "#c98a5e", "#8d5a3b", "#f5d6bd"];
+  const CAMISAS = ["#a543fa", "#ffb800", "#ff6b5b", "#3fc1b0", "#4a8df5", "#f25aa8", "#7ac943"];
+  const hashSlug = (t) => [...(t || "")].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  async function desenharSala() {
+    if (Date.now() - SALA.convTs > 15000) {
+      SALA.convTs = Date.now();
+      const { data } = await db.from("esc_conversas").select("editor_slug,estado").in("estado", ["rodando", "esperando_ok"]);
+      SALA.conversas = data || [];
+    }
+    encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo aberto"],
+      ["#6b5a87", "Fora"], ["#7d6bff", "No Premiere"], ["#ffb800", "Claude da estação esperando OK"]].map(([c, t]) => h("span", {}, h("i", { style: "background:" + c }), t)));
+    $("#sala-cheia").onclick = () => { const el = $("#sala-palco"); (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {}); };
+    $("#sala-canvas").onclick = cliqueSala;
+    if (!SALA.raf) SALA.raf = requestAnimationFrame(quadroSala);
+  }
+  function estadoSala(ed) {
+    const s = D.aovivo.find((x) => x.slug === ed.slug);
+    const trabs = ((s && s.payload) || {}).trabalhos || [];
+    const ativo = trabs.filter((t) => t.agora).sort((a, b) => ((b.agora_faz || {}).ts || "").localeCompare((a.agora_faz || {}).ts || ""))[0] || null;
+    const pr = ativo && ativo.premiere, premiere = !!(pr && pr.ultimo_ativo && minutosDesde(pr.ultimo_ativo) <= 3);
+    const recente = ativo && ((ativo.agora_faz && minutosDesde(ativo.agora_faz.ts) <= 5) || premiere);
+    const conv = SALA.conversas.find((c) => c.editor_slug === ed.slug);
+    const modo = !online(s) && !premiere ? "fora" : recente ? "editando" : ativo ? "parado" : "livre";
+    return { modo, trab: ativo, etapa: premiere ? "acabamento" : ativo && ativo.etapa, premiere, conv,
+             rotulo: premiere ? "acabamento no Premiere" : ativo && ativo.agora_faz && ativo.agora_faz.rotulo };
+  }
+  function planta(editores) {   // posições das mesas e do lounge (em pixels da arte)
+    const porLinha = 4, linhas = Math.max(1, Math.ceil(editores.length / porLinha));
+    const W = 20 * TILE, H = (8.4 + linhas * 4.8) * TILE;
+    const mesas = editores.map((ed, i) => ({ ed, x: Math.round((3.4 + (i % porLinha) * 4.4) * TILE), y: Math.round((5 + Math.floor(i / porLinha) * 4.8) * TILE) }));
+    const lounge = [{ x: 2.4 * TILE, y: H - 2.2 * TILE }, { x: 4.6 * TILE, y: H - 2.0 * TILE }, { x: 1.4 * TILE, y: 3.9 * TILE }, { x: 10 * TILE, y: H - 2.2 * TILE }, { x: 18.4 * TILE, y: 4 * TILE }];
+    return { W, H, mesas, lounge };
+  }
+  function quadroSala(t) {
+    SALA.raf = null;
+    if (aba !== "sala") return;
+    SALA.raf = requestAnimationFrame(quadroSala);
+    if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
+    SALA.ultimo = t; SALA.quadro++;
+    const editores = D.editores.filter((e) => e.ativo);
+    const P = planta(editores), cv = $("#sala-canvas");
+    if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
+    const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
+    const px = (x, y, w, hh, cor) => { c.fillStyle = cor; c.fillRect(Math.round(x) * SC, Math.round(y) * SC, w * SC, hh * SC); };
+    const f = SALA.quadro;
+    // chão e paredes
+    for (let y = 0; y < P.H; y += TILE) for (let x = 0; x < P.W; x += TILE) px(x, y, TILE, TILE, ((x + y) / TILE) % 2 ? "#e9dcf7" : "#efe5fa");
+    px(0, 0, P.W, 2.2 * TILE, "#59327a"); px(0, 2.2 * TILE, P.W, 3, "#3f2259");
+    for (const jx of [2, 14.5]) { px(jx * TILE, 5, 3 * TILE, 22, "#bfe3ff"); px(jx * TILE, 5, 3 * TILE, 2, "#fff"); px((jx + 1.5) * TILE - 1, 5, 2, 22, "#59327a"); }
+    c.fillStyle = "#ffb800"; c.font = `800 ${7 * SC}px Nunito, Inter, sans-serif`; c.textAlign = "center"; c.fillText("CW STUDIOS", (P.W / 2) * SC, 14 * SC);
+    const agora = new Date(), hora = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    px(P.W / 2 - 14, 18, 28, 11, "#2a1b40"); c.fillStyle = "#4cd07d"; c.font = `700 ${6 * SC}px ui-monospace, Menlo, monospace`; c.fillText(hora, (P.W / 2) * SC, 26.5 * SC);
+    // café, plantas, sofá, estúdio
+    px(0.8 * TILE, 2.6 * TILE, 18, 22, "#6b4a3a"); px(0.8 * TILE + 3, 2.6 * TILE + 3, 12, 8, "#2a1b40"); px(0.8 * TILE + 7, 2.6 * TILE + 13, 4, 4, "#fff");
+    if (f % 20 < 10) px(0.8 * TILE + 8, 2.6 * TILE - 4 - (f % 10) / 3, 1, 3, "#ffffff99");
+    const plantaPx = (x, y) => { px(x + 2, y + 10, 10, 8, "#c0703f"); px(x, y, 14, 11, "#3fa66b"); px(x + 3, y - 4, 8, 6, "#56c482"); };
+    plantaPx(P.W - 1.4 * TILE, 2.6 * TILE); plantaPx(0.4 * TILE, P.H - 4.4 * TILE); plantaPx(P.W - 1.4 * TILE, P.H - 4.4 * TILE);
+    px(1 * TILE, P.H - 2 * TILE, 4.5 * TILE, 18, "#ff6b5b"); px(1 * TILE, P.H - 2 * TILE - 6, 4.5 * TILE, 8, "#e0503f");
+    px(P.W - 6 * TILE, P.H - 2.6 * TILE, 5 * TILE, 30, "#3b2a4f"); px(P.W - 4.2 * TILE, P.H - 2.4 * TILE, 4, 16, "#cfcfcf"); px(P.W - 4.2 * TILE - 2, P.H - 2.4 * TILE - 4, 8, 6, "#888");
+    const algumEditando = editores.some((e) => estadoSala(e).modo === "editando");
+    px(P.W - 5.6 * TILE, P.H - 2.5 * TILE, 20, 8, algumEditando && f % 16 < 12 ? "#ff3b3b" : "#5a1f1f");
+    c.fillStyle = "#fff"; c.font = `800 ${4 * SC}px Inter, sans-serif`; c.fillText("ON AIR", (P.W - 5.6 * TILE + 10) * SC, (P.H - 2.5 * TILE + 6) * SC);
+    c.fillStyle = "#e9dcf7"; c.font = `700 ${4 * SC}px Inter, sans-serif`; c.fillText("estúdio CW Cast", (P.W - 3.5 * TILE) * SC, (P.H - 0.5 * TILE) * SC);
+    SALA.alvos = [];
+    const pessoas = [];
+    for (const m of P.mesas) {
+      const st = estadoSala(m.ed), seed = hashSlug(m.ed.slug);
+      const cores = { cabelo: CABELOS[seed % CABELOS.length], pele: PELES[(seed >> 3) % PELES.length], camisa: CAMISAS[(seed >> 6) % CAMISAS.length] };
+      // mesa e monitor
+      px(m.x - 18, m.y - 6, 36, 14, "#8a5a3c"); px(m.x - 18, m.y + 6, 36, 3, "#6b4430");
+      const tela = st.modo === "fora" ? "#1b1b24" : st.premiere ? "#2a1a5e" : st.modo === "editando" ? COR_ETAPA[st.etapa] || "#4cd07d" : st.modo === "parado" ? "#3a3550" : "#24203a";
+      px(m.x - 11, m.y - 21, 22, 14, "#2a1b40"); px(m.x - 10, m.y - 20, 20, 11, tela); px(m.x - 2, m.y - 7, 4, 2, "#2a1b40");
+      if (st.modo === "editando" && !st.premiere) {
+        if (st.etapa === "render") { px(m.x - 7, m.y - 13, 14, 3, "#00000055"); px(m.x - 7, m.y - 13, 2 + (f % 13), 3, "#ffffff"); }
+        else for (let k = 0; k < 3; k++) px(m.x - 7 + ((f + k * 5) % 12), m.y - 17 + k * 3, 4, 1, "#ffffffcc");
+      }
+      if (st.premiere) { px(m.x - 4, m.y - 17, 8, 7, "#9999ff"); c.fillStyle = "#2a1a5e"; c.font = `800 ${5 * SC}px Inter, sans-serif`; c.fillText("Pr", m.x * SC, (m.y - 11.5) * SC); }
+      if (st.modo === "parado" && f % 30 < 15) px(m.x - 1, m.y - 15, 2, 2, "#ffffff55");
+      if (st.conv) {   // robozinho do Escritório ao lado do monitor
+        const rx = m.x + 13, ry = m.y - 18 + (f % 8 < 4 ? 0 : 1);
+        px(rx, ry, 8, 7, "#cfd8e6"); px(rx + 2, ry + 2, 1, 1, "#2a1b40"); px(rx + 5, ry + 2, 1, 1, "#2a1b40"); px(rx + 3, ry - 2, 2, 2, st.conv.estado === "esperando_ok" ? "#ffb800" : "#4cd07d");
+      }
+      // cadeira e plaquinha
+      px(m.x - 8, m.y + 22, 16, 4, "#3b2a4f");
+      c.fillStyle = st.modo === "fora" ? "#8f82a8" : "#2a1b40"; c.font = `700 ${4.2 * SC}px Inter, sans-serif`;
+      c.fillText(m.ed.nome.split(" ")[0], m.x * SC, (m.y + 33) * SC);
+      SALA.alvos.push({ ed: m.ed, x: m.x - 20, y: m.y - 22, w: 40, h: 56 });
+      // boneco: senta na mesa (editando/parado) ou circula (livre); fora não aparece
+      let b = SALA.bonecos[m.ed.slug];
+      if (!b) b = SALA.bonecos[m.ed.slug] = { x: m.x, y: m.y + 20, alvo: null, espera: 0 };
+      if (st.modo === "fora") { b.x = m.x; b.y = m.y + 20; continue; }
+      const naMesa = st.modo !== "livre";
+      if (naMesa) b.alvo = { x: m.x, y: m.y + 20 };
+      else if (!b.alvo || (Math.hypot(b.alvo.x - b.x, b.alvo.y - b.y) < 2 && --b.espera <= 0)) {
+        b.alvo = P.lounge[(seed + f) % P.lounge.length]; b.espera = 20 + (seed % 40);
+      }
+      const dx = b.alvo.x - b.x, dy = b.alvo.y - b.y, d = Math.hypot(dx, dy);
+      const andando = d > 1.5;
+      if (andando) { b.x += dx / d * Math.min(2.2, d); b.y += dy / d * Math.min(2.2, d); }
+      pessoas.push({ b, st, cores, m, sentado: naMesa && !andando, andando });
+      SALA.alvos.push({ ed: m.ed, x: b.x - 10, y: b.y - 28, w: 20, h: 30 });
+    }
+    pessoas.sort((a, b2) => a.b.y - b2.b.y);
+    for (const { b, st, cores, sentado, andando } of pessoas) {
+      const x = Math.round(b.x), y = Math.round(b.y);
+      if (sentado) {   // de costas para nós, olhando o monitor e digitando
+        px(x - 6, y - 19, 12, 9, cores.cabelo); px(x - 7, y - 16, 1, 4, cores.pele); px(x + 6, y - 16, 1, 4, cores.pele);
+        px(x - 2, y - 10, 4, 2, cores.pele);
+        px(x - 8, y - 8, 16, 10, cores.camisa); px(x - 8, y - 8, 16, 2, "#00000022");
+        const sobe = st.modo === "editando" && f % 4 < 2, desce = st.modo === "editando" && !sobe;
+        px(x - 11, y - 8 - (sobe ? 2 : 0), 3, 7, cores.camisa); px(x + 8, y - 8 - (desce ? 2 : 0), 3, 7, cores.camisa);
+        px(x - 11, y - 9 - (sobe ? 2 : 0), 3, 2, cores.pele); px(x + 8, y - 9 - (desce ? 2 : 0), 3, 2, cores.pele);
+      } else {         // de frente, andando ou parado em pé
+        px(x - 5, y - 27, 10, 4, cores.cabelo); px(x - 5, y - 23, 10, 7, cores.pele); px(x - 5, y - 23, 1, 4, cores.cabelo); px(x + 4, y - 23, 1, 4, cores.cabelo);
+        px(x - 3, y - 20, 2, 2, "#2a1b40"); px(x + 1, y - 20, 2, 2, "#2a1b40"); px(x - 1, y - 17, 2, 1, "#c0705a");
+        px(x - 6, y - 16, 12, 9, cores.camisa); px(x - 8, y - 16, 2, 7, cores.pele); px(x + 6, y - 16, 2, 7, cores.pele);
+        const passo = andando ? (f % 4 < 2 ? 2 : -2) : 0;
+        px(x - 4, y - 7, 3, 7 + passo, "#3b2a4f"); px(x + 1, y - 7, 3, 7 - passo, "#3b2a4f");
+        px(x - 4, y + passo, 3, 1, "#1c1c28"); px(x + 1, y - passo, 3, 1, "#1c1c28");
+      }
+      // balão com o passo atual (ou o pedido de OK da estação)
+      const alerta = st.conv && st.conv.estado === "esperando_ok";
+      const texto = alerta ? "! esperando seu OK" : st.modo === "editando" ? (st.rotulo || "editando") : st.modo === "parado" ? "…" : null;
+      if (texto) {
+        c.font = `600 ${4.2 * SC}px Inter, sans-serif`;
+        const curto = texto.length > 26 ? texto.slice(0, 25) + "…" : texto;
+        const larg = c.measureText(curto).width / SC + 8, by = y - (sentado ? 57 : 40);
+        px(x - larg / 2, by, larg, 10, alerta ? "#ffb800" : "#ffffff"); px(x - 1, by + 10, 3, 2, alerta ? "#ffb800" : "#ffffff");
+        c.fillStyle = "#2a1b40"; c.fillText(curto, x * SC, (by + 7.2) * SC);
+      }
+    }
+    if (!editores.length) { c.fillStyle = "#59327a"; c.font = `700 ${7 * SC}px Inter, sans-serif`; c.fillText("Cadastre os editores em Pessoas", (P.W / 2) * SC, (P.H / 2) * SC); }
+  }
+  function cliqueSala(ev) {
+    const cv = ev.currentTarget, r = cv.getBoundingClientRect();
+    const x = (ev.clientX - r.left) * (cv.width / r.width) / SC, y = (ev.clientY - r.top) * (cv.height / r.height) / SC;
+    const alvo = SALA.alvos.slice().reverse().find((a) => x >= a.x && x <= a.x + a.w && y >= a.y && y <= a.y + a.h);
+    if (!alvo) return;
+    const st = estadoSala(alvo.ed);
+    const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
+    encher($("#detalhe-corpo"), h("h2", {}, alvo.ed.nome),
+      h("p", { class: "nota", style: "margin:0" }, { fora: "Fora agora", livre: "Online, sem vídeo aberto", parado: "Na mesa, parado", editando: "Editando agora" }[st.modo]
+        + (st.conv ? ` · Claude da estação ${st.conv.estado === "esperando_ok" ? "esperando OK" : "trabalhando"}` : "")),
+      blocos.length ? blocos.map(blocoEdicao) : h("div", { class: "vazio" }, "Nenhum vídeo aberto agora."),
+      h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
 
   // ---------------------------------------------------------------- ferramentas (biblioteca de APIs)
   const FERR = { lista: [], usos: [], limites: [], chaves: {} };
