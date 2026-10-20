@@ -590,7 +590,7 @@
       <div id="msg-regra" class="aviso erro" hidden></div>
     </form>
     <h3 class="grupo" id="tit-sug-editores" hidden>Sugestões dos editores</h3>
-    <p class="nota" style="margin:0" id="nota-sug-editores" hidden>Regras que o Claude de cada editor tirou do CLAUDE.md dele. Aceita vira regra do time e entra em todo Claude, inclusive na estação. Dá para ajustar o texto antes.</p>
+    <p class="nota" style="margin:0" id="nota-sug-editores" hidden>Regras que o Claude de cada editor tirou do CLAUDE.md dele e as que a Bia Viral tirou do desempenho dos cortes. Aceita vira regra do time e entra em todo Claude, inclusive na estação. Dá para ajustar o texto antes.</p>
     <div class="alertas" id="sug-editores"></div>
     <h3 class="grupo">Ajustes que podem virar regra</h3>
     <p class="nota" style="margin:0">Pedidos de ajuste dos últimos 60 dias que ainda não viraram regra. Se o mesmo erro se repete, transforme em regra.</p>
@@ -801,6 +801,7 @@
 
 <dialog id="detalhe"><div class="modal" id="detalhe-corpo"></div></dialog>
 <dialog id="chat-sala" class="chat-sala" aria-label="Conversa com o seu Claude"><div id="chat-corpo"></div></dialog>
+<dialog id="chat-ag" class="chat-sala" aria-label="Conversa com um agente do time"><div id="chat-ag-corpo" style="display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:100%;min-height:0"></div></dialog>
 <dialog id="chat-ze" class="chat-sala" aria-label="Conversa com o Zé Algoritmo"><div id="chat-ze-corpo" style="display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:100%;min-height:0"></div></dialog>
 
 <script>
@@ -1570,7 +1571,7 @@
         await desenharSugEditores(); if (aceitar) carregar();
       };
       return h("div", { class: "alerta", style: "flex-wrap:wrap" },
-        h("span", { class: "chip" }, nomeEditor(sg.editor_slug) || sg.editor_slug), texto, tipo,
+        h("span", { class: "chip" }, sg.editor_slug ? nomeEditor(sg.editor_slug) || sg.editor_slug : (sg.origem || "agente").split(" (")[0]), texto, tipo,
         h("button", { class: "botao amarelo peq", onclick: () => decidir(true) }, "Aceitar"),
         h("button", { class: "botao leve peq", onclick: () => decidir(false) }, "Recusar"),
         sg.origem ? h("span", { class: "nota", style: "flex-basis:100%" }, sg.origem) : null);
@@ -1734,6 +1735,7 @@
         const [ss, sl, sq] = await Promise.all([db.rpc("cw_seo_situacao"), db.from("seo_sugestoes").select("*").neq("estado", "substituido").order("id", { ascending: false }).limit(60),
           db.from("seo_perguntas").select("*").order("id", { ascending: false }).limit(20)]);
         SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [] };
+        await recarregarAgentes();
       }
     }
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo (copa, sofá, jogos)"],
@@ -1905,6 +1907,8 @@
   const CHICO = { cabelo: "#2b1d14", pele: "#e0a97f", camisa: "#a543fa", calca: "#3b4a6b", estilo: 0, acessorio: "bone", bigode: true };
   // Zé Algoritmo: o agente de SEO do YouTube (analisa o canal todo dia às 22h)
   const ZE = { cabelo: "#9aa0aa", pele: "#f2c9a5", camisa: "#e8352d", calca: "#2a2a33", estilo: 0, acessorio: "oculos", barba: "curta" };
+  // Bia Viral: analista de desempenho dos cortes no Instagram (toda segunda às 9h)
+  const BIA = { cabelo: "#c58b4b", pele: "#e0a97f", camisa: "#ff6b5b", calca: "#3b4a6b", estilo: 2, acessorio: "fone", feminino: true };
   const cadeiraCostas = () => sprite("cadeira", 20, 13, (p) => { p(2, 0, 16, 8, "#4067c4"); p(2, 0, 16, 2, "#5a82dc"); p(14, 2, 4, 6, "#3355a6"); p(8, 8, 4, 3, "#2d3448"); p(4, 11, 12, 2, "#2d3448"); });
   const mesaEstacao = () => sprite("mesa", 46, 27, (p) => {
     p(0, 9, 46, 10, "#f4f5f7"); p(0, 9, 46, 2, "#ffffff"); p(0, 19, 46, 6, "#d6dae2"); p(2, 19, 42, 1, "#c3c8d2");
@@ -2048,8 +2052,9 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: true }])), cv = $("#sala-canvas"), T = TILE;
-    const mesaZe = P.mesas.find((m) => m.ed.npc); P.mesas = P.mesas.filter((m) => !m.ed.npc);   // a mesa do Zé Algoritmo na Edição
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Bia Viral", npc: "bia" }])), cv = $("#sala-canvas"), T = TILE;
+    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia");
+    P.mesas = P.mesas.filter((m) => !m.ed.npc);   // as mesas dos agentes (Zé Algoritmo e Bia Viral) na Edição
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
     const px = (x, y, w, hh, cor) => { c.fillStyle = cor; c.fillRect(Math.round(x) * SC, Math.round(y) * SC, Math.round(w) * SC, Math.round(hh) * SC); };
@@ -2190,7 +2195,7 @@
     P.salas.forEach((s) => { c.font = `800 ${5.4 * SC}px Inter, system-ui, sans-serif`; const lw = c.measureText(s.nome).width / SC + 10;
       px(s.x + s.w / 2 - lw / 2, s.y - 12, lw, 11, "#2a2440"); txt(s.nome, s.x + s.w / 2, s.y - 4.2, 5.4, "#ffffff", 800); });
     // ---- mesas da edição (uma por editor) e os bonequinhos
-    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }];
+    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }, { agente: "bia", x: mesaBia.x - 22, y: mesaBia.y - 18, w: 44, h: 50 }];
     const pessoas = [];
     // cada um que não está trabalhando ganha um lugar fixo (o mesmo enquanto ficar assim): quem está online vai jogar,
     // tomar café ou mexer no celular; quem está fora cochila nos sofás e poltronas
@@ -2218,6 +2223,13 @@
       px(mx - 9, my - 14, 18, 11, "#1c1c28");
       for (let k = 0; k < 5; k++) { const hb = 2 + ((k * 3 + Math.floor(f / 6)) % 6); px(mx - 7 + k * 3, my - 5 - hb, 2, hb, k === 4 ? "#ff4d4d" : "#ffffffaa"); }
       px(mx + 5, my - 13, 3, 2, "#ff0000"); px(mx + 6, my - 13, 1, 1, "#ffffff");   // o "play" do YouTube
+    }
+    {   // Bia Viral na mesa dela: monitor com o feed do Instagram (cores da marca e corações subindo)
+      const mx = mesaBia.x, my = mesaBia.y;
+      c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
+      px(mx - 9, my - 14, 18, 11, "#2a1b40"); px(mx - 9, my - 14, 18, 2, "#f25aa8"); px(mx - 9, my - 12, 18, 1, "#ffb800");
+      for (let k = 0; k < 3; k++) px(mx - 7 + k * 5, my - 9, 4, 4, ["#f25aa8", "#a543fa", "#ffb800"][k]);
+      const yc = my - 5 - (f % 12) / 3; px(mx + 5, yc, 2, 2, "#ff4d6d"); px(mx + 7, yc, 2, 2, "#ff4d6d"); px(mx + 6, yc + 1, 2, 2, "#ff4d6d");   // coração subindo
     }
     for (const m of P.mesas) {
       const st = estadoSala(m.ed), seed = hashSlug(m.ed.slug);
@@ -2279,6 +2291,10 @@
     px(ze.x - 7, ze.y, 14, 2, "#00000026");
     c.drawImage(bonecoCostas(ZE, f % 4 < 2 ? 1 : 2), (ze.x - 11) * SC, (ze.y - 24) * SC, 22 * SC, 27 * SC);
     c.drawImage(cadeiraCostas(), (ze.x - 10) * SC, (ze.y - 6) * SC, 20 * SC, 13 * SC);
+    const bia = { x: mesaBia.x, y: mesaBia.y + 22 };
+    px(bia.x - 7, bia.y, 14, 2, "#00000026");
+    c.drawImage(bonecoCostas(BIA, f % 6 < 3 ? 0 : 2), (bia.x - 11) * SC, (bia.y - 24) * SC, 22 * SC, 27 * SC);
+    c.drawImage(cadeiraCostas(), (bia.x - 10) * SC, (bia.y - 6) * SC, 20 * SC, 13 * SC);
     // plaquinhas e balões por cima de tudo
     if (noite) { c.fillStyle = "rgba(18,24,70,0.38)"; c.fillRect(0, 0, cv.width, cv.height);
       for (let x = 2 * T; x < P.W; x += 7 * T) { c.fillStyle = "rgba(255,226,140,0.22)"; c.beginPath(); c.arc((x + 0.5) * SC, (calc - 10) * SC, 18 * SC, 0, 6.283); c.fill(); } }
@@ -2299,6 +2315,20 @@
         const curto = balao.length > 26 ? balao.slice(0, 25) + "…" : balao, bw2 = c.measureText(curto).width / SC + 10, by2 = y - (p.sentado ? 50 : 50);
         px(x - bw2 / 2, by2, bw2, 11, alerta ? "#ffb800" : "#ffffff"); px(x - bw2 / 2, by2 + 11, bw2, 1, "#00000022"); px(x - 1, by2 + 11, 3, 2, alerta ? "#ffb800" : "#ffffff");
         txt(curto, x, by2 + 8, 4.6, "#2a1b40", 600);
+      }
+    }
+    // Bia Viral: plaquinha e balão
+    {
+      const bia2 = { x: mesaBia.x, y: mesaBia.y + 22 }, rb = ((SALA.ag || {}).relatorios || []).find((r) => r.agente === "bia");
+      c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
+      const lwB = c.measureText("Bia Viral").width / SC + 12;
+      px(bia2.x - lwB / 2, bia2.y + 6, lwB, 10, "#2a2440"); px(bia2.x - lwB / 2 + 3, bia2.y + 9.5, 4, 4, "#f25aa8"); txt("Bia Viral", bia2.x + 2.5, bia2.y + 13.6, 4.8, "#ffffff", 700);
+      const novas = rb && Date.now() - new Date(rb.criado) < 7 * 864e5 ? (rb.dados || {}).regras_novas || 0 : 0;
+      const falaB = novas ? `💡 ${novas} regra${novas > 1 ? "s" : ""} pro time` : (f % 240 < 70 ? "📊 análise toda segunda" : null);
+      if (falaB && SALA.ag) {
+        c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
+        const sE = P.salas[4], bwB = c.measureText(falaB).width / SC + 10, bxB = Math.max(sE.x + 2, Math.min(bia2.x - bwB / 2, sE.x + sE.w - bwB - 2)), byB = bia2.y - 50, corB = novas ? "#ffb800" : "#ffffff";
+        px(bxB, byB, bwB, 11, corB); px(bia2.x - 1, byB + 11, 3, 2, corB); txt(falaB, bxB + bwB / 2, byB + 8, 4.6, "#2a1b40", 600);
       }
     }
     // Zé Algoritmo: plaquinha e balão
@@ -2329,7 +2359,9 @@
     const lwD = c.measureText("Dinha").width / SC + 12;
     px(dinha.x - lwD / 2, rec.y + 47, lwD, 10, "#2a2440"); px(dinha.x - lwD / 2 + 3, rec.y + 50.5, 4, 4, "#f25aa8"); txt("Dinha", dinha.x + 2.5, rec.y + 54.6, 4.8, "#ffffff", 700);
     if (f % 160 < 55) {
-      const hh = new Date().getHours(), oi = f % 320 < 160 ? (hh < 12 ? "Bom dia! ☀️" : hh < 18 ? "Boa tarde! 👋" : "Boa noite! 🌙") : "Bem-vindo ao CW Studios!";
+      const hh = new Date().getHours(), rd = ((SALA.ag || {}).relatorios || []).find((r) => r.agente === "dinha" && r.dia === diaLocal());
+      const alertasD = rd ? (rd.dados || {}).alertas || 0 : 0;
+      const oi = f % 320 < 160 ? (hh < 12 ? "Bom dia! ☀️" : hh < 18 ? "Boa tarde! 👋" : "Boa noite! 🌙") : rd ? (alertasD ? `📋 ${alertasD} coisa${alertasD > 1 ? "s" : ""} pra hoje` : "📋 tudo em dia ✅") : "Bem-vindo ao CW Studios!";
       c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
       const bw3 = c.measureText(oi).width / SC + 10, bx3 = Math.min(dinha.x + 8, rec.x + rec.w - bw3 - 2), by3 = dinha.y - 28;   // ao lado da cabeça
       px(bx3, by3, bw3, 11, "#ffffff"); px(bx3 - 2, by3 + 7, 3, 2, "#ffffff"); txt(oi, bx3 + bw3 / 2, by3 + 8, 4.6, "#2a1b40", 600);
@@ -2600,6 +2632,99 @@
     SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [],
                  relatorios: Array.isArray(sr.data) ? sr.data : [] };
   }
+  // ---- chat com os agentes do time (Bia Viral, Dinha, Chico): mesmo jeito do Zé, cada um com seu assunto
+  const diaLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const AGENTES_CHAT = {
+    bia: { nome: "Bia Viral", cores: () => BIA, sub: "Desempenho dos cortes no Instagram · consulta ao vivo", campo: "relatorio", agora: "bia", rotuloRel: "Análise da semana",
+      oi: "Oi! Sou a Bia Viral. Toda segunda eu analiso os cortes do Instagram: o que viralizou, o que não foi e por quê. As regras que eu sugiro vão para o Padrão do time.",
+      atalhos: ["Qual foi o melhor corte da semana e por quê?", "Qual gancho funciona melhor?", "Qual o melhor horário para postar?", "Quantos seguidores ganhamos essa semana?"] },
+    dinha: { nome: "Dinha", cores: () => DINHA, sub: "Recepção · operação do CW Studios", campo: "resumo", agora: "dinha", rotuloRel: "Resumo do dia",
+      oi: "Oi! Sou a Dinha. Todo dia às 8h eu monto o resumo da operação: o que está atrasado, o que espera decisão e como está a meta.",
+      atalhos: ["O que está atrasado?", "O que vence essa semana?", "Quem está travado?", "Como está a meta de seguidores?"] },
+    chico: { nome: "Chico Moelas", cores: () => CHICO, sub: "Publicação nas redes", campo: "", agora: null,
+      oi: "Opa! Chico Moelas aqui. Eu checo cada corte que chega, escrevo a legenda e, depois de aprovado, posto nas redes.",
+      atalhos: ["O que está na fila?", "Deu erro em alguma postagem?", "O que foi postado essa semana?"] },
+  };
+  async function recarregarAgentes() {
+    const [r, q] = await Promise.all([db.from("agente_relatorios").select("*").order("dia", { ascending: false }).limit(90),
+      db.from("agente_perguntas").select("*").order("id", { ascending: false }).limit(90)]);
+    SALA.ag = { relatorios: Array.isArray(r.data) ? r.data : [], perguntas: Array.isArray(q.data) ? q.data : [] };
+  }
+  async function abrirChatAgente(ag) {
+    if (!["gestor", "producao", "editor"].includes(eu.papel)) return;
+    if (!SALA.ag) await recarregarAgentes();
+    SALA.agAtual = ag;
+    const dlg = $("#chat-ag");
+    if (!dlg.open) dlg.showModal();
+    desenharChatAgente(true);
+    clearInterval(SALA.agTimer);
+    SALA.agTimer = setInterval(async () => {
+      if (!dlg.open) return clearInterval(SALA.agTimer);
+      if (document.hidden || !SALA.ag.perguntas.some((q) => q.agente === SALA.agAtual && !q.resposta)) return;
+      const antes = SALA.ag.perguntas.filter((q) => q.resposta).length;
+      await recarregarAgentes();
+      if (SALA.ag.perguntas.filter((q) => q.resposta).length !== antes) desenharChatAgente(true);
+    }, 5000);
+  }
+  async function enviarAgente(texto) {
+    texto = String(texto || "").trim();
+    if (texto.length < 2) return;
+    const { error } = await db.rpc("cw_agente_perguntar", { p_agente: SALA.agAtual, p_texto: texto });
+    if (error) { alert(error.message); return; }
+    SALA.agNaHora = await dispararRobo("responder");
+    await recarregarAgentes(); desenharChatAgente(true);
+  }
+  function abrirRelatorioAgente(ag) {
+    const cfg = AGENTES_CHAT[ag], rels = SALA.ag.relatorios.filter((r) => r.agente === ag);
+    const dia = SALA.agDia && rels.some((r) => r.dia === SALA.agDia) ? SALA.agDia : (rels[0] || {}).dia, rel = rels.find((r) => r.dia === dia);
+    const sel = rels.length ? h("select", { "aria-label": "Dia", onchange: (ev) => { SALA.agDia = ev.target.value; abrirRelatorioAgente(ag); } },
+      rels.map((r) => h("option", { value: r.dia }, `${r.dia.slice(8, 10)}/${r.dia.slice(5, 7)}/${r.dia.slice(0, 4)}`))) : null;
+    if (sel && dia) sel.value = dia;
+    const d = (rel || {}).dados || {};
+    encher($("#detalhe-corpo"), h("h2", {}, `${cfg.rotuloRel} · ${cfg.nome}`),
+      h("div", { style: "display:flex;gap:8px;flex-wrap:wrap;align-items:center" }, sel,
+        cfg.agora && ["gestor", "producao"].includes(eu.papel) ? h("button", { class: "botao leve peq", onclick: async (ev) => { ev.target.disabled = true;
+          ev.target.textContent = (await dispararRobo(cfg.agora)) ? "Rodando… (uns 3 min)" : "Disparo na hora ainda não ligado"; } }, "▶ Rodar agora") : null),
+      rel ? mdSimples(d[cfg.campo] || "") : h("p", { class: "nota" }, "Ainda não tem relatório."),
+      (d.destaques || []).length ? h("div", { style: "display:grid;gap:4px" }, h("b", {}, "Destaques"), d.destaques.map((x) => h("div", { class: "nota" },
+        x.link ? h("a", { href: x.link, target: "_blank", rel: "noopener" }, x.titulo || "post") : x.titulo, " · ", x.por_que || ""))) : null,
+      (d.regras || []).length ? h("div", { style: "display:grid;gap:4px" }, h("b", {}, "Regras sugeridas para o Padrão do time"),
+        d.regras.map((x) => h("div", { class: "nota" }, "• ", h("span", { style: "color:var(--text)" }, x.texto), x.evidencia ? " — " + x.evidencia : "")),
+        eu.papel === "gestor" ? h("div", { class: "acoes" }, h("button", { class: "botao amarelo peq", onclick: () => { $("#detalhe").close(); $("#chat-ag").close(); trocarAba("padrao"); } }, "Aprovar no Padrão do time")) : null) : null,
+      h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
+  function desenharChatAgente(rolar) {
+    const ag = SALA.agAtual, cfg = AGENTES_CHAT[ag], corpo = $("#chat-ag-corpo");
+    const rasc = corpo.querySelector("textarea"), texto = rasc ? rasc.value : "";
+    const retrato = h("canvas", { class: "chat-retrato", width: 22, height: 35, "aria-hidden": "true" });
+    retrato.getContext("2d").drawImage(bonecoFrente(cfg.cores(), 0), 0, 0);
+    const conversa = SALA.ag.perguntas.filter((q) => q.agente === ag).slice().reverse();
+    const ultimo = SALA.ag.relatorios.find((r) => r.agente === ag);
+    const area = h("textarea", { placeholder: `Fale com ${cfg.nome === "Dinha" ? "a" : cfg.nome.startsWith("Bia") ? "a" : "o"} ${cfg.nome.split(" ")[0]}… (Enter envia)`, "aria-label": "Mensagem",
+      onkeydown: (ev) => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); enviarAgente(area.value); } } });
+    area.value = texto;
+    // a Dinha abre o chat com o resumo de hoje
+    const abertura = ag === "dinha" && ultimo && ultimo.dia === diaLocal() ? mdSimples((ultimo.dados || {}).resumo || "") : mdSimples(cfg.oi + (ultimo ? ` Meu último relatório é de ${ultimo.dia.slice(8, 10)}/${ultimo.dia.slice(5, 7)}.` : ""));
+    const msgs = h("div", { class: "esc-msgs" }, h("div", { class: "msg ia" }, abertura),
+      conversa.map((q) => [
+        h("div", { class: "msg editor" }, q.pergunta, h("span", { class: "quando" }, horaBR(q.criado).slice(-5) + (q.autor && q.autor !== eu.email ? " · " + q.autor.split("@")[0] : ""))),
+        q.resposta ? h("div", { class: "msg ia" }, mdSimples(q.resposta), h("span", { class: "quando" }, q.respondido_em ? horaBR(q.respondido_em).slice(-5) : ""))
+          : h("div", { class: "digitando", "aria-label": "Pensando" }, h("i"), h("i"), h("i"))]),
+      conversa.some((q) => !q.resposta) ? h("div", { class: "msg-sis" }, SALA.agNaHora === false ? "O disparo na hora não respondeu: a resposta vem na próxima passada do robô (até ~30 min)." : "Pensando… costuma levar menos de 1 minuto.") : null);
+    encher(corpo,
+      h("div", { class: "chat-topo" }, retrato,
+        h("div", { class: "chat-quem" }, h("b", {}, cfg.nome), h("span", { class: "nota" }, cfg.sub)),
+        cfg.campo ? h("button", { class: "botao leve peq", style: "background:rgba(255,255,255,.18);color:#fff;border:0", onclick: () => abrirRelatorioAgente(ag) }, "📋 " + cfg.rotuloRel) : null,
+        h("button", { class: "fechar", "aria-label": "Fechar", onclick: () => $("#chat-ag").close() }, "✕")),
+      msgs,
+      h("div", { class: "esc-escrever" },
+        h("div", { class: "ze-atalhos" }, cfg.atalhos.map((t) => h("button", { type: "button", onclick: () => enviarAgente(t) }, t)),
+          ag === "dinha" && meuSlug() ? [h("button", { type: "button", onclick: () => { $("#chat-ag").close(); abrirChatSala(); } }, "💬 Falar com meu Claude"),
+            h("button", { type: "button", onclick: abrirPersonalizar }, "🎨 Meu bonequinho")] : null),
+        area, h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: () => enviarAgente(area.value) }, "Enviar"))));
+    if (rolar) msgs.scrollTop = msgs.scrollHeight;
+  }
   // ---- chat com o Zé: pergunta e resposta em sequência; ele consulta o canal ao vivo quando precisa
   const ATALHOS_ZE = ["Como foram os últimos 7 dias?", "Quais vídeos mais cresceram na busca este mês?", "De onde vêm nossas views?", "O que você mudaria primeiro?"];
   async function abrirChatZe() {
@@ -2783,6 +2908,7 @@
       h("div", { class: "acoes" },
         pode ? h("button", { class: "botao amarelo", onclick: () => { $("#detalhe").close(); trocarAba("publicacao"); } }, conta("aguardando") ? `Aprovar ${conta("aguardando")} corte(s)` : "Ir para a Publicação") : null,
         pode ? h("button", { class: "botao leve", onclick: async () => { $("#detalhe").close(); trocarAba("publicacao"); setTimeout(abrirSubirCortes, 400); } }, "⬆ Subir cortes") : null,
+        h("button", { class: "botao leve", onclick: () => { $("#detalhe").close(); abrirChatAgente("chico"); } }, "💬 Conversar com o Chico"),
         h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
   }
@@ -2791,7 +2917,8 @@
     const x = (ev.clientX - r.left) * (cv.width / r.width) / SC, y = (ev.clientY - r.top) * (cv.height / r.height) / SC;
     const alvo = SALA.alvos.slice().reverse().find((a) => x >= a.x && x <= a.x + a.w && y >= a.y && y <= a.y + a.h);
     if (!alvo) return;
-    if (alvo.dinha) return abrirDinha();
+    if (alvo.dinha) return ["gestor", "producao", "editor"].includes(eu.papel) ? abrirChatAgente("dinha") : abrirDinha();
+    if (alvo.agente) return abrirChatAgente(alvo.agente);
     if (alvo.chico) return abrirChico();
     if (alvo.seo) return abrirChatZe();
     if (alvo.ed.slug === meuSlug()) return abrirChatSala();   // o editor clica no próprio bonequinho (ou mesa) e conversa com o Claude dele
@@ -3182,6 +3309,7 @@
         } catch (e) { it.estado.textContent = "✗ " + (e.message || e); }
       }
       botao.disabled = false;
+      if (itens.some((i) => i.feito)) dispararRobo("responder");   // o Chico faz o pré-voo (checagem + legenda) agora
       await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
     } }, "Subir");
     encher($("#detalhe-corpo"), h("h2", {}, "Subir cortes"),
@@ -3253,7 +3381,9 @@
   }
   function cartaoPub(x) {
     const [rot, tom] = ESTADO_PUB[x.estado] || [x.estado, "tom-neutro"];
-    const avisos = avisosPub(x);
+    const pv = x.prevoo || {};
+    const avisos = avisosPub(x).concat((pv.avisos || []).map((t) => [t + " (Chico)", "tom-aviso"]));
+    if (x.estado === "aguardando" && x.drive_id && !x.prevoo) avisos.unshift(["Chico checando o vídeo e escrevendo a legenda…", "tom-neutro"]);
     return h("button", { class: "pub-card", onclick: () => abrirPub(x) },
       h("span", { class: "pub-capa" }, x.previa ? h("img", { src: x.previa, alt: "Quadros do corte " + x.titulo }) : h("div", { class: "pub-previa" }),
         h("a", { class: "pub-play", href: linkVideo(x), target: "_blank", rel: "noopener", onclick: (ev) => ev.stopPropagation(),
@@ -3361,6 +3491,13 @@
       x.erro && x.estado !== "postado" && h("div", { class: x.estado === "erro" ? "aviso erro" : "aviso" }, x.erro),
       x.estado === "postado" || Object.keys(x.resultados || {}).length ? chipsRedes(x) : null,
       pode && aguardando ? [
+        (x.prevoo || {}).erro ? h("div", { class: "aviso" }, "O Chico não conseguiu checar este corte: " + x.prevoo.erro) : null,
+        (x.prevoo || {}).legenda ? h("div", { class: "subir-item", style: "background:var(--surface-2)" },
+          h("b", {}, "✍️ Pré-voo do Chico"), x.prevoo.resumo ? h("span", { class: "nota" }, x.prevoo.resumo) : null,
+          (x.prevoo.avisos || []).length ? h("div", { class: "pub-avisos" }, x.prevoo.avisos.map((t) => h("span", { class: "chip tom-aviso" }, "⚠ " + t))) : h("span", { class: "nota" }, "Checagem técnica sem problemas."),
+          legenda.value.trim() === x.prevoo.legenda.trim() ? h("span", { class: "nota" }, "A legenda abaixo foi escrita por ele. Ajuste o que quiser antes de aprovar.")
+            : h("div", { class: "acoes" }, h("span", { class: "nota" }, "Ele sugeriu outra legenda:"), h("button", { class: "botao leve peq", onclick: () => { legenda.value = x.prevoo.legenda; legenda.dispatchEvent(new Event("input")); if (x.prevoo.titulo_youtube) tyt.value = x.prevoo.titulo_youtube; } }, "Usar a do Chico")),
+          x.prevoo.transcricao ? h("details", {}, h("summary", { class: "nota", style: "cursor:pointer" }, "O que é falado no corte"), h("p", { class: "nota", style: "margin:4px 0 0" }, x.prevoo.transcricao)) : null) : null,
         h("label", { for: "pub-legenda" }, "Legenda (Instagram e TikTok; vai na descrição do YouTube)", legenda, contLeg),
         h("label", { for: "pub-tyt" }, "Título no YouTube", tyt),
         h("fieldset", { style: "border:0;padding:0;margin:0;display:flex;gap:14px;flex-wrap:wrap" }, h("legend", { class: "nota" }, "Postar em"),
