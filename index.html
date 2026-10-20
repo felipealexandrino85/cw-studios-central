@@ -1530,6 +1530,8 @@
       st.visto ? h("span", { class: "nota" }, "passou " + ha(st.visto)) : h("span", { class: "nota" }, "ainda não rodou"),
       ["drive", "instagram", "tiktok", "youtube"].map((k) => h("span", { class: "chip " + (st[k] ? "tom-ok" : "tom-neutro") },
         `${ok(k)} ${{ drive: "Google Drive", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube" }[k]}`)),
+      st.instagram_dias != null && st.instagram_dias < 15 && h("span", { class: "chip tom-aviso" },
+        st.instagram_dias <= 0 ? "Acesso do Instagram venceu: renove" : `Acesso do Instagram vence em ${st.instagram_dias} dias`),
       !st.drive && h("span", { class: "nota" }, "Enquanto as redes não estiverem conectadas, os aprovados ficam na fila e saem assim que conectar."));
     encher($("#pub-seg"), SEG_PUB.map(([id, nome, est]) => h("button", { role: "tab", "aria-selected": String(PUB.seg === id), onclick: () => { PUB.seg = id; desenharPublicacao(); } },
       nome, h("em", {}, PUB.lista.filter((x) => est.includes(x.estado)).length))));
