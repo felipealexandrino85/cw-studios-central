@@ -647,6 +647,12 @@
     <div class="grade-cartoes" id="bib-lista"></div>
   </section>
 
+  <section id="aba-servidor" hidden>
+    <header class="cabeca"><p class="kicker">Gestão</p><h1>Servidor</h1>
+      <p class="sub">O computador na nuvem onde os editores rodam o Claude sem usar a máquina deles. Google Cloud (cw-cast-dashboard), 8 núcleos e 32 GB. Liga sozinho às 7h30 e desliga às 20h30, de segunda a sexta.</p></header>
+    <div id="srv-corpo" style="display:grid;gap:16px"></div>
+  </section>
+
   <section id="aba-ferramentas" hidden>
     <header class="cabeca"><p class="kicker">Biblioteca de APIs</p><h1>Ferramentas</h1>
       <p class="sub">APIs da empresa que o Claude de cada editor usa pelo conector cw-studios, sem ver chave nenhuma. Cada geração conta no limite do mês do editor.</p></header>
@@ -824,7 +830,7 @@
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
     gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
-             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["gestao", "Pessoas"]]]],
+             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
     producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
     editor: [["Meu trabalho", [["meudia", "Meu dia"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
@@ -844,6 +850,7 @@
     pedir: "M12 8v8M8 12h8M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
     cast: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8",
     kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
+    servidor: "M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
     publicacao: "M22 2 11 13M22 2l-7 20-4-9-9-4z",
     sala: "M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5M9 11h.01M15 11h.01",
@@ -1099,7 +1106,7 @@
   }
 
   function desenhar() {
-    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
+    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, servidor: desenharServidor, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -3910,6 +3917,64 @@
     $("#detalhe").showModal();
   }
   const KITS = { "cardapio-web": "KIT - Cardápio Web", "cw-cast": "KIT - CW Cast" };
+  // ---------------------------------------------------------------- servidor na nuvem (gestão): o pulso que o próprio servidor manda
+  const SRV = { timer: null, preco_h: 0.268, disco_mes: 20 };
+  async function desenharServidor() {
+    clearInterval(SRV.timer);
+    SRV.timer = setInterval(() => { if (aba === "servidor" && !document.hidden) desenharServidor(); else if (aba !== "servidor") clearInterval(SRV.timer); }, 15000);
+    const desde12 = new Date(Date.now() - 12 * 3600e3).toISOString(), mes = new Date(); mes.setDate(1); mes.setHours(0, 0, 0, 0);
+    const [ult, serie, nMes, convs, contas] = await Promise.all([
+      db.from("servidor_metricas").select("*").order("ts", { ascending: false }).limit(1).maybeSingle(),
+      db.from("servidor_metricas").select("ts,cpu,ram").gte("ts", desde12).order("ts").limit(2000),
+      db.from("servidor_metricas").select("ts", { count: "exact", head: true }).gte("ts", mes.toISOString()),
+      db.from("esc_conversas").select("id,editor_slug,titulo,estado,atualizada,trabalho").eq("maquina", "servidor").order("atualizada", { ascending: false }).limit(15),
+      db.from("servidor_conta").select("editor_slug,estado,atualizado")]);
+    const u = ult.data, d = (u && u.dados) || {}, idade = u ? (Date.now() - new Date(u.ts)) / 1000 : Infinity;
+    const agora = new Date(), hBr = (agora.getUTCHours() + 21) % 24 + agora.getUTCMinutes() / 60, diaBr = new Date(Date.now() - 3 * 3600e3).getUTCDay();
+    const noHorario = diaBr >= 1 && diaBr <= 5 && hBr >= 7.5 && hBr < 20.5;
+    const [stTxt, stTom] = idade < 90 ? ["Ligado", "tom-ok"] : noHorario ? ["Sem sinal há " + ha(u ? u.ts : null).replace(/^há /, ""), "tom-erro"] : ["Desligado (fora do horário)", "tom-neutro"];
+    const medidor = (rot, v, extra) => h("div", { class: "card", style: "display:grid;gap:6px;min-width:0" },
+      h("div", { style: "display:flex;justify-content:space-between;gap:8px" }, h("b", {}, rot), h("span", {}, v == null ? "–" : v + "%")),
+      h("div", { style: "height:10px;border-radius:6px;background:var(--surface-2);overflow:hidden" },
+        h("div", { style: `height:100%;width:${Math.min(100, v || 0)}%;background:${v > 85 ? "var(--critico-tx)" : v > 65 ? "#e0a100" : "var(--brand)"}` })),
+      extra ? h("span", { class: "nota" }, extra) : null);
+    const pts = (serie.data || []), larg = 600, alt = 90;
+    const linha = (campo) => pts.map((m, i) => `${(i / Math.max(1, pts.length - 1)) * larg},${alt - (Number(m[campo]) || 0) / 100 * alt}`).join(" ");
+    const grafico = pts.length > 1 ? h("div", { class: "card", style: "display:grid;gap:6px;min-width:0" }, h("b", {}, "Últimas 12 horas"),
+      h("div", { style: "overflow-x:auto" }, (() => { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", `0 0 ${larg} ${alt}`); svg.setAttribute("style", "width:100%;min-width:320px;height:110px");
+        svg.innerHTML = `<polyline fill="none" stroke="var(--brand)" stroke-width="2" points="${linha("cpu")}"/><polyline fill="none" stroke="#e0a100" stroke-width="2" stroke-dasharray="5 4" points="${linha("ram")}"/>`;
+        return svg; })()),
+      h("span", { class: "nota" }, "Linha cheia: processador · tracejada: memória. Buracos = servidor desligado.")) : null;
+    const horasMes = ((nMes.count || 0) * 30) / 3600, custo = horasMes * SRV.preco_h + SRV.disco_mes * (agora.getDate() / 30);
+    const contaDe = Object.fromEntries((contas.data || []).map((c) => [c.editor_slug, c]));
+    const proc = (r) => Object.entries(r || {}).map(([t, x]) => h("span", { class: "chip " + (t === "claude" ? "tom-ok" : "tom-neutro") },
+      `${{ claude: "Claude", ffmpeg: "ffmpeg", render: "render", python: "script" }[t] || t}${x.n > 1 ? " ×" + x.n : ""} · ${Math.round(x.cpu)}% · ${duracao(x.seg)}`));
+    const eds = d.editores || [];
+    encher($("#srv-corpo"),
+      h("div", { style: "display:flex;gap:10px;flex-wrap:wrap;align-items:center" }, h("span", { class: "chip " + stTom }, stTxt),
+        u && idade < 90 ? h("span", { class: "nota" }, `ligado há ${duracao(d.ligado_ha_s)} · carga ${(d.carga || []).join(" / ")} · ${d.nucleos || "?"} núcleos`) : null,
+        h("span", { class: "chip " + (d.drive ? "tom-ok" : "tom-erro") }, d.drive ? "Drive conectado" : "Drive sem acesso"),
+        h("span", { class: "nota" }, `Este mês: ${horasMes.toFixed(0)} h ligado · ~US$ ${custo.toFixed(2)} até agora`)),
+      h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" },
+        medidor("Processador", u && idade < 90 ? u.cpu : null), medidor("Memória", u && idade < 90 ? u.ram : null, d.ram_gb ? `de ${d.ram_gb} GB` : null),
+        medidor("Disco", u ? u.disco : null, d.disco_gb ? `${d.disco_livre_gb} GB livres de ${d.disco_gb} GB` : null)),
+      grafico,
+      h("h3", { class: "grupo" }, "Editores no servidor"),
+      h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Editor", "Estação", "Conta Claude", "Agora", "Plugin", ""].map((t) => h("th", {}, t)))),
+        h("tbody", {}, eds.length ? eds.map((e) => h("tr", {}, td(h("b", {}, nomeEditor(e.slug) || e.slug)),
+          td(h("span", { class: "chip " + (e.estacao === "active" ? "tom-ok" : "tom-erro") }, e.estacao === "active" ? "ligada" : e.estacao || "?")),
+          td(e.conta_claude ? h("span", { class: "chip tom-ok" }, "ligada") : h("span", { class: "chip tom-aviso" }, contaDe[e.slug] && contaDe[e.slug].estado === "link" ? "esperando o código" : "falta ligar")),
+          td(Object.keys(e.processos || {}).length ? h("div", { class: "chips" }, proc(e.processos)) : h("span", { class: "nota" }, "parado")),
+          td(e.plugin ? "v" + e.plugin : "–"),
+          h("td", {}, (e.log || []).length ? h("details", {}, h("summary", {}, "registro"), h("pre", { style: "white-space:pre-wrap;font-size:12px;margin:6px 0 0;max-width:520px" }, e.log.join("\n"))) : null)))
+          : [vazioLinha(6, u ? "Nenhum editor no servidor ainda." : "O servidor ainda não mandou sinal.")]))),
+      h("h3", { class: "grupo" }, "Conversas rodando no servidor"),
+      h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Conversa", "Editor", "Situação", "Atualizada"].map((t) => h("th", {}, t)))),
+        h("tbody", {}, (convs.data || []).length ? convs.data.map((c) => { const [rot, tom] = ESTADO_CONV[c.estado] || [c.estado, "tom-neutro"];
+          return h("tr", {}, td(h("b", {}, c.titulo)), td(nomeEditor(c.editor_slug)), td(h("span", { class: "chip " + tom }, rot)), td(ha(c.atualizada))); })
+          : [vazioLinha(4, "Nenhuma conversa no servidor ainda. O editor escolhe “servidor” ao abrir uma Nova conversa.")]))));
+  }
   async function desenharKit() {
     if (Date.now() - BIB.carregado > 30000) await carregarBiblioteca();
     const oficial = D.kit.filter((k) => k.no_kit).sort((a, b) => a.nome_kit.localeCompare(b.nome_kit));
