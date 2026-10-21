@@ -3627,7 +3627,40 @@
       !on ? h("span", { class: "nota" }, escPodeMandar()
         ? 'Para ligar, peça ao Claude no seu computador: "liga minha estação do escritório". Ela continua ligada depois, sozinha.'
         : "A estação deste editor não está ligada agora.") : null,
-      h("button", { class: "botao leve peq", title: "Skills, agentes e conectores que o Claude da estação carrega", onclick: () => abrirCapacidades(ESC.slug) }, "🧠 O que o Claude sabe"));
+      h("button", { class: "botao leve peq", title: "Skills, agentes e conectores que o Claude da estação carrega", onclick: () => abrirCapacidades(ESC.slug) }, "🧠 O que o Claude sabe"),
+      escPodeMandar() && ESC.estacoes.some((e) => e.maquina === "servidor")
+        ? h("button", { class: "botao leve peq", title: "O servidor roda o Claude com a sua conta: ligue uma vez", onclick: abrirContaServidor }, "☁️ Minha conta Claude no servidor") : null);
+  }
+  // ---- conta Claude do editor no servidor: link do login do Claude → o editor cola o código → o token fica só no servidor
+  async function abrirContaServidor() {
+    const corpo = $("#detalhe-corpo"); let timer = null, ultimo = null;
+    const ler = async () => (await db.from("servidor_conta").select("estado,link,mensagem,atualizado").eq("editor_slug", meuSlug()).maybeSingle()).data;
+    const desenhar = (r) => {
+      const est = r ? r.estado : "nada", codigo = h("input", { type: "text", placeholder: "Cole aqui o código", autocomplete: "off", style: "flex:1;min-width:0" });
+      encher(corpo, h("h2", {}, "☁️ Sua conta Claude no servidor"),
+        h("p", { class: "nota", style: "margin:0" }, "No servidor, o Claude roda com a sua conta, como no seu computador: gasta o seu plano e carrega os agentes do Kit. O acesso fica guardado só no servidor; ninguém da gestão vê."),
+        est === "ok" ? h("div", { class: "aviso", style: "background:var(--surface-2);color:inherit" }, "✓ " + (r.mensagem || "Conta ligada.")) : null,
+        est === "erro" ? h("div", { class: "aviso erro" }, r.mensagem || "Não deu certo.") : null,
+        est === "pedido" || (r && r.mensagem === "conferindo o código…" && est === "codigo") || est === "codigo"
+          ? h("div", { class: "nota" }, est === "pedido" ? "Abrindo o login no servidor… (alguns segundos)" : "Conferindo o código…") : null,
+        est === "link" ? h("div", { style: "display:grid;gap:10px" },
+          h("div", {}, "1. ", h("a", { href: r.link, target: "_blank", rel: "noopener", class: "botao amarelo peq" }, "Abrir o login do Claude"), " e entre com a sua conta."),
+          h("div", {}, "2. Copie o código que aparecer e cole aqui:"),
+          h("div", { style: "display:flex;gap:8px" }, codigo, h("button", { class: "botao amarelo", onclick: async () => {
+            const { error } = await db.rpc("cw_srv_conta_codigo", { p_codigo: codigo.value }); if (error) return alert(error.message); acompanhar(); } }, "Enviar"))) : null,
+        h("div", { class: "acoes" },
+          ["nada", "ok", "erro"].includes(est) || (est === "link" && Date.now() - new Date(r.atualizado) > 600000)
+            ? h("button", { class: "botao " + (est === "ok" ? "leve" : "amarelo"), onclick: async () => {
+                const { error } = await db.rpc("cw_srv_conta_pedir"); if (error) return alert(error.message); acompanhar(); } }, est === "ok" ? "Ligar outra conta" : "Ligar minha conta") : null,
+          h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    };
+    const acompanhar = () => { clearInterval(timer); timer = setInterval(async () => {
+      if (!$("#detalhe").open) return clearInterval(timer);
+      const r = await ler(), chave = r ? r.estado + (r.mensagem || "") + (r.link || "") : "";
+      if (chave !== ultimo) { ultimo = chave; desenhar(r); }   // só redesenha se mudou (não apaga o código sendo colado)
+      if (r && ["ok", "erro"].includes(r.estado)) clearInterval(timer); }, 2000); };
+    desenhar(await ler());
+    $("#detalhe").showModal();
   }
   // ---- o que o Claude enxerga: o normal do editor × o da estação (o que falta, e por quê)
   async function abrirCapacidades(slug) {
