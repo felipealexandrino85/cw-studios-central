@@ -647,6 +647,12 @@
     <div class="grade-cartoes" id="bib-lista"></div>
   </section>
 
+  <section id="aba-conhecimento" hidden>
+    <header class="cabeca"><p class="kicker">Gestão</p><h1>Conhecimento</h1>
+      <p class="sub">O que o Claude do time aprende com as correções. Todo dia às 20h a Lia lê o que foi corrigido (pedidos de ajuste, recusas na Publicação e o que os editores corrigem nas conversas com o Claude) e transforma em lições. Lição ativa chega sozinha ao Claude de cada editor do kit, no computador e no servidor.</p></header>
+    <div id="con-corpo" style="display:grid;gap:16px"></div>
+  </section>
+
   <section id="aba-servidor" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Servidor</h1>
       <p class="sub">O computador na nuvem onde os editores rodam o Claude sem usar a máquina deles. Google Cloud (cw-cast-dashboard), 8 núcleos e 32 GB. Liga sozinho às 7h30 e desliga às 20h30, de segunda a sexta.</p></header>
@@ -830,7 +836,7 @@
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
     gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
-             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
+             ["Gestão", [["relatorio", "Relatório"], ["padrao", "Padrão do time"], ["kit", "Kit do time"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
     producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]]],
     editor: [["Meu trabalho", [["meudia", "Meu dia"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
@@ -851,6 +857,7 @@
     cast: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8",
     kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
     servidor: "M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01",
+    conhecimento: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-1.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
     publicacao: "M22 2 11 13M22 2l-7 20-4-9-9-4z",
     sala: "M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5M9 11h.01M15 11h.01",
@@ -1106,7 +1113,7 @@
   }
 
   function desenhar() {
-    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, servidor: desenharServidor, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
+    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: desenharKit, servidor: desenharServidor, conhecimento: desenharConhecimento, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: desenharPadrao, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1915,6 +1922,7 @@
   // Zé Algoritmo: o agente de SEO do YouTube (analisa o canal todo dia às 22h)
   const ZE = { cabelo: "#9aa0aa", pele: "#f2c9a5", camisa: "#e8352d", calca: "#2a2a33", estilo: 0, acessorio: "oculos", barba: "curta" };
   // Doti: analista de desempenho dos cortes no Instagram (toda segunda às 9h)
+  const LIA = { cabelo: "#1f1a2e", pele: "#8d5a3b", camisa: "#2f8f5b", calca: "#2a2a33", estilo: 3, acessorio: "oculos", feminino: true };
   const BIA = { cabelo: "#c58b4b", pele: "#e0a97f", camisa: "#ff6b5b", calca: "#3b4a6b", estilo: 2, acessorio: "fone", feminino: true };
   const cadeiraCostas = () => sprite("cadeira", 20, 13, (p) => { p(2, 0, 16, 8, "#4067c4"); p(2, 0, 16, 2, "#5a82dc"); p(14, 2, 4, 6, "#3355a6"); p(8, 8, 4, 3, "#2d3448"); p(4, 11, 12, 2, "#2d3448"); });
   const mesaEstacao = () => sprite("mesa", 46, 27, (p) => {
@@ -2658,6 +2666,9 @@
     dinha: { nome: "Dinha", cores: () => DINHA, sub: "Recepção · operação do CW Studios", campo: "resumo", agora: "dinha", rotuloRel: "Resumo do dia",
       oi: "Oi! Sou a Dinha. Todo dia às 8h eu monto o resumo da operação: o que está atrasado, o que espera decisão e como está a meta.",
       atalhos: ["O que está atrasado?", "O que vence essa semana?", "Quem está travado?", "Como está a meta de seguidores?"] },
+    lia: { nome: "Lia", cores: () => LIA, sub: "Aprende com as correções do time", campo: "relatorio", agora: "lia", rotuloRel: "Última leitura",
+      oi: "Oi! Sou a Lia. Todo dia às 20h eu leio o que o time corrigiu e transformo em lições para o Claude de todo mundo não repetir o erro. Me pergunta o que eu aprendi.",
+      atalhos: ["O que você aprendeu essa semana?", "Qual erro mais se repete?", "Quais lições ativaram sozinhas?", "Tem alguma contradição entre lições?"] },
     chico: { nome: "Chico Moelas", cores: () => CHICO, sub: "Publicação nas redes", campo: "", agora: null,
       oi: "Opa! Chico Moelas aqui. Eu checo cada corte que chega, escrevo a legenda e, depois de aprovado, posto nas redes.",
       atalhos: ["O que está na fila?", "Deu erro em alguma postagem?", "O que foi postado essa semana?"] },
@@ -3917,6 +3928,73 @@
     $("#detalhe").showModal();
   }
   const KITS = { "cardapio-web": "KIT - Cardápio Web", "cw-cast": "KIT - CW Cast" };
+  // ---------------------------------------------------------------- conhecimento (gestão): correções → Lia → lições → Claude do time
+  const CON = { kit: "todos", estado: "sugerida" };
+  async function desenharConhecimento() {
+    const [lic, cfg, rel] = await Promise.all([
+      db.from("conhecimento").select("*").neq("estado", "descartada").order("ocorrencias", { ascending: false }).order("id", { ascending: false }).limit(500),
+      db.rpc("cw_conhecimento_config"),
+      db.from("agente_relatorios").select("dia,dados").eq("agente", "lia").order("dia", { ascending: false }).limit(60)]);
+    const L = lic.data || [], C = cfg.data || { auto: true, limiar: 3 }, R = rel.data || [];
+    const ativas = L.filter((l) => l.estado === "ativa"), sug = L.filter((l) => l.estado === "sugerida");
+    const filtrar = (xs) => xs.filter((l) => CON.kit === "todos" || (CON.kit === "geral" ? !l.kit : l.kit === CON.kit));
+    const kitNome = (k) => k ? KITS[k] : "Todos os kits";
+    const auto = h("input", { type: "checkbox", checked: C.auto, onchange: async (ev) => { const { error } = await db.rpc("cw_conhecimento_config", { p_auto: ev.target.checked }); if (error) alert(error.message); desenharConhecimento(); } });
+    const limiar = h("select", { onchange: async (ev) => { const { error } = await db.rpc("cw_conhecimento_config", { p_limiar: +ev.target.value }); if (error) alert(error.message); desenharConhecimento(); } },
+      [2, 3, 4, 5, 8].map((n) => h("option", { value: n }, `${n} vezes`)));
+    limiar.value = C.limiar;
+    const decidir = async (l, estado, extra) => { const { error } = await db.rpc("cw_conhecimento_decidir", { p_id: l.id, p_estado: estado, ...(extra || {}) }); if (error) return alert(error.message); desenharConhecimento(); };
+    const cartao = (l) => h("div", { class: "card", style: "display:grid;gap:8px;min-width:0" },
+      h("div", { class: "chips" }, h("span", { class: "chip" }, kitNome(l.kit)), l.categoria ? h("span", { class: "chip tom-neutro" }, MOTIVOS[l.categoria] || l.categoria) : null,
+        l.tipo ? h("span", { class: "chip tom-neutro" }, TIPOS[l.tipo] || l.tipo) : null,
+        h("span", { class: "chip " + (l.ocorrencias >= C.limiar ? "tom-aviso" : "tom-neutro") }, `${l.ocorrencias}× corrigido`),
+        l.estado === "ativa" ? h("span", { class: "chip tom-ok" }, l.auto ? "Aprendeu sozinha" : "Ativada pela gestão") : null,
+        l.estado === "pausada" ? h("span", { class: "chip tom-neutro" }, "Pausada") : null),
+      h("b", { style: "font-weight:600" }, l.texto),
+      l.alvo ? h("span", { class: "nota" }, "Devia ter acertado: " + l.alvo) : null,
+      (l.evidencias || []).length ? h("details", {}, h("summary", {}, `De onde veio (${l.evidencias.length})`),
+        h("div", { style: "display:grid;gap:6px;margin-top:6px" }, l.evidencias.map((e) => h("div", { class: "nota" },
+          h("b", {}, `${{ estacao: "Estação", claude: "Direto no Claude", ajuste: "Pedido de ajuste", publicacao: "Recusa na Publicação" }[e.fonte] || e.fonte}`),
+          ` · ${nomeEditor(e.editor) || e.editor || ""} · ${e.quando ? new Date(e.quando).toLocaleDateString("pt-BR") : ""} · ${e.ref || ""}: “${e.texto || ""}”`)))) : null,
+      h("div", { class: "acoes", style: "margin:0" },
+        l.estado !== "ativa" ? h("button", { class: "botao amarelo peq", onclick: () => decidir(l, "ativa") }, "Ativar") : h("button", { class: "botao leve peq", onclick: () => decidir(l, "pausada") }, "Pausar"),
+        h("button", { class: "botao leve peq", onclick: () => editarLicao(l, decidir) }, "Editar"),
+        h("button", { class: "botao perigo peq", onclick: () => decidir(l, "descartada") }, "Descartar")));
+    const ultimo = R[0], lidas = R.slice(0, 14).reverse();
+    const maxL = Math.max(1, ...lidas.map((r) => r.dados.lidas || 0));
+    const filtros = h("div", { class: "chips" }, [["todos", "Tudo"], ["cw-cast", "KIT - CW Cast"], ["cardapio-web", "KIT - Cardápio Web"], ["geral", "Vale para todos"]].map(([v, t]) =>
+      h("button", { class: "chip" + (CON.kit === v ? " tom-ok" : ""), style: "cursor:pointer;border:0", onclick: () => { CON.kit = v; desenharConhecimento(); } }, t)));
+    const abas = h("div", { class: "chips" }, [["sugerida", `Esperando você (${sug.length})`], ["ativa", `Ativas (${ativas.length})`], ["pausada", `Pausadas (${L.filter((l) => l.estado === "pausada").length})`]].map(([v, t]) =>
+      h("button", { class: "chip" + (CON.estado === v ? " tom-ok" : ""), style: "cursor:pointer;border:0", onclick: () => { CON.estado = v; desenharConhecimento(); } }, t)));
+    const lista = filtrar(L.filter((l) => l.estado === CON.estado));
+    encher($("#con-corpo"),
+      h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px" },
+        [["Lições ativas", ativas.length, `${ativas.filter((l) => l.auto).length} aprendidas sozinha`], ["Esperando você", sug.length, "sugeridas pela Lia"],
+         ["Correções lidas", R.reduce((t, r) => t + (r.dados.lidas || 0), 0), "nos últimos 60 dias"], ["Última leitura", ultimo ? new Date(ultimo.dia + "T12:00").toLocaleDateString("pt-BR") : "–", ultimo ? `${ultimo.dados.novas || 0} novas · ${ultimo.dados.reforcos || 0} reforços · ${ultimo.dados.ativadas || 0} ativadas` : "ainda não rodou"]]
+          .map(([t, v, n]) => h("div", { class: "card", style: "display:grid;gap:2px" }, h("span", { class: "nota" }, t), h("b", { style: "font-size:1.6rem" }, String(v)), h("span", { class: "nota" }, n)))),
+      h("div", { class: "card", style: "display:flex;gap:16px;flex-wrap:wrap;align-items:center" },
+        h("label", { style: "display:flex;gap:8px;align-items:center" }, auto, h("b", {}, "Aprender sozinha")),
+        h("label", { style: "display:flex;gap:8px;align-items:center" }, "Ativa quando o mesmo erro aparece", limiar),
+        h("span", { class: "nota", style: "flex:1 1 260px" }, C.auto ? "Lição que se repete ativa sozinha e passa a valer para o Claude do kit. Você pode pausar qualquer uma." : "Desligado: toda lição espera você ativar."),
+        h("button", { class: "botao leve peq", onclick: async () => { const ok = await dispararRobo("lia"); alert(ok ? "A Lia começou a ler as correções. Em alguns minutos aparece aqui." : "Não consegui chamar a Lia agora."); } }, "Ler as correções agora"),
+        h("button", { class: "botao amarelo peq", onclick: () => abrirChatAgente("lia") }, "💬 Conversar com a Lia")),
+      lidas.length > 1 ? h("div", { class: "card", style: "display:grid;gap:6px" }, h("b", {}, "Correções por dia (o time corrigindo menos = o Claude aprendendo)"),
+        h("div", { style: "display:flex;gap:4px;align-items:flex-end;height:80px" }, lidas.map((r) => h("div", { title: `${r.dia}: ${r.dados.lidas || 0}`,
+          style: `flex:1;min-width:6px;background:var(--brand);border-radius:4px 4px 0 0;height:${Math.max(3, (r.dados.lidas || 0) / maxL * 100)}%` })))) : null,
+      ultimo && ultimo.dados.relatorio ? h("details", { class: "card" }, h("summary", {}, h("b", {}, "O que a Lia escreveu na última leitura")), h("div", { class: "md" }, mdSimples(ultimo.dados.relatorio))) : null,
+      h("div", { style: "display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between" }, abas, filtros),
+      lista.length ? h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px" }, lista.map(cartao))
+        : h("div", { class: "vazio" }, CON.estado === "sugerida" ? "Nada esperando você. A Lia lê as correções todo dia às 20h." : "Nenhuma lição aqui ainda."));
+  }
+  function editarLicao(l, decidir) {
+    const area = h("textarea", { style: "min-height:100px" }); area.value = l.texto;
+    const kit = h("select", {}, h("option", { value: "todos" }, "Todos os kits"), Object.entries(KITS).map(([v, t]) => h("option", { value: v }, t)));
+    kit.value = l.kit || "todos";
+    encher($("#detalhe-corpo"), h("h2", {}, "Editar lição"), h("label", {}, "Lição", area), h("label", {}, "Vale para", kit),
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => { $("#detalhe").close(); await decidir(l, l.estado, { p_texto: area.value, p_kit: kit.value }); } }, "Salvar"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    $("#detalhe").showModal();
+  }
   // ---------------------------------------------------------------- servidor na nuvem (gestão): o pulso que o próprio servidor manda
   const SRV = { timer: null, preco_h: 0.268, disco_mes: 20 };
   async function desenharServidor() {
