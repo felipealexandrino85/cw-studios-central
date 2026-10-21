@@ -845,10 +845,10 @@
     gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
              ["Gestão", [["relatorio", "Relatório"], ["agentes", "Agentes"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
     producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Agentes"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["agentes", "Agentes"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Agentes"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
   };
-  const EXTRAS = { gestor: ["pedir", "escritorio", "padrao", "kit"], producao: ["pedir"], editor: ["escritorio"], solicitante: [] };   // abas sem item no menu
+  const EXTRAS = { gestor: ["pedir", "escritorio", "padrao", "kit"], producao: ["pedir"], editor: [], solicitante: [] };   // abas sem item no menu
   const abasDe = (papel) => (MENU[papel] || []).flatMap(([, itens]) => itens.map(([id]) => id)).concat(EXTRAS[papel] || []);
   const ICONES = {
     inicio: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
@@ -2483,6 +2483,7 @@
         brutoPendente() ? h("button", { class: "botao leve peq", onclick: () => terminarGravacao(brutoPendente()) }, "⬆ Subir brutos") : null,
         h("button", { class: "botao leve peq", onclick: abrirPersonalizar }, "🎨 Meu bonequinho"),
         h("button", { class: "botao leve peq", title: "Skills, agentes e conectores que o seu Claude carrega aqui", onclick: () => abrirCapacidades(ESC.slug) }, "🧠 O que ele sabe"),
+        ESC.estacoes.some((e) => e.maquina === "servidor") ? h("button", { class: "botao leve peq", title: "O servidor roda o Claude com a sua conta: ligue uma vez", onclick: abrirContaServidor }, "☁️ Conta no servidor") : null,
         h("button", { class: "botao leve peq", title: "Abrir a tela completa do seu computador", onclick: () => { $("#chat-sala").close(); abrirComputador(ESC.slug); } }, "Tela completa")),
       msgs,
       c ? h("div", { class: "esc-escrever" }, area, h("div", { class: "acoes" },
