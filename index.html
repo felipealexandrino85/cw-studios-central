@@ -2450,6 +2450,7 @@
           : h("button", { class: "botao leve peq", onclick: iniciarGravacao }, "🎬 Estou gravando"),
         brutoPendente() ? h("button", { class: "botao leve peq", onclick: () => terminarGravacao(brutoPendente()) }, "⬆ Subir brutos") : null,
         h("button", { class: "botao leve peq", onclick: abrirPersonalizar }, "🎨 Meu bonequinho"),
+        h("button", { class: "botao leve peq", title: "Skills, agentes e conectores que o seu Claude carrega aqui", onclick: () => abrirCapacidades(ESC.slug) }, "🧠 O que ele sabe"),
         h("button", { class: "botao leve peq", title: "Abrir a tela completa do seu computador", onclick: () => { $("#chat-sala").close(); abrirComputador(ESC.slug); } }, "Tela completa")),
       msgs,
       c ? h("div", { class: "esc-escrever" }, area, h("div", { class: "acoes" },
@@ -3617,7 +3618,51 @@
          ESC.estacoes[0] && ESC.estacoes[0].maquina ? h("span", { class: "nota" }, `${ESC.estacoes[0].maquina} · visto ${ha(ESC.estacoes[0].visto)}`) : null],
       !on ? h("span", { class: "nota" }, escPodeMandar()
         ? 'Para ligar, peça ao Claude no seu computador: "liga minha estação do escritório". Ela continua ligada depois, sozinha.'
-        : "A estação deste editor não está ligada agora.") : null);
+        : "A estação deste editor não está ligada agora.") : null,
+      h("button", { class: "botao leve peq", title: "Skills, agentes e conectores que o Claude da estação carrega", onclick: () => abrirCapacidades(ESC.slug) }, "🧠 O que o Claude sabe"));
+  }
+  // ---- o que o Claude enxerga: o normal do editor × o da estação (o que falta, e por quê)
+  async function abrirCapacidades(slug) {
+    if (!slug) return;
+    const { data, error } = await db.from("capacidades").select("*").eq("editor_slug", slug).order("atualizado", { ascending: false });
+    if (error) return alert(error.message);
+    const normal = (data || []).find((r) => r.origem === "normal"), est = (data || []).find((r) => r.origem === "estacao");
+    const N = normal ? normal.dados : null, E = est ? est.dados : null;
+    const base = (n) => String(n).split(":").pop().trim().toLowerCase();
+    const pasta = (c) => (c || "").split(/[\\/]/).filter(Boolean).pop() || "?";
+    const achados = [];
+    let falta = { skills: [], agentes: [], mcp: [] };
+    if (!E) achados.push(["tom-aviso", "A estação ainda não abriu uma conversa com o plugin 1.18.2. Mande qualquer pedido pelo bonequinho e abra esta janela de novo."]);
+    if (!N) achados.push(["tom-aviso", "O Claude normal deste editor ainda não abriu com o plugin 1.18.2. Basta abrir o Claude (no app ou no terminal) na pasta onde ele edita."]);
+    if (N && E) {
+      const tem = { skills: new Set(E.skills.map(base)), agentes: new Set(E.agentes.map(base)), mcp: new Set(E.mcp.map((m) => base(m.nome))) };
+      falta = { skills: [...N.skills, ...(N.skills_app || [])].filter((x) => !tem.skills.has(base(x))),
+                agentes: N.agentes.filter((x) => !tem.agentes.has(base(x))), mcp: N.mcp.map((m) => m.nome).filter((x) => !tem.mcp.has(base(x))) };
+      if (N.cwd !== E.cwd) achados.push(["tom-aviso", `A estação abre em “${pasta(E.cwd)}” e o Claude normal em “${pasta(N.cwd)}”. Skills, agentes, CLAUDE.md e conectores do projeto só carregam na pasta certa: o editor abre o Claude normal na pasta onde edita, uma vez, e começa uma Nova conversa aqui.`]);
+      const tot = falta.skills.length + falta.agentes.length + falta.mcp.length;
+      if (!tot && N.cwd === E.cwd) achados.push(["tom-ok", "✓ A estação enxerga tudo o que o Claude normal enxerga: mesmas skills, agentes e conectores, na mesma pasta."]);
+      else if (!tot) achados.push(["tom-ok", "✓ Mesmo sem a mesma pasta, nada do Claude normal está faltando na estação."]);
+      if (falta.skills.length + falta.agentes.length) achados.push(["tom-aviso", "Faltam na estação skills ou agentes que o Claude normal tem (lista abaixo). Se forem do projeto, resolve com a pasta. Se o time inteiro usa, mande pelo Kit para virarem do time em todas as máquinas."]);
+      if (falta.mcp.length) achados.push(["tom-aviso", "Conectores (MCP) que só o Claude normal tem. Se forem do app Claude (Configurações → Extensões), o Claude da estação não vê: instale também no Claude Code, com o comando claude mcp add, na pasta do projeto."]);
+    }
+    const ruins = E ? E.mcp.filter((m) => ["failed", "needs-auth"].includes(m.status)) : [];
+    if (ruins.length) achados.push(["tom-erro", `Conector sem acesso na estação: ${ruins.map((m) => m.nome).join(", ")}. Abra o Claude no terminal, rode /mcp e entre de novo nesses conectores.`]);
+    const chips = (lista) => lista.length ? h("div", { class: "chips" }, lista.map((x) => h("span", { class: "chip" }, x))) : h("span", { class: "nota" }, "nada");
+    const lado = (titulo, r, d) => h("div", { class: "card", style: "flex:1 1 240px;min-width:0;display:grid;gap:4px" }, h("b", {}, titulo),
+      r ? [h("span", { class: "nota" }, `${r.maquina} · pasta “${pasta(d.cwd)}” · ${ha(r.atualizado)}`), d.modelo ? h("span", { class: "nota" }, `Modelo ${d.modelo}`) : null,
+           h("span", {}, `${d.skills.length + (d.skills_app || []).length} skills · ${d.agentes.length} agentes · ${d.mcp.length} conectores`)]
+        : h("span", { class: "nota" }, "sem leitura ainda"));
+    const lista = (rot, itens) => h("details", {}, h("summary", {}, `${rot} (${itens.length})`), chips(itens));
+    encher($("#detalhe-corpo"), h("h2", {}, `🧠 O que o Claude ${slug === meuSlug() ? "da sua máquina" : "de " + nomeEditor(slug)} sabe`),
+      h("p", { class: "nota", style: "margin:0" }, "O Claude da estação é o mesmo do computador do editor: só rende igual se carregar as mesmas skills, agentes e conectores. Aqui compara os dois."),
+      h("div", { style: "display:flex;gap:12px;flex-wrap:wrap" }, lado("Claude normal (app ou terminal)", normal, N), lado("Claude da estação (bonequinho)", est, E)),
+      h("div", { style: "display:grid;gap:8px" }, achados.map(([tom, t]) => h("div", { class: "aviso" + (tom === "tom-erro" ? " erro" : ""), style: tom === "tom-ok" ? "background:var(--surface-2);color:inherit" : "" }, t))),
+      (falta.skills.length || falta.agentes.length || falta.mcp.length) ? h("div", { style: "display:grid;gap:6px" }, h("b", {}, "Faltando na estação"),
+        falta.skills.length ? lista("Skills", falta.skills) : null, falta.agentes.length ? lista("Agentes", falta.agentes) : null, falta.mcp.length ? lista("Conectores", falta.mcp) : null) : null,
+      E ? h("div", { style: "display:grid;gap:6px" }, h("b", {}, "O que a estação carrega"), lista("Skills", E.skills),
+        lista("Agentes do editor e dos plugins", E.agentes.filter((a) => a.includes(":") || /^[a-z0-9-]+$/.test(a))), lista("Conectores", E.mcp.map((m) => m.nome + (m.status === "connected" ? "" : " · " + m.status)))) : null,
+      h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
   }
   function escDesenharLista() {
     encher($("#esc-conversas"), ESC.conversas.length ? ESC.conversas.map((c) => {
