@@ -2456,7 +2456,7 @@
     const sel = h("select", { "aria-label": "Conversa", onchange: async (ev) => {
       if (ev.target.value === "nova") { ev.target.value = ESC.sel || ""; return novaConversa(); }
       ESC.sel = +ev.target.value; await escCarregar(true); desenharChat(true); } },
-      ESC.conversas.map((x) => h("option", { value: x.id }, x.titulo + (x.estado !== "parada" && ESTADO_CONV[x.estado] ? " · " + ESTADO_CONV[x.estado][0] : ""))),
+      ESC.conversas.map((x) => h("option", { value: x.id }, (ESC.estacoes.some((e) => ehServidor(e.maquina)) ? (ehServidor(x.maquina) ? "☁️ " : "💻 ") : "") + x.titulo + (x.estado !== "parada" && ESTADO_CONV[x.estado] ? " · " + ESTADO_CONV[x.estado][0] : ""))),
       h("option", { value: "nova" }, "+ Nova conversa"));
     if (c) sel.value = c.id;
     const area = h("textarea", { placeholder: on ? "Fala com o seu Claude… (Enter envia, Shift+Enter pula linha)" : "Sua estação está desligada: o pedido fica na fila até ela ligar.",
@@ -2471,10 +2471,15 @@
     encher(corpo,
       h("div", { class: "chat-topo" }, retrato,
         h("div", { class: "chat-quem" }, h("b", {}, "Seu Claude"),
-          h("span", { class: "nota" }, on ? "🟢 na sua máquina, pronto" : "⚪ estação desligada: o pedido fica na fila"),
+          h("span", { class: "nota" }, (() => { const m = c ? c.maquina : ondePreferido(), onM = estacaoOnline(m || undefined);
+            return (ehServidor(m) ? "☁️ no servidor" : "💻 no seu computador") + (onM ? ", pronto" : ehServidor(m) ? ": fora do horário (7h30–20h30), o pedido fica na fila" : ": desligado, o pedido fica na fila"); })()),
           c ? h("span", { style: "display:flex;gap:6px;flex-wrap:wrap" }, h("span", { class: "chip " + tom }, rot), c.aprova_tudo ? h("span", { class: "chip tom-aviso" }, "Aprovando tudo") : null) : null),
         h("button", { class: "fechar", "aria-label": "Fechar", onclick: () => $("#chat-sala").close() }, "✕")),
-      h("div", { class: "chat-barra" }, sel,
+      h("div", { class: "chat-barra" },
+        ESC.estacoes.some((e) => ehServidor(e.maquina)) ? h("div", { class: "chips", role: "group", "aria-label": "Onde roda", title: "Cada conversa roda num lugar só; trocar abre uma conversa nova lá" },
+          ["computador", "servidor"].map((t) => { const atual = (c ? ehServidor(c.maquina) : ehServidor(ondePreferido())) === (t === "servidor");
+            return h("button", { class: "chip" + (atual ? " tom-ok" : ""), "aria-pressed": String(atual), style: "cursor:pointer;border:0;font-size:13px", onclick: () => trocarOnde(t, c) }, t === "servidor" ? "☁️ Servidor" : "💻 Meu computador"); })) : null,
+        sel,
         c ? h("button", { class: "botao " + (c.aprova_tudo ? "amarelo" : "leve") + " peq", onclick: () => escAprovarTudo(c) }, c.aprova_tudo ? "Desligar aprovar tudo" : "Aprovar tudo") : null,
         c ? seletorModelo(c.modelo, async (v) => { const { error } = await db.rpc("cw_esc_modelo", { p_conversa: c.id, p_modelo: v }); if (error) return alert(error.message); c.modelo = v; }) : null,
         ativa ? h("button", { class: "botao perigo peq", onclick: () => escParar(c) }, "Parar") : null,
@@ -3608,6 +3613,24 @@
   }
   const estacaoViva = (e) => e && e.visto && Date.now() - new Date(e.visto) < 30000;
   // com computador definido, olha a estação dele; sem, qualquer estação ligada serve
+  // onde a conversa roda: o computador do editor ou o servidor na nuvem (cada conversa fica presa a um deles)
+  const ehServidor = (m) => m === "servidor";
+  const nomeOnde = (m) => ehServidor(m) ? "☁️ Servidor" : "💻 Meu computador";
+  function ondePreferido() {
+    let v = null; try { v = localStorage.getItem("cw-onde-" + ESC.slug); } catch {}
+    const tem = (tipo) => ESC.estacoes.filter((e) => ehServidor(e.maquina) === (tipo === "servidor")).sort((a, b) => estacaoViva(b) - estacaoViva(a))[0];
+    return v && tem(v) ? tem(v).maquina : (ESC.estacoes.slice().sort((a, b) => estacaoViva(b) - estacaoViva(a))[0] || {}).maquina || null;
+  }
+  async function trocarOnde(tipo, c) {
+    const alvo = ESC.estacoes.filter((e) => ehServidor(e.maquina) === (tipo === "servidor")).sort((a, b) => estacaoViva(b) - estacaoViva(a))[0];
+    if (!alvo) return alert(tipo === "servidor" ? "Você ainda não tem espaço no servidor. Peça à gestão."
+      : 'Sua estação no computador ainda não está ligada. Abra o Claude no seu computador e peça: "liga minha estação do escritório".');
+    try { localStorage.setItem("cw-onde-" + ESC.slug, tipo); } catch {}
+    if (c && ehServidor(c.maquina) === (tipo === "servidor")) return desenharChat();
+    const { data, error } = await db.rpc("cw_esc_nova", { p_titulo: tipo === "servidor" ? "Conversa no servidor" : "Conversa no computador", p_trabalho: c ? c.trabalho : null, p_pasta: null, p_maquina: alvo.maquina });
+    if (error) return alert(error.message);
+    ESC.sel = data; await escCarregar(); escDesenharTudo();
+  }
   function estacaoOnline(maquina) { return ESC.estacoes.some((e) => estacaoViva(e) && (!maquina || e.maquina === maquina)); }
   async function desenharEscritorio() {
     const sel = $("#esc-editor");
@@ -3788,7 +3811,7 @@
     area.value = textoAntes;
     encher(painel,
       h("div", { class: "esc-topo" }, h("h2", {}, c.titulo), c.trabalho ? h("span", { class: "chip" }, c.trabalho) : null,
-        c.maquina && ESC.estacoes.length > 1 ? h("span", { class: "chip tom-neutro" }, "💻 " + c.maquina) : null,
+        c.maquina && (ESC.estacoes.length > 1 || ehServidor(c.maquina)) ? h("span", { class: "chip tom-neutro" }, ehServidor(c.maquina) ? "☁️ Servidor" : "💻 " + c.maquina) : null,
         h("span", { class: "chip " + tom }, rot),
         c.aprova_tudo ? h("span", { class: "chip tom-aviso", title: "A estação segue sem perguntar, menos apagar fora da pasta, administrador, senhas, geração paga, envio para fora e instalação." }, "Aprovando tudo") : null,
         pode ? h("button", { class: "botao " + (c.aprova_tudo ? "amarelo" : "leve") + " peq", onclick: () => escAprovarTudo(c),
@@ -3870,10 +3893,11 @@
     const msg = h("div", { class: "aviso erro", hidden: true });
     // mais de um computador: a conversa fica presa ao escolhido (a sessão do Claude e a pasta ficam nele)
     const maqs = ESC.estacoes.slice().sort((a, b) => estacaoViva(b) - estacaoViva(a));
-    const maquina = h("select", { id: "esc-maquina" }, maqs.map((e) => h("option", { value: e.maquina }, `${e.maquina}${estacaoViva(e) ? " (ligada)" : " (desligada)"}`)));
+    const maquina = h("select", { id: "esc-maquina" }, maqs.map((e) => h("option", { value: e.maquina }, `${ehServidor(e.maquina) ? "☁️ Servidor (nuvem)" : "💻 " + e.maquina}${estacaoViva(e) ? " (ligado)" : ehServidor(e.maquina) ? " (fora do horário)" : " (desligado)"}`)));
+    if (ondePreferido()) maquina.value = ondePreferido();
     encher($("#detalhe-corpo"), h("h2", {}, "Nova conversa"),
       h("label", { for: "esc-trab" }, "Trabalho", trab), h("label", { for: "esc-titulo" }, "Título", titulo),
-      maqs.length > 1 ? h("label", { for: "esc-maquina" }, "Em qual computador", maquina) : null,
+      maqs.length > 1 ? h("label", { for: "esc-maquina" }, "Onde roda", maquina) : null,
       h("label", { for: "esc-primeiro" }, "Primeiro pedido", primeiro),
       h("label", {}, "Modelo do Claude", modeloSel, h("span", { class: "nota" }, "Sonnet faz cortes, renders e correções gastando bem menos do seu limite. Deixe o Opus para a seleção e a revisão caprichadas.")),
       h("details", {}, h("summary", { class: "nota" }, "Pasta do trabalho (opcional)"),
