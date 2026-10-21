@@ -675,10 +675,10 @@
       <p class="sub">Os agentes e skills que viram o jeito oficial de editar. O que está no kit chega sozinho ao Claude de todos os editores, com o prefixo cw-kit-.</p></header>
     <div class="caixa" style="background:#fff">
       <b>Como os editores compartilham</b>
-      <span class="nota">Cada editor diz ao Claude dele: <i>"compartilha meus agentes com a central"</i>. O Claude mostra a lista, ele confirma, e os itens aparecem aqui em Recebidos. Vão só os arquivos de instrução; tokens e chaves são trocados por •••.</span>
+      <span class="nota">Cada editor diz ao Claude dele: <i>"prepara meus agentes para o kit da Cardápio Web"</i> (ou <i>"do CW Cast"</i>). O Claude monta um pacote portátil (sem caminhos da máquina, com fontes, logos, vinhetas e sons junto e a lista de requisitos), o editor confirma e os itens aparecem aqui em Recebidos. Tokens e chaves são trocados por •••.</span>
     </div>
     <h3 class="grupo" id="kit-tit-oficial">No kit</h3>
-    <div class="tabela"><table><thead><tr><th>Item</th><th>Tipo</th><th>Veio de</th><th class="n">Versão</th><th class="n">Vídeos com ele</th><th></th></tr></thead><tbody id="kit-oficial"></tbody></table></div>
+    <div class="tabela"><table><thead><tr><th>Item</th><th>Tipo</th><th>Veio de</th><th class="n">Anexos</th><th class="n">Versão</th><th class="n">Vídeos com ele</th><th></th></tr></thead><tbody id="kit-oficial"></tbody></table></div>
     <h3 class="grupo" id="kit-tit-bib">Na Biblioteca</h3>
     <p class="nota" style="margin:0">Itens que você deixou para cada editor escolher (Biblioteca › Time CW Studios).</p>
     <div class="tabela"><table><thead><tr><th>Item</th><th>Tipo</th><th>Veio de</th><th class="n">Editores usando</th><th></th></tr></thead><tbody id="kit-bib"></tbody></table></div>
@@ -3874,6 +3874,10 @@
     const area = h("textarea", { id: "kit-conteudo", style: "min-height:320px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px" });
     area.value = item.no_kit && item.conteudo_kit ? item.conteudo_kit : item.conteudo;
     const nome = h("input", { id: "kit-nome", value: item.nome_kit || item.nome });
+    const kitSel = h("select", { id: "kit-qual" }, h("option", { value: "" }, "Escolha o kit…"),
+      Object.entries(KITS).map(([v, t]) => h("option", { value: v }, t)));
+    kitSel.value = item.kit || "";
+    const anexos = (item.no_kit ? item.anexos_kit : item.anexos) || [];
     const msg = h("div", { class: "aviso erro", hidden: true });
     const extras = Object.keys(item.arquivos || {});
     encher($("#detalhe-corpo"),
@@ -3883,10 +3887,15 @@
       item.descricao && h("p", { style: "margin:0;color:var(--text-dim)" }, item.descricao),
       h("label", { for: "kit-conteudo" }, "Conteúdo (pode editar antes de aprovar)", area),
       h("label", { for: "kit-nome" }, "Nome (vira cw-kit-… no kit ou cw-bib-… pela Biblioteca)", nome),
+      h("label", { for: "kit-qual" }, "Kit", kitSel),
+      anexos.length ? h("details", {}, h("summary", {}, `Anexos (${anexos.length} · ${(anexos.reduce((t, a) => t + (a.tamanho || 0), 0) / 1e6).toFixed(1)} MB)`),
+        h("div", { class: "chips" }, anexos.map((a) => h("span", { class: "chip tom-neutro" }, a.caminho)))) : null,
+      item.requisitos ? h("details", {}, h("summary", {}, "Requisitos"), h("div", { class: "md" }, mdSimples(item.requisitos))) : null,
       h("p", { class: "nota", style: "margin:0" }, h("b", {}, "Pôr no kit"), ": instala no Claude de todos os editores. ", h("b", {}, "Deixar na Biblioteca"), ": fica em Biblioteca › Time CW Studios e cada editor escolhe se quer."), msg,
       h("div", { class: "acoes" },
         h("button", { class: "botao amarelo", onclick: async () => {
-          const { error } = await db.rpc("cw_kit_aprovar", { p_id: item.id, p_nome_kit: nome.value, p_conteudo: area.value });
+          if (!kitSel.value) { msg.hidden = false; msg.textContent = "Escolha o kit: Cardápio Web ou CW Cast."; return; }
+          const { error } = await db.rpc("cw_kit_aprovar", { p_id: item.id, p_nome_kit: nome.value, p_conteudo: area.value, p_kit: kitSel.value });
           if (error) { msg.hidden = false; msg.textContent = error.message; return; }
           $("#detalhe").close(); carregar();
         } }, item.no_kit ? "Salvar nova versão do kit" : "Pôr no kit (todos recebem)"),
@@ -3900,16 +3909,23 @@
         h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
   }
+  const KITS = { "cardapio-web": "KIT - Cardápio Web", "cw-cast": "KIT - CW Cast" };
   async function desenharKit() {
     if (Date.now() - BIB.carregado > 30000) await carregarBiblioteca();
     const oficial = D.kit.filter((k) => k.no_kit).sort((a, b) => a.nome_kit.localeCompare(b.nome_kit));
     $("#kit-tit-oficial").textContent = `No kit (${oficial.length})`;
-    encher($("#kit-oficial"), oficial.length ? oficial.map((k) => {
-      const u = usoKit("cw-kit-" + k.nome_kit);
-      return h("tr", {}, td(h("b", {}, "cw-kit-" + k.nome_kit)), td(k.tipo === "agente" ? "Agente" : "Skill"), td(`${nomeEditor(k.editor_slug)} (${k.nome})`), td("v" + k.versao_kit, 1), td(u.n || "–", 1),
+    const linhaKit = (k) => {
+      const u = usoKit("cw-kit-" + k.nome_kit), an = k.anexos_kit || [];
+      return h("tr", {}, td(h("b", {}, "cw-kit-" + k.nome_kit)), td(k.tipo === "agente" ? "Agente" : "Skill"), td(`${nomeEditor(k.editor_slug)} (${k.nome})`),
+        td(an.length ? `${an.length} · ${(an.reduce((t, a) => t + (a.tamanho || 0), 0) / 1e6).toFixed(0)} MB` : "–", 1), td("v" + k.versao_kit, 1), td(u.n || "–", 1),
         h("td", { class: "n" }, h("button", { class: "botao leve peq", onclick: () => abrirItemKit(k) }, "Ver"), " ",
           h("button", { class: "botao perigo peq", onclick: async () => { await db.rpc("cw_kit_tirar", { p_id: k.id, p_descartar: false }); carregar(); } }, "Tirar do kit")));
-    }) : vazioLinha(6, "O kit ainda está vazio. Escolha entre os itens recebidos abaixo."));
+    };
+    const grupos = [...Object.entries(KITS), [null, "Sem kit definido (abra e escolha)"]].map(([v, t]) => [t, oficial.filter((k) => (k.kit || null) === v)]).filter(([t, xs]) => xs.length || t.startsWith("KIT"));
+    encher($("#kit-oficial"), oficial.length ? grupos.flatMap(([t, xs]) => [
+      h("tr", {}, h("td", { colspan: 7, style: "background:var(--surface-2);font-weight:700" }, `${t} (${xs.length})`)),
+      ...(xs.length ? xs.map(linhaKit) : [vazioLinha(7, "Nada neste kit ainda.")])])
+      : vazioLinha(7, "Os kits ainda estão vazios. Escolha entre os itens recebidos abaixo."));
     const naBib = D.kit.filter((k) => k.biblioteca_id && !k.no_kit);
     $("#kit-tit-bib").textContent = `Na Biblioteca (${naBib.length})`;
     encher($("#kit-bib"), naBib.length ? naBib.map((k) => h("tr", {}, td(h("b", {}, "cw-bib-" + k.nome)), td(k.tipo === "agente" ? "Agente" : "Skill"), td(nomeEditor(k.editor_slug)),
@@ -3920,7 +3936,7 @@
     encher($("#kit-recebidos"), recebidos.length ? recebidos.map((k) => {
       const u = usoKit(k.nome, k.editor_slug);
       return h("button", { class: "cartao", onclick: () => abrirItemKit(k) },
-        h("div", { class: "cod" }, `${k.tipo === "agente" ? "Agente" : "Skill"} · de ${nomeEditor(k.editor_slug)} · ${ha(k.enviado_em)}`),
+        h("div", { class: "cod" }, `${k.tipo === "agente" ? "Agente" : "Skill"} · de ${nomeEditor(k.editor_slug)} · ${ha(k.enviado_em)}${k.kit ? " · para o " + KITS[k.kit] : ""}`),
         h("div", { class: "tit" }, k.nome),
         k.descricao && h("div", { class: "sub" }, k.descricao.slice(0, 160)),
         h("div", { class: "chips" }, h("span", { class: "chip" }, `${u.n} vídeo(s)`), u.tempo != null && h("span", { class: "chip tom-neutro" }, `tempo médio ${duracao(u.tempo)}`),
