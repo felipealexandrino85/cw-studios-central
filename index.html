@@ -648,8 +648,8 @@
   </section>
 
   <section id="aba-esteira" hidden>
-    <header class="cabeca"><p class="kicker">Programas</p><h1>Esteira de cortes</h1>
-      <p class="sub">O episódio que cai em “1. ENVIE AQUI - Podcast” é preparado sozinho no servidor (transcrição e mapa). Depois é só pedir os cortes: o Claude escolhe os momentos, você confere a lista e eles são produzidos em paralelo, caindo um a um na Publicação.</p></header>
+    <header class="cabeca" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><canvas id="titeu-retrato" width="22" height="35" style="width:66px;height:105px;image-rendering:pixelated;flex:none" aria-hidden="true"></canvas><div style="flex:1 1 280px;min-width:0"><p class="kicker">Esteira de cortes</p><h1>Titeu</h1>
+      <p class="sub">O episódio que cai em “1. ENVIE AQUI - Podcast” é preparado sozinho no servidor (transcrição e mapa). Depois é só pedir os cortes: o Claude escolhe os momentos, você confere a lista e eles são produzidos em paralelo, caindo um a um na Publicação.</p></div></header>
     <div id="est-corpo" style="display:grid;gap:16px"></div>
   </section>
 
@@ -848,10 +848,10 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Esteira de cortes"], ["publicacao", "Publicação"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["publicacao", "Publicação"]]],
              ["Gestão", [["relatorio", "Relatório"], ["agentes", "Agentes"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
-    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Esteira de cortes"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Agentes"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Agentes"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Esteira de cortes"], ["publicacao", "Publicação"]]]],
+    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Agentes"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Agentes"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
   };
   const EXTRAS = { gestor: ["pedir", "escritorio", "padrao", "kit"], producao: ["pedir"], editor: [], solicitante: [] };   // abas sem item no menu
@@ -1766,6 +1766,12 @@
           db.from("seo_perguntas").select("*").order("id", { ascending: false }).limit(20)]);
         SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [] };
         await recarregarAgentes();
+        const [ec, el, ee] = await Promise.all([db.from("esteira_cortes").select("estado,terminado").in("estado", ["produzindo", "na_fila", "entregue"]).limit(2000),
+          db.from("esteira_lotes").select("estado").eq("estado", "conferir"), db.from("esteira_episodios").select("estado").in("estado", ["chegou", "preparando"])]);
+        const cs = Array.isArray(ec.data) ? ec.data : [], hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
+        SALA.est = { produzindo: cs.filter((x) => x.estado === "produzindo").length, fila: cs.filter((x) => x.estado === "na_fila").length,
+          hoje: cs.filter((x) => x.estado === "entregue" && x.terminado && new Date(x.terminado) >= hoje0).length,
+          conferir: (el.data || []).length, preparando: (ee.data || []).length };
       }
     }
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo (copa, sofá, jogos)"],
@@ -1938,6 +1944,7 @@
   // Zé Algoritmo: o agente de SEO do YouTube (analisa o canal todo dia às 22h)
   const ZE = { cabelo: "#9aa0aa", pele: "#f2c9a5", camisa: "#e8352d", calca: "#2a2a33", estilo: 0, acessorio: "oculos", barba: "curta" };
   // Doti: analista de desempenho dos cortes no Instagram (toda segunda às 9h)
+  const TITEU = { cabelo: "#1c1c28", pele: "#c98a5e", camisa: "#ffb800", calca: "#2a2a33", estilo: 4, acessorio: "fone", barba: "curta" };
   const LIA = { cabelo: "#1f1a2e", pele: "#8d5a3b", camisa: "#2f8f5b", calca: "#2a2a33", estilo: 3, acessorio: "oculos", feminino: true };
   const BIA = { cabelo: "#c58b4b", pele: "#e0a97f", camisa: "#ff6b5b", calca: "#3b4a6b", estilo: 2, acessorio: "fone", feminino: true };
   const cadeiraCostas = () => sprite("cadeira", 20, 13, (p) => { p(2, 0, 16, 8, "#4067c4"); p(2, 0, 16, 2, "#5a82dc"); p(14, 2, 4, 6, "#3355a6"); p(8, 8, 4, 3, "#2d3448"); p(4, 11, 12, 2, "#2d3448"); });
@@ -2083,8 +2090,8 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }])), cv = $("#sala-canvas"), T = TILE;
-    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia");
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }])), cv = $("#sala-canvas"), T = TILE;
+    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu");
     P.mesas = P.mesas.filter((m) => !m.ed.npc);   // as mesas dos agentes (Zé Algoritmo e Doti) na Edição
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
@@ -2226,7 +2233,7 @@
     P.salas.forEach((s) => { c.font = `800 ${5.4 * SC}px Inter, system-ui, sans-serif`; const lw = c.measureText(s.nome).width / SC + 10;
       px(s.x + s.w / 2 - lw / 2, s.y - 12, lw, 11, "#2a2440"); txt(s.nome, s.x + s.w / 2, s.y - 4.2, 5.4, "#ffffff", 800); });
     // ---- mesas da edição (uma por editor) e os bonequinhos
-    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }, { agente: "bia", x: mesaBia.x - 22, y: mesaBia.y - 18, w: 44, h: 50 }];
+    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }, { agente: "bia", x: mesaBia.x - 22, y: mesaBia.y - 18, w: 44, h: 50 }, { titeu: true, x: mesaTiteu.x - 22, y: mesaTiteu.y - 18, w: 44, h: 50 }];
     const pessoas = [];
     // cada um que não está trabalhando ganha um lugar fixo (o mesmo enquanto ficar assim): quem está online vai jogar,
     // tomar café ou mexer no celular; quem está fora cochila nos sofás e poltronas
@@ -2261,6 +2268,16 @@
       px(mx - 9, my - 14, 18, 11, "#2a1b40"); px(mx - 9, my - 14, 18, 2, "#f25aa8"); px(mx - 9, my - 12, 18, 1, "#ffb800");
       for (let k = 0; k < 3; k++) px(mx - 7 + k * 5, my - 9, 4, 4, ["#f25aa8", "#a543fa", "#ffb800"][k]);
       const yc = my - 5 - (f % 12) / 3; px(mx + 5, yc, 2, 2, "#ff4d6d"); px(mx + 7, yc, 2, 2, "#ff4d6d"); px(mx + 6, yc + 1, 2, 2, "#ff4d6d");   // coração subindo
+    }
+    {   // Titeu, a esteira de cortes: monitor de ilha de edição (fita de filme correndo e a tesoura cortando quando trabalha)
+      const mx = mesaTiteu.x, my = mesaTiteu.y, E2 = SALA.est || {}, ativo = (E2.produzindo || 0) + (E2.preparando || 0) > 0;
+      c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
+      px(mx - 9, my - 14, 18, 11, ativo ? "#1c1c28" : "#24203a");
+      px(mx - 9, my - 12, 18, 7, "#3a3550");
+      for (let k = 0; k < 6; k++) px(mx - 9 + ((k * 4 + (ativo ? f : 0)) % 18), my - 13, 1, 1, "#e8e2d6");   // furinhos da fita
+      for (let k = 0; k < 6; k++) px(mx - 9 + ((k * 4 + (ativo ? f : 0)) % 18), my - 5, 1, 1, "#e8e2d6");
+      for (let k = 0; k < 3; k++) px(mx - 8 + ((k * 6 + (ativo ? f : 0)) % 16), my - 11, 4, 5, ["#ffb800", "#a543fa", "#ff6b5b"][k]);   // quadros
+      if (ativo && f % 8 < 4) { px(mx + 1, my - 13, 1, 9, "#ffffff"); px(mx, my - 13, 3, 1, "#ff4d4d"); }   // a tesoura cortando
     }
     for (const m of P.mesas) {
       const st = estadoSala(m.ed), seed = hashSlug(m.ed.slug);
@@ -2322,6 +2339,10 @@
     px(ze.x - 7, ze.y, 14, 2, "#00000026");
     c.drawImage(bonecoCostas(ZE, f % 4 < 2 ? 1 : 2), (ze.x - 11) * SC, (ze.y - 24) * SC, 22 * SC, 27 * SC);
     c.drawImage(cadeiraCostas(), (ze.x - 10) * SC, (ze.y - 6) * SC, 20 * SC, 13 * SC);
+    const titeu = { x: mesaTiteu.x, y: mesaTiteu.y + 22 }, titeuAtivo = ((SALA.est || {}).produzindo || 0) + ((SALA.est || {}).preparando || 0) > 0;
+    px(titeu.x - 7, titeu.y, 14, 2, "#00000026");
+    c.drawImage(bonecoCostas(TITEU, titeuAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (titeu.x - 11) * SC, (titeu.y - 24) * SC, 22 * SC, 27 * SC);
+    c.drawImage(cadeiraCostas(), (titeu.x - 10) * SC, (titeu.y - 6) * SC, 20 * SC, 13 * SC);
     const bia = { x: mesaBia.x, y: mesaBia.y + 22 };
     px(bia.x - 7, bia.y, 14, 2, "#00000026");
     c.drawImage(bonecoCostas(BIA, f % 6 < 3 ? 0 : 2), (bia.x - 11) * SC, (bia.y - 24) * SC, 22 * SC, 27 * SC);
@@ -2360,6 +2381,21 @@
         c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
         const sE = P.salas[4], bwB = c.measureText(falaB).width / SC + 10, bxB = Math.max(sE.x + 2, Math.min(bia2.x - bwB / 2, sE.x + sE.w - bwB - 2)), byB = bia2.y - 50, corB = novas ? "#ffb800" : "#ffffff";
         px(bxB, byB, bwB, 11, corB); px(bia2.x - 1, byB + 11, 3, 2, corB); txt(falaB, bxB + bwB / 2, byB + 8, 4.6, "#2a1b40", 600);
+      }
+    }
+    // Titeu: plaquinha e o que a esteira está fazendo
+    {
+      const t2 = { x: mesaTiteu.x, y: mesaTiteu.y + 22 }, E2 = SALA.est || {};
+      c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
+      const lwT = c.measureText("Titeu").width / SC + 12;
+      px(t2.x - lwT / 2, t2.y + 6, lwT, 10, "#2a2440"); px(t2.x - lwT / 2 + 3, t2.y + 9.5, 4, 4, E2.produzindo ? "#4cd07d" : E2.conferir ? "#ffb800" : "#ffb800aa");
+      txt("Titeu", t2.x + 2.5, t2.y + 13.6, 4.8, "#ffffff", 700);
+      const falaT = E2.conferir ? `👀 ${E2.conferir} lista${E2.conferir > 1 ? "s" : ""} p/ conferir` : E2.produzindo ? `✂️ cortando ${E2.produzindo}${E2.fila ? ` (${E2.fila} na fila)` : ""}`
+        : E2.preparando ? "🎧 preparando episódio" : E2.hoje ? `✅ ${E2.hoje} corte${E2.hoje > 1 ? "s" : ""} hoje` : (f % 260 < 80 ? "✂️ me manda um episódio" : null);
+      if (falaT && SALA.est) {
+        c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
+        const sE = P.salas[4], bwT = c.measureText(falaT).width / SC + 10, bxT = Math.max(sE.x + 2, Math.min(t2.x - bwT / 2, sE.x + sE.w - bwT - 2)), byT = t2.y - 50, corT = E2.conferir ? "#ffb800" : "#ffffff";
+        px(bxT, byT, bwT, 11, corT); px(t2.x - 1, byT + 11, 3, 2, corT); txt(falaT, bxT + bwT / 2, byT + 8, 4.6, "#2a1b40", 600);
       }
     }
     // Zé Algoritmo: plaquinha e balão
@@ -2971,6 +3007,7 @@
     if (alvo.agente) return abrirChatAgente(alvo.agente);
     if (alvo.chico) return abrirChico();
     if (alvo.seo) return abrirChatZe();
+    if (alvo.titeu) return trocarAba("esteira");
     if (alvo.ed.slug === meuSlug()) return abrirChatSala();   // o editor clica no próprio bonequinho (ou mesa) e conversa com o Claude dele
     const st = estadoSala(alvo.ed);
     const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
@@ -3981,6 +4018,7 @@
     entregue: ["Na Publicação", "tom-ok"], reprovado: ["Reprovado no QC", "tom-critico"], erro: ["Erro", "tom-critico"] };
   const mmss = (x) => { x = Math.round(+x || 0); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`; };
   async function desenharEsteira() {
+    { const cv = $("#titeu-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(TITEU, 0), 0, 0); cv.dataset.ok = "1"; } }
     clearInterval(EST.timer);
     EST.timer = setInterval(() => { const a = document.activeElement;
       if (aba !== "esteira") return clearInterval(EST.timer);
@@ -4082,6 +4120,7 @@
       onclick: () => { if (["padrao", "kit"].includes(v)) trocarAba(v); else { AGT.vista = v; trocarAba("agentes"); } } }, t)));
   }
   const ROBOS_FIXOS = [
+    { id: "titeu", nome: "Titeu", missao: "A esteira de cortes: prepara os episódios e produz os cortes em paralelo", cores: () => TITEU, abrir: () => trocarAba("esteira"), papeis: ["gestor", "producao", "editor"] },
     { id: "ze", nome: "Zé Algoritmo", missao: "SEO do YouTube do CW Cast (todo dia às 22h)", cores: () => ZE, abrir: () => abrirChatZe(), papeis: ["gestor", "producao"] },
     { id: "bia", nome: "Doti", missao: "Desempenho dos cortes no Instagram (segunda, 9h)", cores: () => BIA, abrir: () => abrirChatAgente("bia"), papeis: ["gestor", "producao", "editor"] },
     { id: "dinha", nome: "Dinha", missao: "Resumo da operação (todo dia, 8h)", cores: () => DINHA, abrir: () => abrirChatAgente("dinha"), papeis: ["gestor", "producao", "editor"] },
