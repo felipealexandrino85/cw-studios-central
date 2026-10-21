@@ -2391,6 +2391,14 @@
     const sel = $("#esc-editor");
     if (eu.papel === "gestor" && sel.querySelector(`option[value="${slug}"]`)) { sel.value = slug; sel.onchange && sel.onchange(); }
   }
+  // ---- rolagem dos chats: a página redesenha a cada poucos segundos; só desce sozinha se a pessoa já estava no fim
+  // (ou acabou de abrir/trocar a conversa). Lendo mais acima, a posição fica onde está.
+  function manterRolagem(antes, novo, chave, forcar) {
+    novo.dataset.chave = chave;
+    const mesma = antes && antes.dataset.chave === chave;
+    const noFim = !antes || antes.scrollHeight - antes.scrollTop - antes.clientHeight < 80;
+    novo.scrollTop = forcar === true || !mesma || noFim ? novo.scrollHeight : antes.scrollTop;
+  }
   // ---- chat com o bonequinho: o editor clica nele mesmo na Sala e conversa com o Claude da máquina dele
   const CHAT = { timer: null, tique: 0 };
   const coresBoneco = (slug) => coresDe(D.editores.find((e) => e.slug === slug) || { slug });
@@ -2409,13 +2417,13 @@
       try {
         CHAT.tique++;
         const lista = CHAT.tique % 3 === 0, novo = await escCarregar(!lista);
-        if (novo || lista) desenharChat(novo);
+        if (novo || lista) desenharChat(false);
       } finally { ESC.ocupado = false; }
     }, 2500);
   }
   function desenharChat(rolar) {
     const corpo = $("#chat-corpo"), c = ESC.conversas.find((x) => x.id === ESC.sel);
-    const antes = corpo.querySelector(".esc-msgs"), noFim = !antes || antes.scrollHeight - antes.scrollTop - antes.clientHeight < 80;
+    const antes = corpo.querySelector(".esc-msgs");
     const rasc = corpo.querySelector("textarea"), texto = rasc ? rasc.value : "", focado = rasc && document.activeElement === rasc;
     const retrato = h("canvas", { class: "chat-retrato", width: 22, height: 35, "aria-hidden": "true" });
     retrato.getContext("2d").drawImage(bonecoFrente(coresBoneco(ESC.slug), 0), 0, 0);
@@ -2456,7 +2464,7 @@
       c ? h("div", { class: "esc-escrever" }, area, h("div", { class: "acoes" },
         h("button", { class: "botao amarelo", onclick: () => escEnviar(c, area) }, "Enviar"),
         h("span", { class: "nota" }, "Se ele estiver trabalhando, o pedido entra na fila."))) : h("div"));
-    if (rolar || noFim) msgs.scrollTop = msgs.scrollHeight;
+    manterRolagem(antes, msgs, "sala" + (c ? c.id : ""), rolar);
     if (focado) area.focus();
   }
   // ---- personalizar o próprio bonequinho (cabelo, estilo, pele, roupa, acessório)
@@ -2665,7 +2673,7 @@
       if (document.hidden || !SALA.ag.perguntas.some((q) => q.agente === SALA.agAtual && !q.resposta)) return;
       const antes = SALA.ag.perguntas.filter((q) => q.resposta).length;
       await recarregarAgentes();
-      if (SALA.ag.perguntas.filter((q) => q.resposta).length !== antes) desenharChatAgente(true);
+      if (SALA.ag.perguntas.filter((q) => q.resposta).length !== antes) desenharChatAgente(false);
     }, 5000);
   }
   async function enviarAgente(texto) {
@@ -2697,7 +2705,7 @@
     $("#detalhe").showModal();
   }
   function desenharChatAgente(rolar) {
-    const ag = SALA.agAtual, cfg = AGENTES_CHAT[ag], corpo = $("#chat-ag-corpo");
+    const ag = SALA.agAtual, cfg = AGENTES_CHAT[ag], corpo = $("#chat-ag-corpo"), antesMsgs = corpo.querySelector("[data-chave]");
     const rasc = corpo.querySelector("textarea"), texto = rasc ? rasc.value : "";
     const retrato = h("canvas", { class: "chat-retrato", width: 22, height: 35, "aria-hidden": "true" });
     retrato.getContext("2d").drawImage(bonecoFrente(cfg.cores(), 0), 0, 0);
@@ -2725,7 +2733,7 @@
           ag === "dinha" && meuSlug() ? [h("button", { type: "button", onclick: () => { $("#chat-ag").close(); abrirChatSala(); } }, "💬 Falar com meu Claude"),
             h("button", { type: "button", onclick: abrirPersonalizar }, "🎨 Meu bonequinho")] : null),
         area, h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: () => enviarAgente(area.value) }, "Enviar"))));
-    if (rolar) msgs.scrollTop = msgs.scrollHeight;
+    manterRolagem(antesMsgs, msgs, "ag" + ag, rolar);
   }
   // ---- chat com o Zé: pergunta e resposta em sequência; ele consulta o canal ao vivo quando precisa
   const ATALHOS_ZE = ["Como foram os últimos 7 dias?", "Quais vídeos mais cresceram na busca este mês?", "De onde vêm nossas views?", "O que você mudaria primeiro?"];
@@ -2741,7 +2749,7 @@
       if (document.hidden || !(SALA.seo.perguntas || []).some((q) => !q.resposta)) return;
       const antes = (SALA.seo.perguntas || []).filter((q) => q.resposta).length;
       await recarregarSeo();
-      if ((SALA.seo.perguntas || []).filter((q) => q.resposta).length !== antes) desenharChatZe(true);
+      if ((SALA.seo.perguntas || []).filter((q) => q.resposta).length !== antes) desenharChatZe(false);
     }, 5000);
   }
   async function enviarZe(texto) {
@@ -2753,7 +2761,7 @@
     await recarregarSeo(); desenharChatZe(true);
   }
   function desenharChatZe(rolar) {
-    const corpo = $("#chat-ze-corpo");
+    const corpo = $("#chat-ze-corpo"), antesMsgs = corpo.querySelector("[data-chave]");
     const rasc = corpo.querySelector("textarea"), texto = rasc ? rasc.value : "";
     const retrato = h("canvas", { class: "chat-retrato", width: 22, height: 35, "aria-hidden": "true" });
     retrato.getContext("2d").drawImage(bonecoFrente(ZE, 0), 0, 0);
@@ -2780,7 +2788,7 @@
         h("div", { class: "ze-atalhos" }, ATALHOS_ZE.map((t) => h("button", { type: "button", onclick: () => enviarZe(t) }, t))),
         area, h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: () => enviarZe(area.value) }, "Enviar"),
           h("span", { class: "nota" }, "Ele só lê o canal. Mudar título, descrição ou tags continua precisando de aprovação no 📊 Relatório."))));
-    if (rolar) msgs.scrollTop = msgs.scrollHeight;
+    manterRolagem(antesMsgs, msgs, "ze", rolar);
   }
   async function abrirSeo() {
     if (!["gestor", "producao", "editor"].includes(eu.papel)) return;
@@ -3603,7 +3611,7 @@
         const lista = ESC.tique % 3 === 0;
         const novo = await escCarregar(!lista);
         if (lista) { escDesenharEstacao(); escDesenharLista(); }
-        if (novo || lista) escDesenharPainel(novo);
+        if (novo || lista) escDesenharPainel(false);
       } finally { ESC.ocupado = false; }
     }, 2500);
   }
@@ -3706,7 +3714,6 @@
     if (!c) return encher(painel, h("div", { class: "vazio", style: "grid-row: 1 / -1; align-self: center" },
       escPodeMandar() ? "Comece uma conversa: escolha o card ou a demanda e diga ao Claude o que fazer." : "Escolha uma conversa."));
     const caixa = painel.querySelector(".esc-msgs");
-    const noFim = !caixa || caixa.scrollHeight - caixa.scrollTop - caixa.clientHeight < 80;
     const rascunho = painel.querySelector("textarea");
     const textoAntes = rascunho ? rascunho.value : "", focado = rascunho && document.activeElement === rascunho;
     const [rot, tom] = ESTADO_CONV[c.estado] || [c.estado, "tom-neutro"];
@@ -3733,14 +3740,13 @@
         h("button", { class: "botao amarelo", onclick: () => escEnviar(c, area) }, "Enviar"),
         h("span", { class: "nota" }, "⌘ + Enter envia. Se ele estiver trabalhando, o pedido entra na fila desta conversa.")))
         : h("div", { class: "esc-escrever" }, h("span", { class: "nota" }, "Só o editor manda pedidos para a estação dele.")));
-    if (rolar || noFim) msgs.scrollTop = msgs.scrollHeight;
+    manterRolagem(caixa, msgs, "c" + c.id, rolar);
     if (focado) area.focus();
   }
   function escDesenharEspelho(painel, rolar) {
     const x = ESC.espelhos.find((y) => "e" + y.id === ESC.sel);
     if (!x) return encher(painel, h("div", { class: "vazio" }, "Escolha uma sessão."));
     const caixa = painel.querySelector(".esc-msgs");
-    const noFim = !caixa || caixa.scrollHeight - caixa.scrollTop - caixa.clientHeight < 80;
     const msgs = h("div", { class: "esc-msgs" }, (ESC.msgs[ESC.sel] || []).map((m) => msgEl(m, false)),
       espelhoVivo(x) ? h("div", { class: "msg-sis" }, "Sessão aberta: as mensagens novas chegam sozinhas.") : null);
     encher(painel,
@@ -3750,7 +3756,7 @@
         x.pasta ? h("span", { class: "pasta" }, x.pasta) : null),
       msgs,
       h("div", { class: "esc-escrever" }, h("span", { class: "nota" }, "Sessão rodada direto no Claude do editor, que foi avisado de que ela aparece aqui. É só para acompanhar: senhas e tokens chegam ocultos e tudo some em 15 dias.")));
-    if (rolar || noFim) msgs.scrollTop = msgs.scrollHeight;
+    manterRolagem(caixa, msgs, ESC.sel, rolar);
   }
   async function escEnviar(c, area) {
     const texto = area.value.trim();
