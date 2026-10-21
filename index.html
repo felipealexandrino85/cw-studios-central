@@ -647,6 +647,12 @@
     <div class="grade-cartoes" id="bib-lista"></div>
   </section>
 
+  <section id="aba-esteira" hidden>
+    <header class="cabeca"><p class="kicker">Programas</p><h1>Esteira de cortes</h1>
+      <p class="sub">O episódio que cai em “1. ENVIE AQUI - Podcast” é preparado sozinho no servidor (transcrição e mapa). Depois é só pedir os cortes: o Claude escolhe os momentos, você confere a lista e eles são produzidos em paralelo, caindo um a um na Publicação.</p></header>
+    <div id="est-corpo" style="display:grid;gap:16px"></div>
+  </section>
+
   <section id="aba-agentes" hidden>
     <header class="cabeca"><p class="kicker">Time</p><h1>Agentes</h1>
       <p class="sub">Os robozinhos do CW Studios. Cada agente junta skills do kit e da Biblioteca, conversa com você aqui e roda no servidor. Monte o seu juntando as skills que quiser.</p></header>
@@ -842,10 +848,10 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Esteira de cortes"], ["publicacao", "Publicação"]]],
              ["Gestão", [["relatorio", "Relatório"], ["agentes", "Agentes"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
-    producao: [["Programas", [["cast", "CW Cast"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Agentes"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Agentes"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["publicacao", "Publicação"]]]],
+    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Esteira de cortes"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Agentes"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Agentes"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Esteira de cortes"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
   };
   const EXTRAS = { gestor: ["pedir", "escritorio", "padrao", "kit"], producao: ["pedir"], editor: [], solicitante: [] };   // abas sem item no menu
@@ -864,6 +870,7 @@
     cast: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8",
     kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
     servidor: "M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01",
+    esteira: "M3 17h18M5 17V9l4 3V9l4 3V9l4 3v5M7 21h.01M12 21h.01M17 21h.01",
     agentes: "M12 3v3M7 8h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3zM9 13h.01M15 13h.01M9.5 17h5M2 13v2M22 13v2",
     conhecimento: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-1.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
@@ -1122,7 +1129,7 @@
   }
 
   function desenhar() {
-    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, cast: abrirCast,
+    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -3965,6 +3972,104 @@
     $("#detalhe").showModal();
   }
   const KITS = { "cardapio-web": "KIT - Cardápio Web", "cw-cast": "KIT - CW Cast" };
+  // ---------------------------------------------------------------- esteira de cortes (servidor)
+  const EST = { timer: null, ajustes: {}, marcados: {} };
+  const ESTADO_EP = { chegou: ["Chegou", "tom-neutro"], preparando: ["Preparando", "tom-aviso"], pronto: ["Pronto para cortar", "tom-ok"], erro: ["Erro", "tom-critico"] };
+  const ESTADO_LOTE = { selecionando: ["Escolhendo os momentos", "tom-aviso"], conferir: ["Esperando conferência", "tom-aviso"], produzindo: ["Produzindo", "tom-ok"],
+    concluido: ["Concluído", "tom-neutro"], erro: ["Erro", "tom-critico"], cancelado: ["Cancelado", "tom-neutro"] };
+  const ESTADO_CORTE = { proposto: ["Proposto", "tom-neutro"], descartado: ["Descartado", "tom-neutro"], na_fila: ["Na fila", "tom-neutro"], produzindo: ["Produzindo", "tom-aviso"],
+    entregue: ["Na Publicação", "tom-ok"], reprovado: ["Reprovado no QC", "tom-critico"], erro: ["Erro", "tom-critico"] };
+  const mmss = (x) => { x = Math.round(+x || 0); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`; };
+  async function desenharEsteira() {
+    clearInterval(EST.timer);
+    EST.timer = setInterval(() => { const a = document.activeElement;
+      if (aba !== "esteira") return clearInterval(EST.timer);
+      if (!document.hidden && !(a && a.closest && a.closest("#est-corpo") && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !$("#detalhe").open) desenharEsteira(); }, 10000);
+    const [eps, lotes, cortes, conta] = await Promise.all([
+      db.from("esteira_episodios").select("*").neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
+      db.from("esteira_lotes").select("*").order("id", { ascending: false }).limit(15),
+      db.from("esteira_cortes").select("*").order("ordem").limit(600),
+      eu.papel === "gestor" ? db.from("servidor_conta").select("estado").eq("editor_slug", "esteira").maybeSingle() : Promise.resolve({ data: { estado: "ok" } })]);
+    const E = eps.data || [], L = lotes.data || [], C = cortes.data || [];
+    const epDe = (id) => E.find((e) => e.id === id) || { nome: "episódio " + id };
+    const barra = (pct) => h("div", { style: "height:8px;border-radius:6px;background:var(--surface-2);overflow:hidden" }, h("div", { style: `height:100%;width:${pct || 0}%;background:var(--brand)` }));
+    const cartaoEp = (e) => { const [rot, tom] = ESTADO_EP[e.estado] || [e.estado, "tom-neutro"];
+      return h("div", { class: "card", style: "display:grid;gap:8px;min-width:0" },
+        h("div", { style: "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap" }, h("b", {}, e.nome), h("span", { class: "chip " + tom }, rot)),
+        h("span", { class: "nota" }, [e.duracao_s ? "Duração " + mmss(e.duracao_s) : null, e.tamanho ? (e.tamanho / 1e9).toFixed(1) + " GB" : null, "chegou " + ha(e.criado)].filter(Boolean).join(" · ")),
+        e.estado === "preparando" ? [barra(e.progresso), h("span", { class: "nota" }, e.etapa || "")] : null,
+        e.estado === "erro" ? h("span", { class: "nota" }, e.erro || "") : null,
+        e.estado === "pronto" ? h("button", { class: "botao amarelo peq", style: "justify-self:start", onclick: () => pedirCortes(e) }, "✂️ Gerar cortes") : null); };
+    const linhaCorte = (c) => { const [rot, tom] = ESTADO_CORTE[c.estado] || [c.estado, "tom-neutro"];
+      const dur = c.iniciado && c.terminado ? Math.round((new Date(c.terminado) - new Date(c.iniciado)) / 1000) : null;
+      return h("tr", {}, td(c.ordem, 1), h("td", { style: "min-width:200px" }, h("b", {}, c.titulo), h("div", { class: "nota" }, `${mmss(c.inicio)}–${mmss(c.fim)} · ${Math.round(c.fim - c.inicio)} s`),
+          c.ajuste ? h("div", { class: "nota" }, "Ajuste: " + c.ajuste) : null),
+        td(h("span", { class: "chip " + tom }, rot)), td(c.estado === "produzindo" ? c.etapa || "" : c.erro || (dur ? `em ${duracao(dur)}` : "")),
+        h("td", {}, c.publicacao_id ? h("a", { href: "#publicacao", onclick: (ev) => { ev.preventDefault(); trocarAba("publicacao"); } }, "P-" + String(c.publicacao_id).padStart(4, "0")) : null,
+          ["entregue", "reprovado", "erro"].includes(c.estado) ? h("button", { class: "botao leve peq", style: "margin-left:6px", onclick: () => ajustarCorte(c) }, "Pedir ajuste") : null)); };
+    const blocoLote = (l) => { const [rot, tom] = ESTADO_LOTE[l.estado] || [l.estado, "tom-neutro"], cs = C.filter((c) => c.lote_id === l.id);
+      const ent = cs.filter((c) => c.estado === "entregue").length, ativos = cs.filter((c) => !["proposto", "descartado"].includes(c.estado)).length;
+      const cab = h("div", { style: "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap" },
+        h("div", {}, h("b", {}, `${epDe(l.episodio_id).nome} · ${l.quantidade} cortes`), h("div", { class: "nota" }, `pedido por ${l.pedido_por.split("@")[0]} ${ha(l.criado)}${l.instrucoes ? " · “" + l.instrucoes.slice(0, 80) + "”" : ""}`)),
+        h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), ativos ? h("span", { class: "chip tom-neutro" }, `${ent}/${ativos} na Publicação`) : null,
+          ["selecionando", "conferir", "produzindo"].includes(l.estado) ? h("button", { class: "botao perigo peq", onclick: async () => { if (!confirm("Cancelar este lote?")) return; await db.rpc("cw_esteira_cancelar", { p_lote: l.id }); desenharEsteira(); } }, "Cancelar") : null));
+      if (l.estado === "selecionando") return h("div", { class: "card", style: "display:grid;gap:8px" }, cab, h("span", { class: "nota" }, "O Claude está lendo o episódio e escolhendo os momentos (uns 10 a 15 minutos)."));
+      if (l.estado === "erro") return h("div", { class: "card", style: "display:grid;gap:8px" }, cab, h("span", { class: "nota" }, l.erro || ""));
+      if (l.estado === "conferir") {
+        const props = cs.filter((c) => c.estado === "proposto");
+        const marc = EST.marcados[l.id] = EST.marcados[l.id] || Object.fromEntries(props.map((c) => [c.id, true]));
+        const botao = h("button", { class: "botao amarelo" });
+        const conta2 = () => { botao.textContent = `Produzir ${Object.values(marc).filter(Boolean).length} selecionados`; };
+        conta2();
+        botao.onclick = async () => { const ids = Object.keys(marc).filter((k) => marc[k]).map(Number);
+          const { error } = await db.rpc("cw_esteira_conferir", { p_lote: l.id, p_escolhidos: ids, p_ajustes: EST.ajustes });
+          if (error) return alert(error.message); delete EST.marcados[l.id]; desenharEsteira(); };
+        return h("div", { class: "card", style: "display:grid;gap:10px;border:2px solid var(--brand)" }, cab,
+          l.resumo ? h("p", { class: "nota", style: "margin:0" }, l.resumo) : null,
+          h("span", { class: "nota" }, "Confira os momentos escolhidos. Desmarque o que não vale e, se quiser, escreva um ajuste para o corte."),
+          h("div", { style: "display:grid;gap:8px" }, props.map((c) => h("label", { class: "card", style: "display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;background:var(--surface-2)" },
+            h("input", { type: "checkbox", checked: !!marc[c.id], onchange: (ev) => { marc[c.id] = ev.target.checked; conta2(); } }),
+            h("div", { style: "display:grid;gap:4px;min-width:0" }, h("b", {}, `${c.ordem}. ${c.titulo}`),
+              h("span", { class: "nota" }, `${mmss(c.inicio)}–${mmss(c.fim)} · ${Math.round(c.fim - c.inicio)} s`),
+              c.gancho ? h("span", {}, "Gancho: “" + c.gancho + "”") : null, c.motivo ? h("span", { class: "nota" }, c.motivo) : null,
+              h("input", { type: "text", placeholder: "Ajuste para este corte (opcional)", value: EST.ajustes[c.id] || "", oninput: (ev) => { EST.ajustes[c.id] = ev.target.value; } }))))),
+          h("div", { class: "acoes" }, botao));
+      }
+      const visiveis = cs.filter((c) => c.estado !== "descartado");
+      return h("details", { class: "card", open: l.estado === "produzindo" }, h("summary", { style: "cursor:pointer;list-style:none" }, cab),
+        h("div", { class: "tabela", style: "margin-top:10px" }, h("table", {}, h("thead", {}, h("tr", {}, ["#", "Corte", "Situação", "Agora", ""].map((t) => h("th", {}, t)))),
+          h("tbody", {}, visiveis.map(linhaCorte)))));
+    };
+    encher($("#est-corpo"),
+      eu.papel === "gestor" && (!conta.data || conta.data.estado !== "ok") ? h("div", { class: "aviso" }, "A esteira roda com a conta Claude do CW Studios no servidor. ",
+        h("button", { class: "botao amarelo peq", onclick: () => abrirContaServidor("esteira") }, "☁️ Ligar a conta Claude da esteira")) : null,
+      h("h3", { class: "grupo" }, "Lotes"),
+      L.length ? h("div", { style: "display:grid;gap:12px" }, L.map(blocoLote)) : h("div", { class: "vazio" }, "Nenhum lote ainda. Quando um episódio estiver pronto, clique em ✂️ Gerar cortes."),
+      h("h3", { class: "grupo" }, "Episódios"),
+      E.length ? h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" }, E.map(cartaoEp))
+        : h("div", { class: "vazio" }, "Nenhum episódio ainda. Suba o episódio inteiro em “CW Cast - Cortes/1. ENVIE AQUI - Podcast (episódio inteiro)” que o servidor prepara sozinho."));
+  }
+  function pedirCortes(e) {
+    const qtd = h("input", { type: "number", min: 1, max: 30, value: 15, style: "max-width:120px" });
+    const instr = h("textarea", { style: "min-height:90px", placeholder: "Opcional: o que priorizar (ex.: falas sobre CMV e delivery, evitar trechos de patrocínio)…" });
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    encher($("#detalhe-corpo"), h("h2", {}, "✂️ Gerar cortes"), h("p", { class: "nota", style: "margin:0" }, e.nome + (e.duracao_s ? " · " + mmss(e.duracao_s) : "")),
+      h("label", {}, "Quantos cortes", qtd), h("label", {}, "O que priorizar", instr), msg,
+      h("p", { class: "nota", style: "margin:0" }, "O Claude escolhe os momentos e a lista volta aqui para você conferir antes de produzir."),
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
+        const { error } = await db.rpc("cw_esteira_pedir", { p_episodio: e.id, p_quantidade: +qtd.value || 15, p_instrucoes: instr.value, p_kit: "cw-cast" });
+        if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+        $("#detalhe").close(); desenharEsteira(); } }, "Pedir"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    $("#detalhe").showModal();
+  }
+  function ajustarCorte(c) {
+    const t = h("textarea", { style: "min-height:90px", placeholder: "O que mudar neste corte (ex.: começar 2 s depois, legenda maior, trocar o gancho)…" });
+    encher($("#detalhe-corpo"), h("h2", {}, "Pedir ajuste"), h("p", { class: "nota", style: "margin:0" }, `${c.ordem}. ${c.titulo}`), h("label", {}, "Ajuste", t),
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => { const { error } = await db.rpc("cw_esteira_ajuste", { p_corte: c.id, p_texto: t.value });
+        if (error) return alert(error.message); $("#detalhe").close(); desenharEsteira(); } }, "Mandar de volta para a produção"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    $("#detalhe").showModal();
+  }
   // ---------------------------------------------------------------- agentes: robozinhos que juntam skills (rodam no servidor)
   const AGT = { vista: "robos", lista: [], catalogo: null, busca: "", robo: null, conv: null, msgs: [], timer: null };
   const SUBNAV_AGENTES = [["robos", "🤖 Robôs"], ["skills", "🧩 Skills"], ["padrao", "📏 Regras do time"], ["kit", "📦 Kit (envios)"]];
