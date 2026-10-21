@@ -3995,18 +3995,51 @@
         h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
     $("#detalhe").showModal();
   }
+  // roteamento: etapas que o Claude manda para modelos baratos (OpenRouter); o resto fica com ele
+  const MODELOS_OR = [["google/gemini-3.1-flash-lite", "Gemini 3.1 Flash Lite (mais barato)"], ["google/gemini-3.7-flash", "Gemini 3.7 Flash (texto longo)"],
+    ["anthropic/claude-haiku-5.5", "Claude Haiku 5.5"], ["anthropic/claude-sonnet-5.5", "Claude Sonnet 5.5 (mais caro)"]];
+  function blocoRoteamento(etapas, onde, usos) {
+    const salvar = async (args) => { const { error } = await db.rpc("cw_roteamento_salvar", { p_etapa: null, ...args }); if (error) return alert(error.message); desenharServidor(); };
+    const porEtapa = {};
+    for (const u of usos.filter((x) => x.estado === "completed")) {
+      const k = u.etapa || "sem_etapa", r = porEtapa[k] = porEtapa[k] || { n: 0, custo: 0, tok: 0 };
+      r.n++; r.custo += Number(u.custo_estimado) || 0; r.tok += ((u.resultado || {}).tokens_entrada || 0) + ((u.resultado || {}).tokens_saida || 0);
+    }
+    const tot = Object.values(porEtapa).reduce((t, r) => ({ n: t.n + r.n, custo: t.custo + r.custo, tok: t.tok + r.tok }), { n: 0, custo: 0, tok: 0 });
+    const ondeSel = h("select", { onchange: (ev) => salvar({ p_onde: ev.target.value }) },
+      [["servidor", "Só no servidor"], ["todos", "No servidor e nos computadores"], ["desligado", "Desligado"]].map(([v, t]) => h("option", { value: v }, t)));
+    ondeSel.value = onde;
+    const fmtTok = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + " M" : n >= 1e3 ? Math.round(n / 1e3) + " mil" : String(n);
+    return h("div", { class: "card", style: "display:grid;gap:10px;min-width:0" },
+      h("div", { style: "display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between" },
+        h("b", {}, "Economia: OpenRouter × Claude"), h("label", { style: "display:flex;gap:8px;align-items:center" }, "Vale", ondeSel)),
+      h("span", { class: "nota" }, "As etapas ligadas abaixo o Claude manda sozinho para um modelo barato e trabalha em cima do resultado. Decisão final, arquivos, código, render, olhar o vídeo, revisão final e conversa com o editor ficam sempre com o Claude. Vale a partir da próxima conversa."),
+      h("span", { class: "nota" }, `Este mês: ${tot.n} pedidos ao OpenRouter · ${fmtTok(tot.tok)} tokens que não saíram do Claude · US$ ${tot.custo.toFixed(2)}`),
+      h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["", "Etapa", "Kit", "Modelo", "Uso no mês"].map((t) => h("th", {}, t)))),
+        h("tbody", {}, etapas.map((e) => {
+          const sel = h("select", { onchange: (ev) => salvar({ p_etapa: e.etapa, p_modelo: ev.target.value }) }, MODELOS_OR.map(([v, t]) => h("option", { value: v }, t)));
+          sel.value = e.modelo;
+          const u = porEtapa[e.etapa];
+          return h("tr", {}, h("td", {}, h("input", { type: "checkbox", checked: e.ativo, "aria-label": "Ligar " + e.nome, onchange: (ev) => salvar({ p_etapa: e.etapa, p_ativo: ev.target.checked }) })),
+            h("td", { style: "min-width:220px" }, h("b", {}, e.nome), h("div", { class: "nota" }, e.quando)),
+            td((e.kits || []).map((k) => KITS[k]).join(", ") || "Todos"), td(sel),
+            td(u ? `${u.n}× · ${fmtTok(u.tok)} tok · US$ ${u.custo.toFixed(2)}` : "–", 1));
+        })))));
+  }
   // ---------------------------------------------------------------- servidor na nuvem (gestão): o pulso que o próprio servidor manda
   const SRV = { timer: null, preco_h: 0.268, disco_mes: 20 };
   async function desenharServidor() {
     clearInterval(SRV.timer);
-    SRV.timer = setInterval(() => { if (aba === "servidor" && !document.hidden) desenharServidor(); else if (aba !== "servidor") clearInterval(SRV.timer); }, 15000);
+    SRV.timer = setInterval(() => { if (aba === "servidor" && !document.hidden && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#srv-corpo select, #srv-corpo input"))) desenharServidor(); else if (aba !== "servidor") clearInterval(SRV.timer); }, 15000);
     const desde12 = new Date(Date.now() - 12 * 3600e3).toISOString(), mes = new Date(); mes.setDate(1); mes.setHours(0, 0, 0, 0);
-    const [ult, serie, nMes, convs, contas] = await Promise.all([
+    const [ult, serie, nMes, convs, contas, rot, onde, usos] = await Promise.all([
       db.from("servidor_metricas").select("*").order("ts", { ascending: false }).limit(1).maybeSingle(),
       db.from("servidor_metricas").select("ts,cpu,ram").gte("ts", desde12).order("ts").limit(2000),
       db.from("servidor_metricas").select("ts", { count: "exact", head: true }).gte("ts", mes.toISOString()),
       db.from("esc_conversas").select("id,editor_slug,titulo,estado,atualizada,trabalho").eq("maquina", "servidor").order("atualizada", { ascending: false }).limit(15),
-      db.from("servidor_conta").select("editor_slug,estado,atualizado")]);
+      db.from("servidor_conta").select("editor_slug,estado,atualizado"),
+      db.from("roteamento").select("*").order("ordem"), db.rpc("cw_roteamento_onde"),
+      db.from("ferramenta_usos").select("etapa,estado,custo_estimado,resultado,editor_slug").eq("ferramenta", "openrouter").gte("criado", mes.toISOString()).limit(5000)]);
     const u = ult.data, d = (u && u.dados) || {}, idade = u ? (Date.now() - new Date(u.ts)) / 1000 : Infinity;
     const agora = new Date(), hBr = (agora.getUTCHours() + 21) % 24 + agora.getUTCMinutes() / 60, diaBr = new Date(Date.now() - 3 * 3600e3).getUTCDay();
     const noHorario = diaBr >= 1 && diaBr <= 5 && hBr >= 7.5 && hBr < 20.5;
@@ -4038,6 +4071,7 @@
         medidor("Processador", u && idade < 90 ? u.cpu : null), medidor("Memória", u && idade < 90 ? u.ram : null, d.ram_gb ? `de ${d.ram_gb} GB` : null),
         medidor("Disco", u ? u.disco : null, d.disco_gb ? `${d.disco_livre_gb} GB livres de ${d.disco_gb} GB` : null)),
       grafico,
+      blocoRoteamento(rot.data || [], onde.data || "servidor", usos.data || []),
       h("h3", { class: "grupo" }, "Editores no servidor"),
       h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Editor", "Estação", "Conta Claude", "Agora", "Plugin", ""].map((t) => h("th", {}, t)))),
         h("tbody", {}, eds.length ? eds.map((e) => h("tr", {}, td(h("b", {}, nomeEditor(e.slug) || e.slug)),
