@@ -666,8 +666,8 @@
   </section>
 
   <section id="aba-agentes" hidden>
-    <header class="cabeca"><p class="kicker">Time</p><h1>Agentes</h1>
-      <p class="sub">Os robozinhos do CW Studios. Cada agente junta skills do kit e da Biblioteca, conversa com você aqui e roda no servidor. Monte o seu juntando as skills que quiser.</p></header>
+    <header class="cabeca"><p class="kicker">Time</p><h1>Oficina</h1>
+      <p class="sub">Onde o time cria tudo, sem depender do computador de ninguém: skills (o agente escreve e testa, você aprova) e agentes que juntam várias skills. Um agente pode só conversar ou trabalhar sozinho no servidor, a partir de uma pasta do Drive, de uma agenda ou de um pedido, e entrega para você aprovar.</p></header>
     <div id="ag-corpo" style="display:grid;gap:16px"></div>
   </section>
 
@@ -861,9 +861,9 @@
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
     gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]],
-             ["Gestão", [["relatorio", "Relatório"], ["agentes", "Agentes"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
-    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Agentes"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Agentes"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]]],
+             ["Gestão", [["relatorio", "Relatório"], ["agentes", "Oficina"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
+    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Oficina"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Oficina"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
   };
   const EXTRAS = { gestor: ["pedir", "escritorio", "padrao", "kit"], producao: ["pedir"], editor: [], solicitante: [] };   // abas sem item no menu
@@ -4515,7 +4515,7 @@
   }
   // ---------------------------------------------------------------- agentes: robozinhos que juntam skills (rodam no servidor)
   const AGT = { vista: "robos", lista: [], catalogo: null, busca: "", robo: null, conv: null, msgs: [], timer: null };
-  const SUBNAV_AGENTES = [["robos", "🤖 Robôs"], ["skills", "🧩 Skills"], ["padrao", "📏 Regras do time"], ["kit", "📦 Kit (envios)"]];
+  const SUBNAV_AGENTES = [["robos", "🤖 Agentes"], ["skills", "🧩 Skills"], ["padrao", "📏 Regras do time"], ["kit", "📦 Kit (envios antigos)"]];
   function subnavAgentes(atual) {
     const sec = $("#aba-" + (["padrao", "kit"].includes(atual) ? atual : "agentes"));
     let nav = sec.querySelector(".subnav-agentes");
@@ -4525,8 +4525,8 @@
       onclick: () => { if (["padrao", "kit"].includes(v)) trocarAba(v); else { AGT.vista = v; trocarAba("agentes"); } } }, t)));
   }
   const ROBOS_FIXOS = [
-    { id: "fabiano-ia", nome: "FabI.Ano", missao: "Edita os reels da Cardápio Web no estilo do Fabiano", cores: () => FABIA, abrir: () => trocarAba("reels"), papeis: ["gestor", "producao", "editor"] },
-    { id: "titeu", nome: "Titeu", missao: "A esteira de cortes: prepara os episódios e produz os cortes em paralelo", cores: () => TITEU, abrir: () => trocarAba("esteira"), papeis: ["gestor", "producao", "editor"] },
+    { id: "fabiano-ia", nome: "FabI.Ano", missao: "Edita os reels da Cardápio Web no estilo do Fabiano", cores: () => FABIA, abrir: () => trocarAba("reels"), estilos: () => { EST.vista = "estilos"; trocarAba("reels"); }, papeis: ["gestor", "producao", "editor"] },
+    { id: "titeu", nome: "Titeu", missao: "A esteira de cortes: prepara os episódios e produz os cortes em paralelo", cores: () => TITEU, abrir: () => trocarAba("esteira"), estilos: () => { EST.vista = "estilos"; trocarAba("esteira"); }, papeis: ["gestor", "producao", "editor"] },
     { id: "ze", nome: "Zé Algoritmo", missao: "SEO do YouTube do CW Cast (todo dia às 22h)", cores: () => ZE, abrir: () => abrirChatZe(), papeis: ["gestor", "producao"] },
     { id: "bia", nome: "Doti", missao: "Desempenho dos cortes no Instagram (segunda, 9h)", cores: () => BIA, abrir: () => abrirChatAgente("bia"), papeis: ["gestor", "producao", "editor"] },
     { id: "dinha", nome: "Dinha", missao: "Resumo da operação (todo dia, 8h)", cores: () => DINHA, abrir: () => abrirChatAgente("dinha"), papeis: ["gestor", "producao", "editor"] },
@@ -4540,11 +4540,15 @@
     subnavAgentes(AGT.vista);
     const { data } = await db.from("agentes").select("*").eq("ativo", true).order("criado");
     AGT.lista = data || [];
-    if (AGT.vista === "skills") return desenharSkillsCatalogo();
+    if (AGT.vista === "skills") return desenharSkillsOficina();
     const g = eu.papel === "gestor";
     let contaRobos = null;
     if (g) { const r = await db.from("servidor_conta").select("estado").eq("editor_slug", "robos").maybeSingle(); contaRobos = r.data; }
-    const cartaoFixo = (r) => h("button", { class: "card", style: "display:flex;gap:12px;align-items:center;text-align:left;cursor:pointer;border:1px solid var(--line)", onclick: r.abrir },
+    const cartaoFixo = (r) => r.estilos ? h("div", { class: "card", style: "display:flex;gap:12px;align-items:center;border:1px solid var(--line)" },
+      retratoDe(r.cores()), h("div", { style: "display:grid;gap:6px;min-width:0" }, h("b", {}, r.nome), h("span", { class: "nota" }, r.missao),
+        h("div", { class: "acoes", style: "margin:0" }, h("button", { class: "botao amarelo peq", onclick: r.abrir }, "Abrir"),
+          h("button", { class: "botao leve peq", onclick: r.estilos }, "🎨 Estilos de edição"))))
+      : h("button", { class: "card", style: "display:flex;gap:12px;align-items:center;text-align:left;cursor:pointer;border:1px solid var(--line)", onclick: r.abrir },
       retratoDe(r.cores()), h("div", { style: "display:grid;gap:4px;min-width:0" }, h("b", {}, r.nome), h("span", { class: "nota" }, r.missao),
         h("span", { class: "chip tom-neutro", style: "justify-self:start" }, "Robô do sistema")));
     const meu = (a) => a.criado_por === eu.email;
@@ -4557,8 +4561,10 @@
             !meu(a) ? h("span", { class: "nota" }, "de " + a.criado_por.split("@")[0]) : null))),
       (a.skills || []).length ? h("div", { class: "chips" }, a.skills.map((x) => h("span", { class: "chip tom-neutro" }, "🧩 " + x.nome))) : h("span", { class: "nota" }, "Sem skills ainda"),
       (a.ferramentas || []).length ? h("span", { class: "nota" }, "Ferramentas: " + a.ferramentas.map((f) => ({ higgsfield: "Higgsfield", openrouter: "OpenRouter" })[f] || f).join(", ")) : null,
+      a.trabalha ? h("span", { class: "chip tom-ok", style: "justify-self:start" }, "⚙️ " + comoTrabalha(a)) : null,
       h("div", { class: "acoes", style: "margin:0" },
-        h("button", { class: "botao amarelo peq", onclick: () => abrirChatRobo(a) }, "💬 Conversar"),
+        a.trabalha ? h("button", { class: "botao amarelo peq", onclick: () => abrirTrabalhos(a) }, "📋 Trabalhos") : null,
+        h("button", { class: a.trabalha ? "botao leve peq" : "botao amarelo peq", onclick: () => abrirChatRobo(a) }, "💬 Conversar"),
         meu(a) || g ? h("button", { class: "botao leve peq", onclick: () => editarAgente(a) }, "Editar") : null,
         meu(a) && !g && a.compartilhar === "privado" ? h("button", { class: "botao leve peq", onclick: async () => { const { error } = await db.rpc("cw_agente_compartilhar", { p_id: a.id, p_estado: "pedido" }); if (error) return alert(error.message); desenharAgentes(); } }, "Pedir para compartilhar") : null,
         g && a.compartilhar !== "time" ? h("button", { class: "botao leve peq", onclick: async () => { await db.rpc("cw_agente_compartilhar", { p_id: a.id, p_estado: "time" }); desenharAgentes(); } }, "Compartilhar com o time") : null,
@@ -4573,7 +4579,7 @@
       h("h3", { class: "grupo" }, "Personalizados"),
       h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px" },
         h("button", { class: "card", style: "display:grid;place-items:center;gap:6px;min-height:150px;cursor:pointer;border:2px dashed var(--line);background:transparent", onclick: () => editarAgente(null) },
-          h("span", { style: "font-size:34px" }, "＋"), h("b", {}, "Criar agente"), h("span", { class: "nota" }, "Junte skills e dê um jeito de trabalhar")),
+          h("span", { style: "font-size:34px" }, "＋"), h("b", {}, "Criar agente"), h("span", { class: "nota" }, "Junte skills; ele pode conversar ou trabalhar sozinho")),
         AGT.lista.map(cartao)),
       fixos.length ? h("h3", { class: "grupo" }, "Robôs do sistema") : null,
       fixos.length ? h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px" }, fixos.map(cartaoFixo)) : null);
@@ -4599,6 +4605,153 @@
       h("pre", { style: "white-space:pre-wrap;max-height:60vh;overflow:auto;font-size:12.5px;background:var(--surface-2);padding:12px;border-radius:12px" }, x.conteudo || "(sem conteúdo)"),
       h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
+  }
+  // ---- Oficina: skills do sistema (criar/melhorar com teste) e trabalhos dos agentes
+  const comoTrabalha = (a) => ({ pedido: "trabalha quando alguém pede", pasta: `vigia 1. ENVIE AQUI/${a.pasta || "?"}`,
+    agenda: `agenda ${((a.agenda || {}).dias || []).map((d) => ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"][d]).join(", ")} às ${(a.agenda || {}).hora || "08:00"}` })[a.gatilho] || "trabalha"
+    + " · " + ({ aprovacao: "fica para aprovar", publicacao: "vai para a Publicação", pasta: "vai para pasta do Drive" })[a.entrega || "aprovacao"];
+  async function blocoResultado(res) {   // texto + arquivos (vídeo, imagem, texto) guardados no bucket "oficina"
+    res = res || {};
+    const itens = [];
+    for (const f of res.arquivos || []) {
+      let url = null;
+      if (f.caminho) { const { data } = await db.storage.from("oficina").createSignedUrl(f.caminho, 3600); url = data && data.signedUrl; }
+      const tipo = f.tipo || "";
+      itens.push(h("div", { style: "display:grid;gap:4px;min-width:0" }, h("b", { style: "font-size:13px" }, f.nome),
+        url && tipo.startsWith("video/") ? h("video", { src: url, controls: true, playsinline: true, style: "width:100%;max-width:340px;max-height:55vh;border-radius:12px;background:#000" })
+          : url && tipo.startsWith("image/") ? h("img", { src: url, alt: f.nome, style: "max-width:100%;max-height:50vh;border-radius:10px" })
+          : f.texto ? h("pre", { style: "white-space:pre-wrap;max-height:40vh;overflow:auto;font-size:12.5px;background:var(--surface-2);padding:10px;border-radius:10px" }, f.texto)
+          : url ? h("a", { href: url, target: "_blank", rel: "noopener" }, "Abrir o arquivo") : h("span", { class: "nota" }, f.erro || "arquivo grande demais para mostrar aqui")));
+    }
+    return h("div", { style: "display:grid;gap:10px" },
+      res.texto ? h("div", { class: "subir-item", style: "background:var(--surface-2);white-space:pre-wrap" }, res.texto) : null,
+      res.legenda ? h("div", { class: "nota", style: "white-space:pre-wrap" }, h("b", {}, "Legenda: "), res.legenda) : null, itens);
+  }
+  function pedirSkill(sk) {
+    const nome = h("input", { placeholder: "Ex.: Legenda animada CW, Thumbnail do YouTube, Corte de silêncio", maxlength: 60 });
+    const pedido = h("textarea", { style: "min-height:120px", placeholder: sk ? "O que melhorar (ex.: a legenda tem que quebrar em no máximo 2 linhas; usar a vinheta nova da Biblioteca)…"
+      : "O que a skill faz, passo a passo se souber (ex.: recebe um vídeo vertical, tira os silêncios acima de 0,4 s, põe legenda palavra por palavra em amarelo e exporta em 1080x1920)…" });
+    const exemplo = h("textarea", { style: "min-height:60px", placeholder: "Teste: o que ela deve fazer no teste (ex.: use o vídeo de referência e entregue o resultado em mp4)" });
+    const refs = campoRefs(), msg = h("div", { class: "aviso erro", hidden: true });
+    encher($("#detalhe-corpo"), h("h2", {}, sk ? `✨ Melhorar "${sk.nome}"` : "🧩 Criar skill"),
+      sk ? null : h("label", {}, "Nome", nome), h("label", {}, sk ? "O que mudar" : "O que ela faz", pedido), h("label", {}, "Como testar", exemplo), refs.el,
+      h("p", { class: "nota", style: "margin:0" }, "O Criador de skills (no servidor) escreve a skill, testa com o seu exemplo e mostra o resultado aqui. Ela só passa a valer para os agentes quando alguém aprovar o teste; cada versão fica guardada."),
+      msg, h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async (ev) => {
+        ev.target.disabled = true; msg.hidden = true;
+        try {
+          const caminhos = await refs.enviar(`skill/${sk ? sk.slug : "nova"}/${Date.now()}`);
+          const { error } = await db.rpc("cw_skill_pedir", { p_skill: sk ? sk.id : null, p_nome: sk ? null : nome.value, p_pedido: pedido.value,
+            p_exemplo: exemplo.value, p_refs: caminhos, p_links: refs.links() });
+          if (error) throw error;
+          $("#detalhe").close(); desenharAgentes();
+        } catch (e) { msg.hidden = false; msg.textContent = e.message || e; ev.target.disabled = false; }
+      } }, sk ? "Pedir a melhoria" : "Criar a skill"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    $("#detalhe").showModal();
+  }
+  async function verVersaoSkill(sk, v) {
+    const nota = h("textarea", { style: "min-height:70px", placeholder: "O que ainda não ficou bom…" }), msg = h("div", { class: "aviso erro", hidden: true });
+    const decidir = async (acao) => { msg.hidden = true;
+      try { if (acao === "mudar" && !nota.value.trim()) throw new Error("Diga o que mudar.");
+        const { error } = await db.rpc("cw_skill_decidir", { p_versao: v.id, p_acao: acao, p_nota: nota.value || null }); if (error) throw error;
+        $("#detalhe").close(); desenharAgentes(); } catch (e) { msg.hidden = false; msg.textContent = e.message || e; } };
+    const [rot, tom] = ESTADO_VER[v.estado] || [v.estado, "tom-neutro"];
+    encher($("#detalhe-corpo"), h("h2", {}, `🧩 ${sk.nome} · versão ${v.versao}`), h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot),
+        h("span", { class: "chip" }, "pedido por " + (v.pedido_por || "").split("@")[0])),
+      h("p", { style: "margin:0;white-space:pre-wrap" }, h("b", {}, "Pedido: "), v.pedido), v.exemplo ? h("p", { class: "nota", style: "margin:0" }, "Teste: " + v.exemplo) : null,
+      v.notas ? h("div", { class: "subir-item", style: "background:var(--surface-2);white-space:pre-wrap" }, h("b", {}, "O que o Criador fez"), v.notas) : null,
+      v.resultado ? [h("b", {}, "Resultado do teste"), await blocoResultado(v.resultado)] : null,
+      v.erro ? h("div", { class: "aviso erro" }, v.erro) : null,
+      v.conteudo ? h("details", {}, h("summary", { class: "nota", style: "cursor:pointer" }, "Ver o SKILL.md desta versão"),
+        h("pre", { style: "white-space:pre-wrap;max-height:40vh;overflow:auto;font-size:12.5px;background:var(--surface-2);padding:10px;border-radius:10px" }, v.conteudo)) : null,
+      ["aguardando", "erro"].includes(v.estado) ? [h("label", {}, "Pedir mudança nesta versão", nota), h("div", { class: "acoes" },
+        v.estado === "aguardando" ? h("button", { class: "botao amarelo", onclick: () => decidir("aprovar") }, "✓ Aprovar: passa a valer") : null,
+        h("button", { class: "botao leve", onclick: () => decidir("mudar") }, "↻ Pedir mudança"), h("button", { class: "botao perigo peq", onclick: () => decidir("descartar") }, "Descartar"))] : null,
+      v.estado === "aprovada" && v.versao !== sk.versao ? h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => decidir("voltar") }, "↩ Voltar a skill para esta versão")) : null,
+      msg, h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
+  async function desenharSkillsOficina() {
+    const g = eu.papel === "gestor", pode = g || !!meuSlug();
+    const [{ data: sks }, { data: vers }, cat] = await Promise.all([
+      db.from("skills").select("id,slug,nome,descricao,conteudo,kit,origem,item_id,versao,ativo,criado_por").order("nome"),
+      db.from("skill_versoes").select("id,skill_id,versao,pedido,exemplo,pedido_por,estado,etapa,conteudo,notas,erro,resultado,criado").neq("estado", "descartada").order("versao", { ascending: false }).limit(300),
+      carregarCatalogo()]);
+    const kitItens = g ? ((await db.from("kit_itens").select("id,tipo,nome,nome_kit,editor_slug,kit,descricao,descartado").eq("descartado", false).order("id")).data || []) : [];
+    const { data: ags } = g ? await db.from("agentes").select("instrucoes") : { data: [] };
+    const importados = new Set((sks || []).filter((x) => x.origem === "kit").map((x) => x.item_id));
+    for (const a of ags || []) { const m = /\[kit:(\d+)\]/.exec(a.instrucoes || ""); if (m) importados.add(+m[1]); }
+    const faltam = kitItens.filter((k) => !importados.has(k.id));
+    const vDe = (id) => (vers || []).filter((v) => v.skill_id === id);
+    const importar = async (ids) => { for (const id of ids) { const { error } = await db.rpc("cw_kit_importar", { p_item: id }); if (error) return alert(error.message); } AGT.catalogo = null; desenharAgentes(); };
+    const cartao = (x) => h("div", { class: "card", style: "display:grid;gap:8px;min-width:0;align-content:start;" + (x.ativo ? "" : "opacity:.8") },
+      h("div", { style: "display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap" }, h("b", {}, "🧩 " + x.nome),
+        h("div", { class: "chips" }, x.versao ? h("span", { class: "chip tom-neutro" }, "v" + x.versao) : null, x.origem === "kit" ? h("span", { class: "chip tom-neutro" }, "do Kit") : null,
+          x.kit ? h("span", { class: "chip tom-neutro" }, KITS[x.kit]) : null, !x.ativo ? h("span", { class: "chip tom-neutro" }, x.versao ? "Desligada" : "Em criação") : null)),
+      h("span", { class: "nota" }, (x.descricao || "").slice(0, 220)),
+      vDe(x.id).slice(0, 3).map((v) => { const [rot, tom] = ESTADO_VER[v.estado] || [v.estado, "tom-neutro"];
+        return h("button", { class: "subir-item", style: "text-align:left;cursor:pointer;border:1px solid var(--line);background:var(--surface-2);display:grid;gap:2px", onclick: () => verVersaoSkill(x, v) },
+          h("div", { class: "chips" }, h("b", {}, "v" + v.versao + (v.versao === x.versao && v.estado === "aprovada" ? " · em uso" : "")), h("span", { class: "chip " + tom }, rot)),
+          h("span", { class: "nota" }, (v.etapa && ["criando", "testando"].includes(v.estado) ? v.etapa + " · " : "") + (v.pedido || "").slice(0, 110))); }),
+      h("div", { class: "acoes", style: "margin:0" },
+        pode && x.versao ? h("button", { class: "botao leve peq", onclick: () => pedirSkill(x) }, "✨ Melhorar") : null,
+        x.conteudo ? h("button", { class: "botao leve peq", onclick: () => verSkill({ nome: x.nome, fonte: "Oficina · v" + x.versao, conteudo: x.conteudo }) }, "Ver") : null,
+        g && x.versao ? h("button", { class: "botao leve peq", onclick: async () => { const v = vDe(x.id)[0]; if (!v) return; const { error } = await db.rpc("cw_skill_decidir", { p_versao: v.id, p_acao: x.ativo ? "desligar" : "ligar" }); if (error) return alert(error.message); desenharAgentes(); } }, x.ativo ? "Desligar" : "Ligar") : null));
+    const outras = cat.filter((x) => x.origem !== "sistema");
+    encher($("#ag-corpo"),
+      h("p", { class: "nota", style: "margin:0" }, "Skills da Oficina: o Criador escreve e testa no servidor, e cada versão só vale depois de aprovada. Os agentes juntam essas skills."),
+      h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" },
+        pode ? h("button", { class: "card", style: "display:grid;place-items:center;gap:6px;min-height:130px;cursor:pointer;border:2px dashed var(--line);background:transparent", onclick: () => pedirSkill(null) },
+          h("span", { style: "font-size:30px" }, "🧩"), h("b", {}, "Criar skill"), h("span", { class: "nota" }, "diga o que ela faz e mande exemplos")) : null,
+        (sks || []).map(cartao)),
+      g && faltam.length ? h("div", { class: "card", style: "display:grid;gap:8px" }, h("b", {}, `📦 Ainda no Kit (enviado do computador): ${faltam.length} item(ns)`),
+        h("span", { class: "nota" }, "Traga para a Oficina uma vez: skills viram skills do sistema (com os arquivos) e agentes viram agentes do time. Depois disso, tudo é criado e melhorado aqui."),
+        h("div", { class: "chips" }, faltam.map((k) => h("button", { class: "chip", style: "cursor:pointer;border:0", onclick: () => importar([k.id]) }, `${k.tipo === "agente" ? "🤖" : "🧩"} ${k.nome_kit || k.nome} · ${k.editor_slug} ＋`))),
+        h("div", { class: "acoes", style: "margin:0" }, h("button", { class: "botao amarelo peq", onclick: () => importar(faltam.map((k) => k.id)) }, "Importar tudo"))) : null,
+      outras.length ? h("details", {}, h("summary", { class: "nota", style: "cursor:pointer" }, `Outras ${outras.length} skills que os agentes também podem usar (Biblioteca e Kit aprovado)`),
+        h("div", { class: "chips", style: "margin-top:8px" }, outras.map((x) => h("button", { class: "chip tom-neutro", style: "cursor:pointer;border:0", onclick: () => verSkill(x) }, x.nome)))) : null);
+  }
+  const ESTADO_TAREFA = { na_fila: ["Na fila", "tom-neutro"], rodando: ["Trabalhando", "tom-aviso"], previa: ["Pronto: aprovar?", "tom-critico"],
+    aprovada: ["Aprovado, entregando", "tom-aviso"], entregue: ["Entregue", "tom-ok"], erro: ["Deu erro", "tom-critico"], descartada: ["Descartado", "tom-neutro"] };
+  async function abrirTrabalhos(a) {
+    const { data } = await db.from("agente_tarefas").select("*").eq("agente_id", a.id).neq("estado", "descartada").order("id", { ascending: false }).limit(40);
+    const texto = h("textarea", { style: "min-height:90px", placeholder: "O que ele deve fazer (ex.: faz 3 anúncios de 15 s com estes vídeos, foco em delivery próprio)…" });
+    const refs = campoRefs(), msg = h("div", { class: "aviso erro", hidden: true });
+    encher($("#detalhe-corpo"), h("h2", {}, "📋 Trabalhos de " + a.nome), h("p", { class: "nota", style: "margin:0" }, comoTrabalha(a)),
+      h("details", { open: !(data || []).length || null }, h("summary", { style: "cursor:pointer" }, h("b", {}, "＋ Pedir um trabalho")),
+        h("div", { style: "display:grid;gap:8px;margin-top:8px" }, texto, refs.el, msg,
+          h("div", { class: "acoes", style: "margin:0" }, h("button", { class: "botao amarelo", onclick: async (ev) => { ev.target.disabled = true; msg.hidden = true;
+            try { const caminhos = await refs.enviar(`agente-${a.id}/${Date.now()}`);
+              const { error } = await db.rpc("cw_agente_pedir", { p_agente: a.id, p_texto: texto.value, p_refs: caminhos, p_links: refs.links() }); if (error) throw error;
+              abrirTrabalhos(a); } catch (e) { msg.hidden = false; msg.textContent = e.message || e; ev.target.disabled = false; } } }, "Mandar para a fila")))),
+      (data || []).length ? h("div", { style: "display:grid;gap:8px" }, data.map((t) => { const [rot, tom] = ESTADO_TAREFA[t.estado] || [t.estado, "tom-neutro"];
+        return h("button", { class: "subir-item", style: "text-align:left;cursor:pointer;border:1px solid var(--line);background:var(--surface-2);display:grid;gap:2px", onclick: () => verTarefa(a, t) },
+          h("div", { class: "chips" }, h("b", {}, `#${t.id}`), h("span", { class: "chip " + tom }, rot), h("span", { class: "nota" }, horaBR(t.criado) + " · " + ({ pedido: "pedido", pasta: "pasta", agenda: "agenda" })[t.origem])),
+          h("span", { class: "nota" }, (t.estado === "rodando" && t.etapa ? t.etapa + " · " : "") + ((t.resultado || {}).titulo || (t.entrada || {}).texto || (t.entrada || {}).arquivo || "").slice(0, 120))); }))
+        : h("div", { class: "vazio" }, "Nenhum trabalho ainda."),
+      h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    if (!$("#detalhe").open) $("#detalhe").showModal();
+  }
+  async function verTarefa(a, t) {
+    const nota = h("textarea", { style: "min-height:70px", placeholder: "O que ajustar e onde (ex.: no 0:05 o texto some rápido; trocar a trilha)…" });
+    const prints = campoPrints(), msg = h("div", { class: "aviso erro", hidden: true });
+    const decidir = async (acao) => { msg.hidden = true;
+      try { if (acao === "ajuste" && !nota.value.trim()) throw new Error("Diga o que ajustar.");
+        const imgs = acao === "ajuste" ? await prints.enviar("tarefa-" + t.id) : [];
+        const { error } = await db.rpc("cw_tarefa_decidir", { p_tarefa: t.id, p_acao: acao, p_nota: nota.value || null, p_imagens: imgs }); if (error) throw error;
+        prints.soltar(); abrirTrabalhos(a); } catch (e) { msg.hidden = false; msg.textContent = e.message || e; } };
+    const [rot, tom] = ESTADO_TAREFA[t.estado] || [t.estado, "tom-neutro"], ent = t.entrada || {};
+    encher($("#detalhe-corpo"), h("h2", {}, `${a.nome} · trabalho #${t.id}`), h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), t.pedido_por ? h("span", { class: "chip" }, "pedido por " + t.pedido_por.split("@")[0]) : null),
+      ent.texto ? h("p", { style: "margin:0;white-space:pre-wrap" }, h("b", {}, "Pedido: "), ent.texto) : null, ent.arquivo ? h("p", { class: "nota", style: "margin:0" }, "Material: " + ent.arquivo) : null,
+      t.ajuste ? h("p", { class: "nota", style: "margin:0" }, "Último ajuste pedido: " + t.ajuste) : null,
+      t.resultado ? await blocoResultado(t.resultado) : null, t.entrega_info ? h("p", { class: "nota", style: "margin:0" }, "Entrega: " + t.entrega_info) : null,
+      t.erro ? h("div", { class: "aviso erro" }, t.erro) : null,
+      ["previa", "erro", "entregue"].includes(t.estado) ? [h("label", {}, "Pedir ajuste", nota), prints.el] : null, msg,
+      h("div", { class: "acoes" },
+        t.estado === "previa" ? h("button", { class: "botao amarelo", onclick: () => decidir("aprovar") }, "✓ Aprovar e entregar") : null,
+        ["previa", "erro", "entregue"].includes(t.estado) ? h("button", { class: "botao leve", onclick: () => decidir("ajuste") }, "✏️ Pedir ajuste") : null,
+        t.estado === "erro" ? h("button", { class: "botao leve", onclick: () => decidir("tentar") }, "Tentar de novo") : null,
+        ["na_fila", "previa", "erro"].includes(t.estado) ? h("button", { class: "botao perigo peq", onclick: () => decidir("descartar") }, "Descartar") : null,
+        h("button", { class: "botao leve", onclick: () => { prints.soltar(); abrirTrabalhos(a); } }, "Voltar")));
   }
   async function editarAgente(a) {
     const cat = await carregarCatalogo();
@@ -4626,6 +4779,29 @@
           else escolhidas.delete(x.origem + x.id); contador.textContent = `${escolhidas.size}/12 escolhidas`; } }),
         h("span", {}, h("b", {}, x.nome), " ", h("span", { class: "nota" }, "· " + x.fonte + (x.descricao ? " · " + x.descricao.slice(0, 110) : ""))))));
       if (!cat.length) encher(lista, h("span", { class: "nota" }, "Ainda não há skills aprovadas no kit nem na Biblioteca.")); };
+    // como ele trabalha (sozinho, no servidor)
+    const trab = h("input", { type: "checkbox", checked: !!(a && a.trabalha) });
+    const gat = h("select", {}, [["pedido", "Quando alguém pede aqui na página"], ["pasta", "Quando cai arquivo numa pasta do Drive"], ["agenda", "Num horário (agenda)"]].map(([v2, t]) => h("option", { value: v2 }, t)));
+    gat.value = (a && a.gatilho) || "pedido";
+    const pastaIn = h("input", { value: (a && a.pasta) || "", placeholder: "Ex.: Anúncios do Glauton (fica em 1. ENVIE AQUI)", maxlength: 60 });
+    const ag = (a && a.agenda) || {}, diasNomes = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
+    const dias = diasNomes.map((d, i) => h("label", { class: "check", style: "display:inline-flex;gap:4px;align-items:center" }, h("input", { type: "checkbox", value: i + 1, checked: (ag.dias || [1, 2, 3, 4, 5]).includes(i + 1) }), d));
+    const hora = h("input", { type: "time", value: ag.hora || "08:00", style: "max-width:140px" });
+    const agPedido = h("textarea", { style: "min-height:60px", placeholder: "O que ele faz nesse horário (ex.: pega os 3 vídeos mais vistos da semana e faz um resumo)…" }); agPedido.value = ag.pedido || "";
+    const ent = h("select", {}, [["aprovacao", "Fica para aprovar aqui (resultado na Oficina)"], ["publicacao", "Vai para a Publicação (vídeo para as redes)"], ["pasta", "Vai para uma pasta do Drive"]].map(([v2, t]) => h("option", { value: v2 }, t)));
+    ent.value = (a && a.entrega) || "aprovacao";
+    const destSprint = h("select", {}, DESTINOS_SPRINT.map((d) => h("option", { value: d }, d))), destPasta = h("input", { placeholder: "Pasta dentro de CW Cast - Cortes (ex.: 2. PARA APROVAR/Anúncios)", maxlength: 120 });
+    if (a && a.entrega === "publicacao" && a.destino) destSprint.value = a.destino; if (a && a.entrega === "pasta") destPasta.value = a.destino || "";
+    const higgsIn = h("input", { type: "number", min: 0, max: 20, value: (a && a.higgs) || 0, style: "max-width:120px" });
+    const blocoPasta = h("label", {}, "Pasta de entrada", pastaIn), blocoAgenda = h("div", { style: "display:grid;gap:6px" }, h("div", { style: "display:flex;gap:10px;flex-wrap:wrap" }, dias), h("label", {}, "Hora (Brasília)", hora), h("label", {}, "O que fazer", agPedido));
+    const blocoSprint = h("label", {}, "Pasta da sprint", destSprint), blocoDest = h("label", {}, "Pasta do Drive", destPasta);
+    const blocoTrab = h("div", { style: "display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:12px" },
+      h("label", {}, "Começa", gat), blocoPasta, blocoAgenda, h("label", {}, "Entrega", ent), blocoSprint, blocoDest,
+      h("label", {}, "Higgsfield: até quantas gerações por trabalho (0 = não usa)", higgsIn),
+      h("span", { class: "nota" }, "Ele trabalha no servidor com a conta Claude do CW Studios. Todo resultado espera a aprovação de alguém do time antes de ser entregue."));
+    const mostrarTrab = () => { blocoTrab.hidden = !trab.checked; blocoPasta.hidden = gat.value !== "pasta"; blocoAgenda.hidden = gat.value !== "agenda";
+      blocoSprint.hidden = ent.value !== "publicacao"; blocoDest.hidden = ent.value !== "pasta"; };
+    trab.onchange = gat.onchange = ent.onchange = mostrarTrab; mostrarTrab();
     const msg = h("div", { class: "aviso erro", hidden: true });
     encher($("#detalhe-corpo"), h("h2", {}, a ? "Editar " + a.nome : "Criar agente"),
       h("div", { style: "display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start" }, prev,
@@ -4636,11 +4812,15 @@
       h("label", {}, "Nome", nome), h("label", {}, "Missão", missao),
       h("div", { style: "display:grid;gap:6px" }, h("div", { style: "display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap" }, h("b", {}, "Skills que ele junta"), contador), filtro, lista),
       h("label", {}, "Instruções", instr), h("label", {}, "Kit", kit),
-      h("div", { style: "display:grid;gap:4px" }, h("b", {}, "Ferramentas pagas da empresa"), ferr, h("span", { class: "nota" }, "Cada geração paga pede o seu OK na conversa.")),
+      h("div", { style: "display:grid;gap:4px" }, h("b", {}, "Ferramentas pagas da empresa"), ferr, h("span", { class: "nota" }, "Na conversa, cada geração paga pede o seu OK.")),
+      h("label", { class: "check", style: "display:flex;gap:8px;align-items:center" }, trab, h("b", {}, "Trabalha sozinho no servidor"), h("span", { class: "nota" }, "(além de conversar)")), blocoTrab,
       msg,
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
         const dados = { nome: nome.value.trim(), missao: missao.value.trim(), instrucoes: instr.value, kit: kit.value, visual: v, skills: [...escolhidas.values()],
-          ferramentas: ferr.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value) };
+          ferramentas: ferr.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value),
+          trabalha: trab.checked, gatilho: gat.value, pasta: pastaIn.value, entrega: ent.value, higgs: +higgsIn.value || 0,
+          destino: ent.value === "publicacao" ? destSprint.value : ent.value === "pasta" ? destPasta.value : "",
+          agenda: { dias: dias.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => +i.value), hora: hora.value, pedido: agPedido.value } };
         if (dados.nome.length < 2) { msg.hidden = false; msg.textContent = "Dê um nome ao agente."; return; }
         const { error } = await db.rpc("cw_agente_salvar", { p_id: a ? a.id : null, p_dados: dados });
         if (error) { msg.hidden = false; msg.textContent = error.message; return; }
