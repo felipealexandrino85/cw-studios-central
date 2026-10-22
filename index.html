@@ -653,6 +653,12 @@
     <div class="grade-cartoes" id="bib-lista"></div>
   </section>
 
+  <section id="aba-reels" hidden>
+    <header class="cabeca" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><canvas id="fabiano-retrato" width="22" height="35" style="width:66px;height:105px;image-rendering:pixelated;flex:none" aria-hidden="true"></canvas><div style="flex:1 1 280px;min-width:0"><p class="kicker">Reels da Cardápio Web</p><h1>FabI.Ano</h1>
+      <p class="sub">Cada pasta nova em “2. ENVIE AQUI - Reels (câmera + tela)” vira um reel: o FabI.Ano prepara, edita no estilo do Fabiano e manda a prévia aqui. Você aprova (vai para “4. PRONTOS - Reels”) ou pede ajuste com print.</p></div></header>
+    <div id="reels-corpo" style="display:grid;gap:16px"></div>
+  </section>
+
   <section id="aba-esteira" hidden>
     <header class="cabeca" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><canvas id="titeu-retrato" width="22" height="35" style="width:66px;height:105px;image-rendering:pixelated;flex:none" aria-hidden="true"></canvas><div style="flex:1 1 280px;min-width:0"><p class="kicker">Esteira de cortes</p><h1>Titeu</h1>
       <p class="sub">O episódio que cai em “1. ENVIE AQUI - Podcast” é preparado sozinho no servidor (transcrição e mapa). Depois é só pedir os cortes: o Claude escolhe os momentos, você confere a lista e eles são produzidos em paralelo, caindo um a um na Publicação.</p></div></header>
@@ -854,10 +860,10 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["publicacao", "Publicação"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]],
              ["Gestão", [["relatorio", "Relatório"], ["agentes", "Agentes"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
-    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Agentes"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Agentes"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["publicacao", "Publicação"]]]],
+    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Agentes"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Agentes"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
   };
   const EXTRAS = { gestor: ["pedir", "escritorio", "padrao", "kit"], producao: ["pedir"], editor: [], solicitante: [] };   // abas sem item no menu
@@ -877,6 +883,7 @@
     kit: "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
     servidor: "M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01",
     esteira: "M3 17h18M5 17V9l4 3V9l4 3V9l4 3v5M7 21h.01M12 21h.01M17 21h.01",
+    reels: "M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM10 9l5 3-5 3z",
     agentes: "M12 3v3M7 8h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3zM9 13h.01M15 13h.01M9.5 17h5M2 13v2M22 13v2",
     conhecimento: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-1.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
@@ -1135,7 +1142,7 @@
   }
 
   function desenhar() {
-    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, inicio: desenharInicio, aovivo: () => { desenharAoVivo(); carregarTiteu().then(() => { if (aba === "aovivo") desenharAoVivo(); }); }, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, cast: abrirCast,
+    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, reels: desenharEsteira, inicio: desenharInicio, aovivo: () => { desenharAoVivo(); carregarTiteu().then(() => { if (aba === "aovivo") desenharAoVivo(); }); }, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1216,14 +1223,14 @@
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     const [c, l, e] = await Promise.all([
       db.from("esteira_cortes").select("id,lote_id,ordem,titulo,estado,etapa,iniciado,terminado,atualizado,inicio,fim").or(`estado.in.(produzindo,na_fila,previa,aprovado),terminado.gte.${hoje.toISOString()}`).limit(500),
-      db.from("esteira_lotes").select("id,episodio_id,estilo_id,estado").order("id", { ascending: false }).limit(30),
-      db.from("esteira_episodios").select("id,nome,estado,etapa,progresso").order("id", { ascending: false }).limit(30)]);
+      db.from("esteira_lotes").select("id,episodio_id,estilo_id,estado,linha").order("id", { ascending: false }).limit(30),
+      db.from("esteira_episodios").select("id,nome,estado,etapa,progresso,linha").order("id", { ascending: false }).limit(30)]);
     TITEU_D.cortes = c.data || []; TITEU_D.lotes = l.data || []; TITEU_D.eps = e.data || [];
   }
   function titeuFeitosHoje() {
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     return TITEU_D.cortes.filter((c) => ["previa", "aprovado", "entregue"].includes(c.estado) && c.terminado && new Date(c.terminado) >= hoje)
-      .map((c) => ({ titeu: true, editor_slug: "esteira", quem: "Titeu", status: "entregue", fechado_em: c.terminado, titulo: c.titulo, pecas: 1,
+      .map((c) => ({ titeu: true, editor_slug: "esteira", quem: ((TITEU_D.lotes.find((l) => l.id === c.lote_id) || {}).linha === "reels" ? "FabI.Ano" : "Titeu"), status: "entregue", fechado_em: c.terminado, titulo: c.titulo, pecas: 1,
                      segundos_ativos: c.iniciado ? Math.max(0, (new Date(c.terminado) - new Date(c.iniciado)) / 1000) : 0, etapas: {} }));
   }
   function feitosHoje() {
@@ -1243,23 +1250,26 @@
       [/cortando o trecho|ffmpeg/i, "Cortando o trecho"], [/REGRAS|references|SKILL|lendo|sed -n|cat /i, "Lendo as regras do estilo"]];
     return (R.find(([re]) => re.test(t)) || [null, "Preparando"])[1];
   }
-  function blocoTiteu() {
-    const prod = TITEU_D.cortes.filter((c) => c.estado === "produzindo").sort((a, b) => a.lote_id - b.lote_id || a.ordem - b.ordem);
-    const fila = TITEU_D.cortes.filter((c) => c.estado === "na_fila").length, prev = TITEU_D.cortes.filter((c) => c.estado === "previa").length;
-    const prep = TITEU_D.eps.filter((e) => e.estado === "preparando" || e.estado === "chegou");
+  function blocoTiteu(linha = "cortes") {
+    const daLinha = (c) => ((TITEU_D.lotes.find((l) => l.id === c.lote_id) || {}).linha || "cortes") === linha;
+    const cortes = TITEU_D.cortes.filter(daLinha);
+    const prod = cortes.filter((c) => c.estado === "produzindo").sort((a, b) => a.lote_id - b.lote_id || a.ordem - b.ordem);
+    const fila = cortes.filter((c) => c.estado === "na_fila").length, prev = cortes.filter((c) => c.estado === "previa").length;
+    const prep = TITEU_D.eps.filter((e) => (e.linha || "cortes") === linha && (e.estado === "preparando" || e.estado === "chegou"));
+    const R = linha === "reels";
     if (!prod.length && !prep.length) return null;
     const ret = h("canvas", { width: 22, height: 35, style: "width:44px;height:70px;image-rendering:pixelated;flex:none", "aria-hidden": "true" });
-    ret.getContext("2d").drawImage(bonecoFrente(TITEU, 0), 0, 0);
+    ret.getContext("2d").drawImage(bonecoFrente(R ? FABIA : TITEU, 0), 0, 0);
     const epDe = (loteId) => { const l = TITEU_D.lotes.find((x) => x.id === loteId); const e = l && TITEU_D.eps.find((x) => x.id === l.episodio_id); return e ? e.nome : ""; };
-    return h("div", { class: "card", style: "display:grid;gap:10px;border:2px solid #ffb800" },
+    return h("div", { class: "card", style: "display:grid;gap:10px;border:2px solid " + (R ? "#a543fa" : "#ffb800") },
       h("div", { style: "display:flex;gap:12px;align-items:center;flex-wrap:wrap" }, ret,
-        h("div", { style: "display:grid;gap:2px;flex:1 1 220px;min-width:0" }, h("b", { style: "font-size:17px" }, "Titeu · esteira de cortes"),
-          h("span", { class: "nota" }, `${prod.length} corte${prod.length === 1 ? "" : "s"} em produção${fila ? ` · ${fila} na fila` : ""}${prev ? ` · ${prev} prévia${prev > 1 ? "s" : ""} esperando aprovação` : ""}`)),
-        h("button", { class: "botao leve peq", onclick: () => trocarAba("esteira") }, "Abrir o Titeu")),
+        h("div", { style: "display:grid;gap:2px;flex:1 1 220px;min-width:0" }, h("b", { style: "font-size:17px" }, R ? "FabI.Ano · reels" : "Titeu · esteira de cortes"),
+          h("span", { class: "nota" }, `${prod.length} ${R ? "reel" : "corte"}${prod.length === 1 ? "" : "s"} em produção${fila ? ` · ${fila} na fila` : ""}${prev ? ` · ${prev} prévia${prev > 1 ? "s" : ""} esperando aprovação` : ""}`)),
+        h("button", { class: "botao leve peq", onclick: () => trocarAba(R ? "reels" : "esteira") }, R ? "Abrir o FabI.Ano" : "Abrir o Titeu")),
       prep.map((e) => h("div", { class: "nota" }, `🎧 Preparando “${e.nome}”: ${e.etapa || "na fila"} (${e.progresso || 0}%)`)),
       prod.length ? h("div", { style: "display:grid;gap:8px" }, prod.map((c) => h("div", { style: "display:grid;gap:3px;padding:8px 10px;border-radius:12px;background:var(--surface-2);min-width:0" },
         h("div", { style: "display:flex;gap:8px;align-items:center;flex-wrap:wrap" }, h("span", { class: "chip tom-ok" }, etapaTiteu(c.etapa)),
-          h("b", {}, `Corte ${c.ordem}: ${c.titulo}`), h("span", { class: "nota" }, `${epDe(c.lote_id)} · ${mmss(c.inicio)}–${mmss(c.fim)}${c.iniciado ? " · começou " + ha(c.iniciado) : ""}`)),
+          h("b", {}, R ? `Reel: ${c.titulo}` : `Corte ${c.ordem}: ${c.titulo}`), h("span", { class: "nota" }, `${epDe(c.lote_id)} · ${mmss(c.inicio)}–${mmss(c.fim)}${c.iniciado ? " · começou " + ha(c.iniciado) : ""}`)),
         c.etapa ? h("code", { style: "font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--text-dim)" }, String(c.etapa).slice(0, 220)) : null))) : null);
   }
   function desenharAoVivo() {
@@ -1270,9 +1280,9 @@
     const pecasHoje = feitos.reduce((a, x) => a + (x.pecas || 1), 0);
     const semNada = D.editores.filter((e) => e.ativo && !linhas.some((l) => l.ed.slug === e.slug));
     encher($("#aovivo"),
-      h("h3", { class: "grupo" }, `Editando agora (${vivas.length + (blocoTiteu() ? 1 : 0)})`),
-      blocoTiteu(),
-      vivas.length ? vivas.map(blocoEdicao) : blocoTiteu() ? null : h("div", { class: "vazio" }, "Ninguém editando neste momento."),
+      h("h3", { class: "grupo" }, `Editando agora (${vivas.length + (blocoTiteu() ? 1 : 0) + (blocoTiteu("reels") ? 1 : 0)})`),
+      blocoTiteu(), blocoTiteu("reels"),
+      vivas.length ? vivas.map(blocoEdicao) : blocoTiteu() || blocoTiteu("reels") ? null : h("div", { class: "vazio" }, "Ninguém editando neste momento."),
       (numeros || eu.papel === "editor") && [h("h3", { class: "grupo" }, `Feito hoje (${feitos.length} ${feitos.length === 1 ? "vídeo" : "vídeos"}${pecasHoje > feitos.length ? ` · ${pecasHoje} peças` : ""})`),
         feitos.length ? h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Hora"), numeros && h("th", {}, "Editor"), h("th", {}, "Vídeo"),
             h("th", { class: "n" }, "Peças"), numeros && h("th", { class: "n" }, "Tempo ativo"), h("th", {}, "Etapas"))),
@@ -1822,12 +1832,15 @@
         SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [] };
         await recarregarAgentes();
         await carregarTiteu();
-        const [ec, el, ee] = await Promise.all([db.from("esteira_cortes").select("estado,terminado").in("estado", ["produzindo", "na_fila", "entregue", "previa"]).limit(2000),
-          db.from("esteira_lotes").select("estado").eq("estado", "conferir"), db.from("esteira_episodios").select("estado").in("estado", ["chegou", "preparando"])]);
-        const cs = Array.isArray(ec.data) ? ec.data : [], hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
-        SALA.est = { produzindo: cs.filter((x) => x.estado === "produzindo").length, fila: cs.filter((x) => x.estado === "na_fila").length,
-          hoje: cs.filter((x) => x.estado === "entregue" && x.terminado && new Date(x.terminado) >= hoje0).length,
-          conferir: (el.data || []).length, preparando: (ee.data || []).length, previas: cs.filter((x) => x.estado === "previa").length };
+        const [ec, el, ee] = await Promise.all([db.from("esteira_cortes").select("estado,terminado,esteira_lotes(linha)").in("estado", ["produzindo", "na_fila", "entregue", "previa"]).limit(2000),
+          db.from("esteira_lotes").select("estado,linha").eq("estado", "conferir"), db.from("esteira_episodios").select("estado,linha").in("estado", ["chegou", "preparando"])]);
+        const todos = Array.isArray(ec.data) ? ec.data : [], hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
+        const contar = (ln) => { const cs = todos.filter((x) => ((x.esteira_lotes || {}).linha || "cortes") === ln);
+          return { produzindo: cs.filter((x) => x.estado === "produzindo").length, fila: cs.filter((x) => x.estado === "na_fila").length,
+            hoje: cs.filter((x) => x.estado === "entregue" && x.terminado && new Date(x.terminado) >= hoje0).length,
+            conferir: (el.data || []).filter((x) => (x.linha || "cortes") === ln).length, preparando: (ee.data || []).filter((x) => (x.linha || "cortes") === ln).length,
+            previas: cs.filter((x) => x.estado === "previa").length }; };
+        SALA.est = contar("cortes"); SALA.estR = contar("reels");
       }
     }
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo (copa, sofá, jogos)"],
@@ -2000,6 +2013,7 @@
   // Zé Algoritmo: o agente de SEO do YouTube (analisa o canal todo dia às 22h)
   const ZE = { cabelo: "#9aa0aa", pele: "#f2c9a5", camisa: "#e8352d", calca: "#2a2a33", estilo: 0, acessorio: "oculos", barba: "curta" };
   // Doti: analista de desempenho dos cortes no Instagram (toda segunda às 9h)
+  const FABIA = { cabelo: "#2b1d14", pele: "#e0a97f", camisa: "#a543fa", calca: "#2a2a33", estilo: 0, acessorio: "oculos", barba: "curta" };
   const TITEU = { cabelo: "#1c1c28", pele: "#c98a5e", camisa: "#ffb800", calca: "#2a2a33", estilo: 4, acessorio: "fone", barba: "curta" };
   const LIA = { cabelo: "#1f1a2e", pele: "#8d5a3b", camisa: "#2f8f5b", calca: "#2a2a33", estilo: 3, acessorio: "oculos", feminino: true };
   const BIA = { cabelo: "#c58b4b", pele: "#e0a97f", camisa: "#ff6b5b", calca: "#3b4a6b", estilo: 2, acessorio: "fone", feminino: true };
@@ -2146,8 +2160,8 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }])), cv = $("#sala-canvas"), T = TILE;
-    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu");
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }])), cv = $("#sala-canvas"), T = TILE;
+    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu"), mesaFabia = P.mesas.find((m) => m.ed.npc === "fabia");
     P.mesas = P.mesas.filter((m) => !m.ed.npc);   // as mesas dos agentes (Zé Algoritmo e Doti) na Edição
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
@@ -2294,7 +2308,7 @@
     P.salas.forEach((s) => { c.font = `800 ${5.4 * SC}px Inter, system-ui, sans-serif`; const lw = c.measureText(s.nome).width / SC + 10;
       px(s.x + s.w / 2 - lw / 2, s.y - 12, lw, 11, "#2a2440"); txt(s.nome, s.x + s.w / 2, s.y - 4.2, 5.4, "#ffffff", 800); });
     // ---- mesas da edição (uma por editor) e os bonequinhos
-    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }, { agente: "bia", x: mesaBia.x - 22, y: mesaBia.y - 18, w: 44, h: 50 }, { titeu: true, x: mesaTiteu.x - 22, y: mesaTiteu.y - 18, w: 44, h: 50 }];
+    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }, { agente: "bia", x: mesaBia.x - 22, y: mesaBia.y - 18, w: 44, h: 50 }, { titeu: true, x: mesaTiteu.x - 22, y: mesaTiteu.y - 18, w: 44, h: 50 }, { fabia: true, x: mesaFabia.x - 22, y: mesaFabia.y - 18, w: 44, h: 50 }];
     const pessoas = [];
     // cada um que não está trabalhando ganha um lugar fixo (o mesmo enquanto ficar assim): quem está online vai jogar,
     // tomar café ou mexer no celular; quem está fora cochila nos sofás e poltronas
@@ -2339,6 +2353,13 @@
       for (let k = 0; k < 6; k++) px(mx - 9 + ((k * 4 + (ativo ? f : 0)) % 18), my - 5, 1, 1, "#e8e2d6");
       for (let k = 0; k < 3; k++) px(mx - 8 + ((k * 6 + (ativo ? f : 0)) % 16), my - 11, 4, 5, ["#ffb800", "#a543fa", "#ff6b5b"][k]);   // quadros
       if (ativo && f % 8 < 4) { px(mx + 1, my - 13, 1, 9, "#ffffff"); px(mx, my - 13, 3, 1, "#ff4d4d"); }   // a tesoura cortando
+    }
+    {   // FabI.Ano, os reels: monitor com um celular vertical e as pílulas da marca subindo quando trabalha
+      const mx = mesaFabia.x, my = mesaFabia.y, E3 = SALA.estR || {}, ativo = (E3.produzindo || 0) + (E3.preparando || 0) > 0;
+      c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
+      px(mx - 9, my - 14, 18, 11, ativo ? "#1c1c28" : "#24203a");
+      px(mx - 3, my - 13, 6, 9, ativo ? "#f7f7f2" : "#3a3550");
+      if (ativo) { const yb = my - 6 - (f % 8); px(mx - 2, yb, 4, 1, ["#ffb800", "#a543fa", "#ff6b5b"][Math.floor(f / 8) % 3]); px(mx - 2, my - 6, 4, 1, "#ffb800"); }
     }
     for (const m of P.mesas) {
       const st = estadoSala(m.ed), seed = hashSlug(m.ed.slug);
@@ -2404,6 +2425,10 @@
     px(titeu.x - 7, titeu.y, 14, 2, "#00000026");
     c.drawImage(bonecoCostas(TITEU, titeuAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (titeu.x - 11) * SC, (titeu.y - 24) * SC, 22 * SC, 27 * SC);
     c.drawImage(cadeiraCostas(), (titeu.x - 10) * SC, (titeu.y - 6) * SC, 20 * SC, 13 * SC);
+    const fab = { x: mesaFabia.x, y: mesaFabia.y + 22 }, fabAtivo = ((SALA.estR || {}).produzindo || 0) + ((SALA.estR || {}).preparando || 0) > 0;
+    px(fab.x - 7, fab.y, 14, 2, "#00000026");
+    c.drawImage(bonecoCostas(FABIA, fabAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (fab.x - 11) * SC, (fab.y - 24) * SC, 22 * SC, 27 * SC);
+    c.drawImage(cadeiraCostas(), (fab.x - 10) * SC, (fab.y - 6) * SC, 20 * SC, 13 * SC);
     const bia = { x: mesaBia.x, y: mesaBia.y + 22 };
     px(bia.x - 7, bia.y, 14, 2, "#00000026");
     c.drawImage(bonecoCostas(BIA, f % 6 < 3 ? 0 : 2), (bia.x - 11) * SC, (bia.y - 24) * SC, 22 * SC, 27 * SC);
@@ -2442,6 +2467,21 @@
         c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
         const sE = P.salas[4], bwB = c.measureText(falaB).width / SC + 10, bxB = Math.max(sE.x + 2, Math.min(bia2.x - bwB / 2, sE.x + sE.w - bwB - 2)), byB = bia2.y - 50, corB = novas ? "#ffb800" : "#ffffff";
         px(bxB, byB, bwB, 11, corB); px(bia2.x - 1, byB + 11, 3, 2, corB); txt(falaB, bxB + bwB / 2, byB + 8, 4.6, "#2a1b40", 600);
+      }
+    }
+    // FabI.Ano: plaquinha e o que os reels estão fazendo
+    {
+      const t3 = { x: mesaFabia.x, y: mesaFabia.y + 22 }, E3 = SALA.estR || {};
+      c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
+      const lwF = c.measureText("FabI.Ano").width / SC + 12;
+      px(t3.x - lwF / 2, t3.y + 6, lwF, 10, "#2a2440"); px(t3.x - lwF / 2 + 3, t3.y + 9.5, 4, 4, E3.produzindo ? "#4cd07d" : "#a543fa");
+      txt("FabI.Ano", t3.x + 2.5, t3.y + 13.6, 4.8, "#ffffff", 700);
+      const falaF = E3.previas ? `👀 ${E3.previas} reel${E3.previas > 1 ? "s" : ""} p/ aprovar` : E3.produzindo ? `🎬 editando ${E3.produzindo} reel${E3.produzindo > 1 ? "s" : ""}`
+        : E3.preparando ? "🎧 preparando reel" : E3.hoje ? `✅ ${E3.hoje} reel${E3.hoje > 1 ? "s" : ""} hoje` : (f % 300 < 80 ? "🎬 me manda um reel" : null);
+      if (falaF && SALA.estR) {
+        c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
+        const sE = P.salas[4], bwF = c.measureText(falaF).width / SC + 10, bxF = Math.max(sE.x + 2, Math.min(t3.x - bwF / 2, sE.x + sE.w - bwF - 2)), byF = t3.y - 50, corF = E3.previas ? "#ffb800" : "#ffffff";
+        px(bxF, byF, bwF, 11, corF); px(t3.x - 1, byF + 11, 3, 2, corF); txt(falaF, bxF + bwF / 2, byF + 8, 4.6, "#2a1b40", 600);
       }
     }
     // Titeu: plaquinha e o que a esteira está fazendo
@@ -3069,6 +3109,7 @@
     if (alvo.chico) return abrirChico();
     if (alvo.seo) return abrirChatZe();
     if (alvo.titeu) return trocarAba("esteira");
+    if (alvo.fabia) return trocarAba("reels");
     if (alvo.ed.slug === meuSlug()) return abrirChatSala();   // o editor clica no próprio bonequinho (ou mesa) e conversa com o Claude dele
     const st = estadoSala(alvo.ed);
     const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
@@ -4171,21 +4212,25 @@
     previa: ["Prévia: aprovar", "tom-aviso"], aprovado: ["Indo para a Publicação", "tom-ok"],
     entregue: ["Na Publicação", "tom-ok"], reprovado: ["Reprovado no QC", "tom-critico"], erro: ["Erro", "tom-critico"] };
   const mmss = (x) => { x = Math.round(+x || 0); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`; };
+  const linhaEst = () => aba === "reels" ? "reels" : "cortes";
+  const corpoEst = () => $(linhaEst() === "reels" ? "#reels-corpo" : "#est-corpo");
   async function desenharEsteira() {
     { const cv = $("#titeu-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(TITEU, 0), 0, 0); cv.dataset.ok = "1"; } }
+    { const cv = $("#fabiano-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(FABIA, 0), 0, 0); cv.dataset.ok = "1"; } }
+    const linha = linhaEst();
     clearInterval(EST.timer);
     EST.timer = setInterval(() => { const a = document.activeElement;
-      if (aba !== "esteira") return clearInterval(EST.timer);
-      if (!document.hidden && !(a && a.closest && a.closest("#est-corpo") && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !$("#detalhe").open) desenharEsteira(); }, 10000);
+      if (!["esteira", "reels"].includes(aba)) return clearInterval(EST.timer);
+      if (!document.hidden && !(a && a.closest && a.closest("#est-corpo, #reels-corpo") && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !$("#detalhe").open) desenharEsteira(); }, 10000);
     const [eps, lotes, cortes, conta, ests] = await Promise.all([
-      db.from("esteira_episodios").select("*").neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
-      db.from("esteira_lotes").select("*").order("id", { ascending: false }).limit(15),
+      db.from("esteira_episodios").select("*").eq("linha", linha).neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
+      db.from("esteira_lotes").select("*").eq("linha", linha).order("id", { ascending: false }).limit(15),
       db.from("esteira_cortes").select("*").order("ordem").limit(600),
       eu.papel === "gestor" ? db.from("servidor_conta").select("estado").eq("editor_slug", "esteira").maybeSingle() : Promise.resolve({ data: { estado: "ok" } }),
-      db.from("estilos").select("id,slug,nome,descricao,kit,item_id,ativo,padrao").order("id")]);
+      db.from("estilos").select("id,slug,nome,descricao,kit,item_id,ativo,padrao,linha").eq("linha", linha).order("id")]);
     const E = eps.data || [], L = lotes.data || [], C = cortes.data || [];
     EST.estilos = ests.data || [];
-    const navEst = h("div", { class: "chips" }, [["cortes", "✂️ Cortes"], ["estilos", "🎨 Estilos"]].map(([v, t]) =>
+    const navEst = h("div", { class: "chips" }, [["cortes", linha === "reels" ? "🎬 Reels" : "✂️ Cortes"], ["estilos", "🎨 Estilos"]].map(([v, t]) =>
       h("button", { class: "chip" + (EST.vista === v ? " tom-ok" : ""), style: "cursor:pointer;border:0;font-size:14px;padding:6px 12px", onclick: () => { EST.vista = v; desenharEsteira(); } }, t)));
     if (EST.vista === "estilos") return desenharEstilos(navEst);
     const epDe = (id) => E.find((e) => e.id === id) || { nome: "episódio " + id };
@@ -4196,7 +4241,7 @@
         h("span", { class: "nota" }, [e.duracao_s ? "Duração " + mmss(e.duracao_s) : null, e.tamanho ? (e.tamanho / 1e9).toFixed(1) + " GB" : null, "chegou " + ha(e.criado)].filter(Boolean).join(" · ")),
         e.estado === "preparando" ? [barra(e.progresso), h("span", { class: "nota" }, e.etapa || "")] : null,
         e.estado === "erro" ? h("span", { class: "nota" }, e.erro || "") : null,
-        e.estado === "pronto" ? h("button", { class: "botao amarelo peq", style: "justify-self:start", onclick: () => pedirCortes(e) }, "✂️ Gerar cortes") : null); };
+        e.estado === "pronto" && linha === "cortes" ? h("button", { class: "botao amarelo peq", style: "justify-self:start", onclick: () => pedirCortes(e) }, "✂️ Gerar cortes") : null); };
     const linhaCorte = (c) => { const [rot, tom] = ESTADO_CORTE[c.estado] || [c.estado, "tom-neutro"];
       const dur = c.iniciado && c.terminado ? Math.round((new Date(c.terminado) - new Date(c.iniciado)) / 1000) : null;
       return h("tr", {}, td(c.ordem, 1), h("td", { style: "min-width:200px" }, h("b", {}, c.titulo), h("div", { class: "nota" }, `${mmss(c.inicio)}–${mmss(c.fim)} · ${Math.round(c.fim - c.inicio)} s`),
@@ -4249,12 +4294,12 @@
         h("div", { class: "tabela", style: "margin-top:10px" }, h("table", {}, h("thead", {}, h("tr", {}, ["#", "Corte", "Situação", "Agora", ""].map((t) => h("th", {}, t)))),
           h("tbody", {}, visiveis.map(linhaCorte)))));
     };
-    encher($("#est-corpo"), navEst,
+    encher(corpoEst(), navEst,
       eu.papel === "gestor" && (!conta.data || conta.data.estado !== "ok") ? h("div", { class: "aviso" }, "A esteira roda com a conta Claude do CW Studios no servidor. ",
         h("button", { class: "botao amarelo peq", onclick: () => abrirContaServidor("esteira") }, "☁️ Ligar a conta Claude da esteira")) : null,
-      h("h3", { class: "grupo" }, "Lotes"),
-      L.length ? h("div", { style: "display:grid;gap:12px" }, L.map(blocoLote)) : h("div", { class: "vazio" }, "Nenhum lote ainda. Quando um episódio estiver pronto, clique em ✂️ Gerar cortes."),
-      h("h3", { class: "grupo" }, "Episódios"),
+      h("h3", { class: "grupo" }, linha === "reels" ? "Reels" : "Lotes"),
+      L.length ? h("div", { style: "display:grid;gap:12px" }, L.map(blocoLote)) : h("div", { class: "vazio" }, linha === "reels" ? "Nenhum reel ainda. Suba a pasta do reel (câmera e tela) em “2. ENVIE AQUI - Reels (câmera + tela)”." : "Nenhum lote ainda. Quando um episódio estiver pronto, clique em ✂️ Gerar cortes."),
+      h("h3", { class: "grupo" }, linha === "reels" ? "Pastas que chegaram" : "Episódios"),
       E.length ? h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" }, E.map(cartaoEp))
         : h("div", { class: "vazio" }, "Nenhum episódio ainda. Suba o episódio inteiro em “CW Cast - Cortes/1. ENVIE AQUI - Podcast (episódio inteiro)” que o servidor prepara sozinho."));
   }
@@ -4323,7 +4368,7 @@
   async function desenharEstilos(navEst) {
     const g = eu.papel === "gestor";
     const salvar = async (id, dados) => { const { error } = await db.rpc("cw_estilo_salvar", { p_id: id, p_dados: dados }); if (error) return alert(error.message); desenharEsteira(); };
-    encher($("#est-corpo"), navEst,
+    encher(corpoEst(), navEst,
       h("p", { class: "nota", style: "margin:0" }, "Cada estilo é um jeito de editar que o Titeu sabe aplicar: visual, legenda, gancho, sons, trilha. Você escolhe o estilo ao pedir os cortes. As regras são sempre as do time."),
       h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" },
         EST.estilos.map((x) => h("div", { class: "card", style: "display:grid;gap:8px;min-width:0;" + (x.ativo ? "" : "opacity:.55") },
@@ -4357,7 +4402,8 @@
       h("label", {}, "Receita", rec), h("p", { class: "nota", style: "margin:0" }, "Dica: peça ao Claude do editor que preparou o pacote para escrever a receita junto (\"escreve a receita do meu estilo para o Titeu\")."), msg,
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
         const slug = nome.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-        const { error } = await db.rpc("cw_estilo_salvar", { p_id: null, p_dados: { slug, nome: nome.value, descricao: desc.value, item_id: +item.value, receita: rec.value } });
+        const { error } = await db.rpc("cw_estilo_salvar", { p_id: null, p_dados: { slug, nome: nome.value, descricao: desc.value, item_id: +item.value, receita: rec.value, linha: linhaEst(),
+          kit: ((itens || []).find((i) => i.id === +item.value) || {}).kit || "" } });
         if (error) { msg.hidden = false; msg.textContent = error.message; return; } $("#detalhe").close(); desenharEsteira(); } }, "Criar estilo"),
         h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
     $("#detalhe").showModal();
@@ -4384,6 +4430,7 @@
       onclick: () => { if (["padrao", "kit"].includes(v)) trocarAba(v); else { AGT.vista = v; trocarAba("agentes"); } } }, t)));
   }
   const ROBOS_FIXOS = [
+    { id: "fabiano-ia", nome: "FabI.Ano", missao: "Edita os reels da Cardápio Web no estilo do Fabiano", cores: () => FABIA, abrir: () => trocarAba("reels"), papeis: ["gestor", "producao", "editor"] },
     { id: "titeu", nome: "Titeu", missao: "A esteira de cortes: prepara os episódios e produz os cortes em paralelo", cores: () => TITEU, abrir: () => trocarAba("esteira"), papeis: ["gestor", "producao", "editor"] },
     { id: "ze", nome: "Zé Algoritmo", missao: "SEO do YouTube do CW Cast (todo dia às 22h)", cores: () => ZE, abrir: () => abrirChatZe(), papeis: ["gestor", "producao"] },
     { id: "bia", nome: "Doti", missao: "Desempenho dos cortes no Instagram (segunda, 9h)", cores: () => BIA, abrir: () => abrirChatAgente("bia"), papeis: ["gestor", "producao", "editor"] },
