@@ -193,6 +193,11 @@
   .bolinha { width: 10px; height: 10px; border-radius: 50%; background: #c9c2d8; flex: none; }
   .bolinha.on { background: #22a06b; box-shadow: 0 0 0 4px rgba(34, 160, 107, .15); }
   .pub-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pub-item { position: relative; display: grid; min-width: 0; }
+  .pub-sel { position: absolute; top: 10px; left: 10px; z-index: 2; background: var(--surface); border-radius: 10px; padding: 6px 8px; box-shadow: var(--shadow-card); display: flex; align-items: center; cursor: pointer; }
+  .pub-sel input { width: 20px; height: 20px; margin: 0; cursor: pointer; }
+  .pub-item.marcado .pub-card { outline: 3px solid var(--brand); }
+  .pub-lote { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
   .pub-card { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 18px; overflow: hidden; display: grid; cursor: pointer; font: inherit; color: var(--text); padding: 0; min-width: 0; }
   .pub-card img, .pub-previa { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #1d1630; display: block; }
   .pub-card .corpo { padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
@@ -622,6 +627,7 @@
     <div class="acoes" id="pub-acoes"></div>
     <div class="pub-conexoes" id="pub-conexoes"></div>
     <div class="segmentos" role="tablist" id="pub-seg"></div>
+    <div class="pub-lote" id="pub-lote" hidden></div>
     <div class="pub-grade" id="pub-lista"></div>
   </section>
 
@@ -3268,7 +3274,7 @@
   }
 
   // ---------------------------------------------------------------- publicação (cortes → redes)
-  const PUB = { lista: [], situacao: {}, seg: "aguardando", timer: null, carregado: 0 };
+  const PUB = { lista: [], situacao: {}, seg: "aguardando", timer: null, carregado: 0, sel: new Set() };
   const REDES = [["instagram", "Instagram"], ["tiktok", "TikTok"], ["youtube", "YouTube Shorts"]];
   const SEG_PUB = [["aguardando", "Para aprovar", ["aguardando"]], ["fila", "Na fila", ["aprovado", "postando", "erro"]],
                    ["postado", "Postados", ["postado"]], ["recusado", "Recusados", ["recusado", "cancelado"]]];
@@ -3436,10 +3442,89 @@
       nome, h("em", {}, PUB.lista.filter((x) => est.includes(x.estado)).length))));
     const est = SEG_PUB.find(([id]) => id === PUB.seg)[2];
     const itens = PUB.lista.filter((x) => est.includes(x.estado));
-    encher($("#pub-lista"), itens.length ? itens.map(cartaoPub) : h("div", { class: "vazio" },
+    const selecionavel = podeAprovar() && ["aguardando", "fila"].includes(PUB.seg);
+    for (const id of [...PUB.sel]) if (!itens.some((x) => x.id === id)) PUB.sel.delete(id);   // só vale o que está na aba
+    const barra = $("#pub-lote");
+    barra.hidden = !selecionavel || !itens.length;
+    if (selecionavel && itens.length) {
+      const n = PUB.sel.size, todos = n === itens.length;
+      encher(barra, h("label", { class: "check", style: "display:flex;gap:6px;align-items:center;cursor:pointer" },
+          h("input", { type: "checkbox", checked: todos, style: "width:18px;height:18px;margin:0", onchange: () => { if (todos) PUB.sel.clear(); else itens.forEach((x) => PUB.sel.add(x.id)); desenharPublicacao(); } }),
+          todos ? "Desmarcar todos" : `Selecionar todos (${itens.length})`),
+        h("span", { class: "nota" }, n ? `${n} selecionado${n > 1 ? "s" : ""}` : "Marque os cortes para agir em lote"),
+        PUB.seg === "aguardando" && n ? h("button", { class: "botao amarelo peq", onclick: () => programarLote(itens.filter((x) => PUB.sel.has(x.id))) }, `🗓 Programar ${n}`) : null,
+        PUB.seg === "fila" && n ? h("button", { class: "botao leve peq", onclick: () => mudarLote(itens.filter((x) => PUB.sel.has(x.id) && x.estado === "aprovado"), "voltar", "Voltar para aprovação") }, "↩ Voltar para aprovação") : null,
+        n ? h("button", { class: "botao perigo peq", onclick: () => mudarLote(itens.filter((x) => PUB.sel.has(x.id)), "cancelar", "Excluir") }, `🗑 Excluir ${n}`) : null);
+    }
+    encher($("#pub-lista"), itens.length ? itens.map((x) => selecionavel ? h("div", { class: "pub-item" + (PUB.sel.has(x.id) ? " marcado" : "") },
+        h("label", { class: "pub-sel", title: "Selecionar", onclick: (ev) => ev.stopPropagation() },
+          h("input", { type: "checkbox", checked: PUB.sel.has(x.id), "aria-label": "Selecionar " + x.titulo, onchange: (ev) => { ev.target.checked ? PUB.sel.add(x.id) : PUB.sel.delete(x.id); desenharPublicacao(); } })),
+        cartaoPub(x)) : cartaoPub(x)) : h("div", { class: "vazio" },
       PUB.seg === "aguardando" ? "Nada esperando aprovação. Quando o editor disser ao Claude \"manda pra publicação\", o corte aparece aqui." : "Nada aqui."));
     clearInterval(PUB.timer);
     PUB.timer = setInterval(async () => { if (aba !== "publicacao") return clearInterval(PUB.timer); if (!document.hidden && !$("#detalhe").open) { await carregarPublicacao(); desenharPublicacao(); } }, 20000);
+  }
+  // ---- ações em lote na Publicação
+  async function mudarLote(itens, acao, rotulo) {
+    if (!itens.length) return alert("Nenhum corte selecionado pode receber essa ação.");
+    if (acao === "cancelar" && !confirm(`Excluir ${itens.length} corte${itens.length > 1 ? "s" : ""} da Publicação?\n\nEles saem da fila e não vão para as redes. O arquivo continua no Drive.`)) return;
+    const erros = [];
+    for (const x of itens) { const { error } = await db.rpc("cw_pub_mudar", { p_id: x.id, p_acao: acao }); if (error) erros.push(`P-${x.id}: ${error.message}`); }
+    PUB.sel.clear(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
+    if (erros.length) alert(`${rotulo}: ${itens.length - erros.length} ok, ${erros.length} com erro\n\n` + erros.join("\n"));
+  }
+  function programarLote(itens) {
+    const ttOk = !!(PUB.situacao || {}).tiktok_publico;
+    const redesLote = REDES.filter(([k]) => k !== "tiktok" || ttOk).map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, checked: k !== "tiktok", style: "width:auto;margin:0" });
+      return [c, h("label", { class: "check" }, c, nome)]; });
+    const pad = (n) => String(n).padStart(2, "0"), amanha = new Date(Date.now() + 864e5);
+    const inicio = h("input", { type: "datetime-local", value: `${amanha.getFullYear()}-${pad(amanha.getMonth() + 1)}-${pad(amanha.getDate())}T12:00` });
+    const intervalo = h("select", {}, [["1440", "1 por dia"], ["720", "2 por dia (a cada 12 h)"], ["480", "3 por dia (a cada 8 h)"], ["360", "a cada 6 h"], ["240", "a cada 4 h"], ["180", "a cada 3 h"], ["120", "a cada 2 h"], ["60", "a cada 1 h"], ["0", "todos agora (sem agendar)"]]
+      .map(([v, t]) => h("option", { value: v }, t)));
+    const linhas = itens.map((x) => {
+      const leg = h("textarea", { style: "min-height:90px" }); leg.value = x.legenda || "";
+      const tyt = h("input", { maxlength: 100, value: x.titulo_youtube || x.titulo });
+      const quando = h("input", { type: "datetime-local" });
+      const st = h("span", { class: "nota" });
+      const det = h("details", { class: "card", style: "padding:10px 12px" },
+        h("summary", { style: "cursor:pointer;display:flex;gap:10px;align-items:center;flex-wrap:wrap" },
+          x.previa ? h("img", { src: x.previa, alt: "", style: "width:54px;height:54px;object-fit:cover;border-radius:8px" }) : null,
+          h("b", { style: "flex:1 1 200px;min-width:0" }, x.titulo), quando, st),
+        h("div", { style: "display:grid;gap:8px;margin-top:10px" }, h("label", {}, "Legenda", leg), h("label", {}, "Título no YouTube", tyt),
+          h("span", { class: "nota" }, `P-${String(x.id).padStart(4, "0")} · ${x.duracao_s ? Math.round(x.duracao_s) + " s" : ""} · ${quemMandou(x)}`)));
+      return { x, leg, tyt, quando, st, det };
+    });
+    const distribuir = () => {
+      const base = inicio.value ? new Date(inicio.value) : new Date(), min = +intervalo.value;
+      linhas.forEach((l, i) => { if (!min) { l.quando.value = ""; return; }
+        const d = new Date(base.getTime() + i * min * 60000); l.quando.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; });
+    };
+    inicio.onchange = intervalo.onchange = distribuir; distribuir();
+    const msg = h("div", { class: "aviso erro", hidden: true }), botao = h("button", { class: "botao amarelo" }, `✅ Aprovar e programar ${itens.length}`);
+    botao.onclick = async () => {
+      const redes = redesLote.filter(([c]) => c.checked).map(([c]) => c.value);
+      if (!redes.length) { msg.hidden = false; msg.textContent = "Escolha pelo menos uma rede."; return; }
+      botao.disabled = true; let ok = 0;
+      for (const l of linhas) {
+        l.st.textContent = "programando…";
+        const { error } = await db.rpc("cw_pub_decidir", { p_id: l.x.id, p_aprovar: true, p_motivo: null, p_legenda: l.leg.value, p_titulo_youtube: l.tyt.value,
+          p_redes: redes, p_agendado_para: l.quando.value ? new Date(l.quando.value).toISOString() : null, p_opcoes: {} });
+        if (error) { l.st.textContent = "✗ " + error.message; l.st.style.color = "var(--critico-tx)"; l.det.open = true; } else { l.st.textContent = "✓ programado"; ok++; }
+      }
+      if (linhas.some((l) => !l.quando.value)) dispararRobo("publicar");
+      PUB.sel.clear(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
+      if (ok === linhas.length) $("#detalhe").close();
+      else { botao.disabled = false; msg.hidden = false; msg.textContent = `${ok} programados; ${linhas.length - ok} com erro (veja abaixo).`; }
+    };
+    encher($("#detalhe-corpo"), h("h2", {}, `🗓 Programar ${itens.length} corte${itens.length > 1 ? "s" : ""}`),
+      h("div", { class: "card", style: "display:grid;gap:10px;background:var(--surface-2)" },
+        h("b", {}, "Para todos"),
+        h("div", { style: "display:flex;gap:14px;flex-wrap:wrap" }, redesLote.map(([, l]) => l), !ttOk ? h("span", { class: "nota" }, "TikTok: poste pelo celular até o app ser aprovado") : null),
+        h("div", { style: "display:flex;gap:12px;flex-wrap:wrap;align-items:end" }, h("label", {}, "Primeiro post", inicio), h("label", {}, "Ritmo", intervalo),
+          h("span", { class: "nota" }, "Os horários são preenchidos na ordem abaixo; abra a setinha ▸ de cada um para mudar o horário, a legenda ou o título."))),
+      h("div", { style: "display:grid;gap:8px;max-height:52vh;overflow:auto" }, linhas.map((l) => l.det)), msg,
+      h("div", { class: "acoes" }, botao, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    $("#detalhe").showModal();
   }
   function chipsRedes(x) {
     return h("div", { class: "redes-res" }, (x.redes || []).map((r) => {
