@@ -581,7 +581,7 @@
   <section id="aba-padrao" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Padrão do time</h1><p class="sub">Regras que todo Claude de edição recebe ao abrir, e os fluxos que mais rendem.</p></header>
     <h3 class="grupo">Regras do time</h3>
-    <p class="nota" style="margin:0">Cada regra ativa chega ao Claude de todos os editores na próxima sessão (plugin cw-central). Escreva como instrução direta.</p>
+    <p class="nota" style="margin:0">Cada regra ativa chega ao Claude de todos os editores e dos agentes do servidor na próxima sessão. "Todo trabalho (regra do sistema)" vale para qualquer agente, de vídeo ou não (ex.: transcrever sempre pela Groq); as outras valem para edição de vídeo. Escreva como instrução direta.</p>
     <div class="tabela"><table><thead><tr><th>Regra</th><th>Vale para</th><th>Origem</th><th>Situação</th><th></th></tr></thead><tbody id="lista-regras"></tbody></table></div>
     <form class="painel" id="form-regra">
       <h3 style="margin:0;font-weight:900" id="regra-titulo">Nova regra</h3>
@@ -589,7 +589,7 @@
       <label for="regra-texto">Regra <small>ex.: Sempre escrever "Cardápio Web" com acento e espaço nas legendas</small>
         <textarea id="regra-texto" required minlength="5" maxlength="400" style="min-height:70px"></textarea></label>
       <label for="regra-tipo">Vale para
-        <select id="regra-tipo"><option value="">Todo vídeo</option><option value="reel">Reel</option><option value="cortes">Cortes</option>
+        <select id="regra-tipo"><option value="">Todo vídeo</option><option value="sistema">Todo trabalho (regra do sistema)</option><option value="reel">Reel</option><option value="cortes">Cortes</option>
           <option value="tutorial">Tutorial</option><option value="youtube">YouTube</option><option value="anuncio">Anúncio</option><option value="story">Story</option></select></label>
       <div class="acoes"><button class="botao">Salvar regra</button><button class="botao leve" type="button" id="regra-limpar">Limpar</button></div>
       <div id="msg-regra" class="aviso erro" hidden></div>
@@ -854,7 +854,7 @@
   const STATUS = { nova: "Na fila", em_edicao: "Em edição", em_revisao: "Esperando aprovação", refazer: "Ajuste pedido", entregue: "Entregue", cancelada: "Cancelada" };
   const STATUS_TOM = { nova: "neutro", em_edicao: "ok", em_revisao: "aviso", refazer: "critico", entregue: "ok", cancelada: "neutro" };
   const COLUNAS = ["nova", "em_edicao", "em_revisao", "refazer", "entregue"];
-  const TIPOS = { reel: "Reel", cortes: "Cortes", tutorial: "Tutorial", youtube: "YouTube", anuncio: "Anúncio", story: "Story", outro: "Outro" };
+  const TIPOS = { sistema: "Todo trabalho (sistema)", reel: "Reel", cortes: "Cortes", tutorial: "Tutorial", youtube: "YouTube", anuncio: "Anúncio", story: "Story", outro: "Outro" };
   const MOTIVOS = { corte: "Corte e ritmo", legenda: "Legenda", visual: "Motion e visual", audio: "Áudio", conteudo: "Conteúdo / fala", marca: "Marca e CTA", outro: "Outro" };
   const ETAPAS = [["preparo", "Preparo"], ["transcricao", "Transcrição"], ["corte", "Corte e seleção"], ["montagem", "Montagem"],
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
@@ -4555,7 +4555,7 @@
     const cartao = (a) => h("div", { class: "card", style: "display:grid;gap:10px;min-width:0" },
       h("div", { style: "display:flex;gap:12px;align-items:center" }, retratoDe(visualRobo(a)),
         h("div", { style: "display:grid;gap:4px;min-width:0" }, h("b", {}, a.nome), h("span", { class: "nota" }, a.missao || "Sem missão escrita"),
-          h("div", { class: "chips" }, a.kit ? h("span", { class: "chip" }, KITS[a.kit]) : null,
+          h("div", { class: "chips" }, h("span", { class: "chip tom-neutro" }, PAPEIS_AG[a.papel || "video"]), a.kit ? h("span", { class: "chip" }, KITS[a.kit]) : null,
             h("span", { class: "chip " + (a.compartilhar === "time" ? "tom-ok" : a.compartilhar === "pedido" ? "tom-aviso" : "tom-neutro") },
               a.compartilhar === "time" ? "Do time" : a.compartilhar === "pedido" ? "Pedido para compartilhar" : "Privado"),
             !meu(a) ? h("span", { class: "nota" }, "de " + a.criado_por.split("@")[0]) : null))),
@@ -4610,6 +4610,8 @@
     $("#detalhe").showModal();
   }
   // ---- Oficina: skills do sistema (criar/melhorar com teste) e trabalhos dos agentes
+  const PAPEIS_AG = { video: "🎬 Edição de vídeo", conteudo: "✍️ Conteúdo e texto", design: "🎨 Imagens e design", dados: "📊 Análise e relatórios",
+    operacao: "🗂️ Operação e organização", outro: "🧰 Outro" };
   const comoTrabalha = (a) => ({ pedido: "trabalha quando alguém pede", pasta: `vigia 1. ENVIE AQUI/${a.pasta || "?"}`,
     agenda: `agenda ${((a.agenda || {}).dias || []).map((d) => ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"][d]).join(", ")} às ${(a.agenda || {}).hora || "08:00"}` })[a.gatilho] || "trabalha"
     + " · " + ({ aprovacao: "fica para aprovar", publicacao: "vai para a Publicação", pasta: "vai para pasta do Drive" })[a.entrega || "aprovacao"];
@@ -4766,7 +4768,8 @@
     const nome = h("input", { value: a ? a.nome : "", maxlength: 40, placeholder: "Ex.: Caçador de Ganchos" });
     const missao = h("input", { value: a ? a.missao : "", maxlength: 300, placeholder: "Em uma frase, o que ele faz" });
     const instr = h("textarea", { style: "min-height:110px", maxlength: 8000, placeholder: "Como ele deve trabalhar, o tom, o formato da resposta, o que nunca fazer…" }); instr.value = a ? a.instrucoes : "";
-    const kit = h("select", {}, h("option", { value: "" }, "Os dois / nenhum"), Object.entries(KITS).map(([k, t]) => h("option", { value: k }, t))); kit.value = a && a.kit || "";
+    const kit = h("select", {}, h("option", { value: "" }, "As duas / nenhuma"), Object.entries(KITS).map(([k, t]) => h("option", { value: k }, t))); kit.value = a && a.kit || "";
+    const papel = h("select", {}, Object.entries(PAPEIS_AG).map(([k, t]) => h("option", { value: k }, t))); papel.value = (a && a.papel) || "video";
     const ferr = ["higgsfield", "openrouter"].map((f) => h("label", { style: "display:flex;gap:6px;align-items:center" },
       h("input", { type: "checkbox", value: f, checked: !!(a && (a.ferramentas || []).includes(f)) }), { higgsfield: "Higgsfield (imagem e vídeo com IA)", openrouter: "OpenRouter (texto barato)" }[f]));
     const prev = h("canvas", { width: 22, height: 35, style: "width:88px;height:140px;image-rendering:pixelated;background:var(--surface-2);border-radius:14px;padding:8px" });
@@ -4846,9 +4849,13 @@
       h("label", {}, "Começa", gat), blocoPasta, blocoAgenda, blocoEtapas, blocoEstilos, h("label", {}, "Entrega", ent), blocoSprint, blocoDest,
       h("label", {}, "Higgsfield: até quantas gerações por trabalho (0 = não usa)", higgsIn),
       h("span", { class: "nota" }, "Ele trabalha no servidor com a conta Claude do CW Studios. Todo resultado espera a aprovação de alguém do time antes de ser entregue."));
-    const mostrarTrab = () => { blocoTrab.hidden = !trab.checked; blocoPasta.hidden = gat.value !== "pasta"; blocoAgenda.hidden = gat.value !== "agenda";
+    const mostrarTrab = () => { const video = papel.value === "video";
+      if (!video && ent.value === "publicacao") ent.value = "aprovacao";
+      ent.querySelector('option[value="publicacao"]').hidden = !video;
+      blocoTrab.hidden = !trab.checked; blocoPasta.hidden = gat.value !== "pasta"; blocoAgenda.hidden = gat.value !== "agenda";
+      blocoEstilos.hidden = !["video", "design"].includes(papel.value);
       blocoSprint.hidden = ent.value !== "publicacao"; blocoDest.hidden = ent.value !== "pasta"; };
-    trab.onchange = gat.onchange = ent.onchange = mostrarTrab; mostrarTrab();
+    trab.onchange = gat.onchange = ent.onchange = papel.onchange = mostrarTrab; mostrarTrab();
     const msg = h("div", { class: "aviso erro", hidden: true });
     encher($("#detalhe-corpo"), h("h2", {}, a && a._copia ? "Duplicar " + a._copia : a ? "Editar " + a.nome : "Criar agente"),
       a && a._copia ? h("p", { class: "nota", style: "margin:0" }, "Cópia com as mesmas skills, etapas, estilos e jeito de trabalhar. Mude o que precisar e salve: o original não muda.") : null,
@@ -4857,14 +4864,14 @@
           h("label", {}, "Camisa", cores("camisa", [...CAMISAS, ...MAIS_CAMISAS])), h("label", {}, "Cabelo", cores("cabelo", [...CABELOS, ...MAIS_CABELOS])),
           h("label", {}, "Pele", cores("pele", PELES)),
           h("div", { style: "display:flex;gap:8px;flex-wrap:wrap" }, h("label", {}, "Penteado", opc("estilo", ESTILOS.map((n, i) => [i, n]))), h("label", {}, "Acessório", opc("acessorio", ACESSORIOS))))),
-      h("label", {}, "Nome", nome), h("label", {}, "Missão", missao),
+      h("label", {}, "Nome", nome), h("label", {}, "Papel (o que ele faz)", papel), h("label", {}, "Missão", missao),
       h("div", { style: "display:grid;gap:6px" }, h("div", { style: "display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap" }, h("b", {}, "Skills que ele junta"), contador), filtro, lista),
-      h("label", {}, "Instruções", instr), h("label", {}, "Kit", kit),
+      h("label", {}, "Instruções", instr), h("label", {}, "Marca (opcional)", kit),
       h("div", { style: "display:grid;gap:4px" }, h("b", {}, "Ferramentas pagas da empresa"), ferr, h("span", { class: "nota" }, "Na conversa, cada geração paga pede o seu OK.")),
       h("label", { class: "check", style: "display:flex;gap:8px;align-items:center" }, trab, h("b", {}, "Trabalha sozinho no servidor"), h("span", { class: "nota" }, "(além de conversar)")), blocoTrab,
       msg,
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
-        const dados = { nome: nome.value.trim(), missao: missao.value.trim(), instrucoes: instr.value, kit: kit.value, visual: v, skills: [...escolhidas.values()],
+        const dados = { nome: nome.value.trim(), papel: papel.value, missao: missao.value.trim(), instrucoes: instr.value, kit: kit.value, visual: v, skills: [...escolhidas.values()],
           ferramentas: ferr.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value),
           trabalha: trab.checked, gatilho: gat.value, pasta: pastaIn.value, entrega: ent.value, higgs: +higgsIn.value || 0,
           etapas: etapas.map((e) => ({ nome: (e.nome || "").trim(), instrucao: e.instrucao || "", aprovar: !!e.aprovar, skill: e.skill || null })),
