@@ -4562,11 +4562,13 @@
       (a.skills || []).length ? h("div", { class: "chips" }, a.skills.map((x) => h("span", { class: "chip tom-neutro" }, "🧩 " + x.nome))) : h("span", { class: "nota" }, "Sem skills ainda"),
       (a.ferramentas || []).length ? h("span", { class: "nota" }, "Ferramentas: " + a.ferramentas.map((f) => ({ higgsfield: "Higgsfield", openrouter: "OpenRouter" })[f] || f).join(", ")) : null,
       a.trabalha ? h("span", { class: "chip tom-ok", style: "justify-self:start" }, "⚙️ " + comoTrabalha(a)) : null,
+      a.trabalha && (a.estilos || []).length ? h("div", { class: "chips" }, a.estilos.map((x, i) => h("span", { class: "chip " + (i === (a.estilo_padrao || 0) ? "tom-ok" : "tom-neutro") }, "🎨 " + x.nome))) : null,
       a.trabalha && (a.etapas || []).length ? h("span", { class: "nota" }, "Etapas: " + a.etapas.map((e, i) => `${i + 1}. ${e.nome}${e.aprovar || i === a.etapas.length - 1 ? " ⏸" : ""}`).join(" → ")) : null,
       h("div", { class: "acoes", style: "margin:0" },
         a.trabalha ? h("button", { class: "botao amarelo peq", onclick: () => abrirTrabalhos(a) }, "📋 Trabalhos") : null,
         h("button", { class: a.trabalha ? "botao leve peq" : "botao amarelo peq", onclick: () => abrirChatRobo(a) }, "💬 Conversar"),
         meu(a) || g ? h("button", { class: "botao leve peq", onclick: () => editarAgente(a) }, "Editar") : null,
+        h("button", { class: "botao leve peq", onclick: () => editarAgente({ ...a, _copia: a.nome, nome: (a.nome + " (cópia)").slice(0, 40), compartilhar: "privado" }) }, "⧉ Duplicar"),
         meu(a) && !g && a.compartilhar === "privado" ? h("button", { class: "botao leve peq", onclick: async () => { const { error } = await db.rpc("cw_agente_compartilhar", { p_id: a.id, p_estado: "pedido" }); if (error) return alert(error.message); desenharAgentes(); } }, "Pedir para compartilhar") : null,
         g && a.compartilhar !== "time" ? h("button", { class: "botao leve peq", onclick: async () => { await db.rpc("cw_agente_compartilhar", { p_id: a.id, p_estado: "time" }); desenharAgentes(); } }, "Compartilhar com o time") : null,
         g && a.compartilhar === "time" ? h("button", { class: "botao leve peq", onclick: async () => { await db.rpc("cw_agente_compartilhar", { p_id: a.id, p_estado: "privado" }); desenharAgentes(); } }, "Tornar privado") : null,
@@ -4716,13 +4718,14 @@
   async function abrirTrabalhos(a) {
     const { data } = await db.from("agente_tarefas").select("*").eq("agente_id", a.id).neq("estado", "descartada").order("id", { ascending: false }).limit(40);
     const texto = h("textarea", { style: "min-height:90px", placeholder: "O que ele deve fazer (ex.: faz 3 anúncios de 15 s com estes vídeos, foco em delivery próprio)…" });
+    const estiloSel = (a.estilos || []).length ? h("select", {}, a.estilos.map((x, i) => h("option", { value: i, selected: i === (a.estilo_padrao || 0) || null }, "🎨 " + x.nome + (i === (a.estilo_padrao || 0) ? " (padrão)" : "")))) : null;
     const refs = campoRefs(), msg = h("div", { class: "aviso erro", hidden: true });
     encher($("#detalhe-corpo"), h("h2", {}, "📋 Trabalhos de " + a.nome), h("p", { class: "nota", style: "margin:0" }, comoTrabalha(a)),
       h("details", { open: !(data || []).length || null }, h("summary", { style: "cursor:pointer" }, h("b", {}, "＋ Pedir um trabalho")),
-        h("div", { style: "display:grid;gap:8px;margin-top:8px" }, texto, refs.el, msg,
+        h("div", { style: "display:grid;gap:8px;margin-top:8px" }, texto, estiloSel ? h("label", {}, "Estilo de edição", estiloSel) : null, refs.el, msg,
           h("div", { class: "acoes", style: "margin:0" }, h("button", { class: "botao amarelo", onclick: async (ev) => { ev.target.disabled = true; msg.hidden = true;
             try { const caminhos = await refs.enviar(`agente-${a.id}/${Date.now()}`);
-              const { error } = await db.rpc("cw_agente_pedir", { p_agente: a.id, p_texto: texto.value, p_refs: caminhos, p_links: refs.links() }); if (error) throw error;
+              const { error } = await db.rpc("cw_agente_pedir", { p_agente: a.id, p_texto: texto.value, p_refs: caminhos, p_links: refs.links(), p_estilo: estiloSel ? +estiloSel.value : null }); if (error) throw error;
               abrirTrabalhos(a); } catch (e) { msg.hidden = false; msg.textContent = e.message || e; ev.target.disabled = false; } } }, "Mandar para a fila")))),
       (data || []).length ? h("div", { style: "display:grid;gap:8px" }, data.map((t) => { const [rot, tom] = ESTADO_TAREFA[t.estado] || [t.estado, "tom-neutro"];
         return h("button", { class: "subir-item", style: "text-align:left;cursor:pointer;border:1px solid var(--line);background:var(--surface-2);display:grid;gap:2px", onclick: () => verTarefa(a, t) },
@@ -4802,8 +4805,10 @@
     const etapas = ((a && a.etapas) || []).map((e) => ({ ...e })), listaEt = h("div", { style: "display:grid;gap:8px" });
     const pintarEt = () => encher(listaEt, etapas.length ? etapas.map((e, i) => {
       const nomeE = h("input", { value: e.nome || "", maxlength: 60, placeholder: "Ex.: Revisar o b-roll", style: "flex:1;min-width:0", oninput: (ev) => { e.nome = ev.target.value; } });
-      const sel = h("select", { onchange: (ev) => { const x = cat.find((c) => c.origem + ":" + c.id === ev.target.value); e.skill = x ? { origem: x.origem, id: x.id, nome: x.nome } : null; } },
+      const sel = h("select", { onchange: (ev) => { if (ev.target.value === "estilo") { e.skill = { origem: "estilo", id: 0, nome: "Estilo escolhido no pedido" }; return; }
+          const x = cat.find((c) => c.origem + ":" + c.id === ev.target.value); e.skill = x ? { origem: x.origem, id: x.id, nome: x.nome } : null; } },
         h("option", { value: "" }, "Só instruções (sem skill)"),
+        h("option", { value: "estilo", selected: (e.skill && e.skill.origem === "estilo") || null }, "🎨 O estilo de edição escolhido no pedido"),
         cat.map((x) => h("option", { value: x.origem + ":" + x.id, selected: (e.skill && e.skill.origem === x.origem && +e.skill.id === +x.id) || null }, x.nome + " · " + x.fonte)));
       const ins = h("textarea", { style: "min-height:50px", maxlength: 3000, placeholder: "O que fazer nesta etapa (ex.: confira se cada b-roll mostra o que o convidado fala; troque os que não combinam)…", oninput: (ev) => { e.instrucao = ev.target.value; } });
       ins.value = e.instrucao || "";
@@ -4817,18 +4822,36 @@
         h("label", { class: "check", style: "display:flex;gap:6px;align-items:center" }, apr, ult ? "Para para aprovar (a última sempre para)" : "Parar para alguém aprovar antes de seguir"));
     }) : h("span", { class: "nota" }, "Sem etapas: ele faz o trabalho inteiro de uma vez, usando as skills escolhidas acima, e para no fim para aprovar."));
     pintarEt();
+    // estilos de edição: o mesmo processo, acabamentos diferentes (escolhido em cada pedido)
+    const estilosAg = ((a && a.estilos) || []).map((x) => ({ ...x }));
+    let padraoEst = (a && a.estilo_padrao) || 0;
+    const listaEst = h("div", { style: "display:grid;gap:6px" });
+    const addEst = h("select", { onchange: (ev) => { const x = cat.find((c) => c.origem + ":" + c.id === ev.target.value); ev.target.value = "";
+      if (!x || estilosAg.some((y) => y.origem === x.origem && +y.id === +x.id)) return; if (estilosAg.length >= 10) return alert("Até 10 estilos.");
+      estilosAg.push({ origem: x.origem, id: x.id, nome: x.nome }); pintarEst(); } },
+      h("option", { value: "" }, "＋ Adicionar um estilo (uma skill de acabamento)…"), cat.map((x) => h("option", { value: x.origem + ":" + x.id }, x.nome + " · " + x.fonte)));
+    const pintarEst = () => { if (padraoEst >= estilosAg.length) padraoEst = 0;
+      encher(listaEst, estilosAg.map((x, i) => h("div", { style: "display:flex;gap:8px;align-items:center;flex-wrap:wrap" },
+        h("label", { class: "check", style: "display:flex;gap:6px;align-items:center;flex:1;min-width:0" },
+          h("input", { type: "radio", name: "estilo-padrao", checked: i === padraoEst || null, onchange: () => { padraoEst = i; } }), "🎨 " + x.nome, i === padraoEst ? h("span", { class: "nota" }, "(padrão)") : null),
+        h("button", { type: "button", class: "botao perigo peq", "aria-label": "Tirar", onclick: () => { estilosAg.splice(i, 1); pintarEst(); } }, "✕")))); };
+    pintarEst();
+    const blocoEstilos = h("div", { style: "display:grid;gap:6px" }, h("b", {}, "Estilos de edição"),
+      h("span", { class: "nota" }, "O processo é o mesmo; o estilo muda só o acabamento (legenda, cores, gancho, sons). No pedido você escolhe qual usar. Para criar um estilo novo por referência: Oficina › Skills › Criar skill."),
+      listaEst, addEst);
     const blocoEtapas = h("div", { style: "display:grid;gap:6px" }, h("div", { style: "display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap" },
         h("b", {}, "Etapas (a linha de produção)"), h("button", { type: "button", class: "botao leve peq", onclick: () => { if (etapas.length >= 10) return alert("Até 10 etapas."); etapas.push({ nome: "", instrucao: "", aprovar: false, skill: null }); pintarEt(); } }, "＋ Etapa")),
       listaEt);
     const blocoTrab = h("div", { style: "display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:12px" },
-      h("label", {}, "Começa", gat), blocoPasta, blocoAgenda, blocoEtapas, h("label", {}, "Entrega", ent), blocoSprint, blocoDest,
+      h("label", {}, "Começa", gat), blocoPasta, blocoAgenda, blocoEtapas, blocoEstilos, h("label", {}, "Entrega", ent), blocoSprint, blocoDest,
       h("label", {}, "Higgsfield: até quantas gerações por trabalho (0 = não usa)", higgsIn),
       h("span", { class: "nota" }, "Ele trabalha no servidor com a conta Claude do CW Studios. Todo resultado espera a aprovação de alguém do time antes de ser entregue."));
     const mostrarTrab = () => { blocoTrab.hidden = !trab.checked; blocoPasta.hidden = gat.value !== "pasta"; blocoAgenda.hidden = gat.value !== "agenda";
       blocoSprint.hidden = ent.value !== "publicacao"; blocoDest.hidden = ent.value !== "pasta"; };
     trab.onchange = gat.onchange = ent.onchange = mostrarTrab; mostrarTrab();
     const msg = h("div", { class: "aviso erro", hidden: true });
-    encher($("#detalhe-corpo"), h("h2", {}, a ? "Editar " + a.nome : "Criar agente"),
+    encher($("#detalhe-corpo"), h("h2", {}, a && a._copia ? "Duplicar " + a._copia : a ? "Editar " + a.nome : "Criar agente"),
+      a && a._copia ? h("p", { class: "nota", style: "margin:0" }, "Cópia com as mesmas skills, etapas, estilos e jeito de trabalhar. Mude o que precisar e salve: o original não muda.") : null,
       h("div", { style: "display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start" }, prev,
         h("div", { style: "display:grid;gap:8px;flex:1 1 240px;min-width:0" },
           h("label", {}, "Camisa", cores("camisa", [...CAMISAS, ...MAIS_CAMISAS])), h("label", {}, "Cabelo", cores("cabelo", [...CABELOS, ...MAIS_CABELOS])),
@@ -4845,13 +4868,14 @@
           ferramentas: ferr.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value),
           trabalha: trab.checked, gatilho: gat.value, pasta: pastaIn.value, entrega: ent.value, higgs: +higgsIn.value || 0,
           etapas: etapas.map((e) => ({ nome: (e.nome || "").trim(), instrucao: e.instrucao || "", aprovar: !!e.aprovar, skill: e.skill || null })),
+          estilos: estilosAg.map((x) => ({ origem: x.origem, id: x.id, nome: x.nome })), estilo_padrao: padraoEst,
           destino: ent.value === "publicacao" ? destSprint.value : ent.value === "pasta" ? destPasta.value : "",
           agenda: { dias: dias.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => +i.value), hora: hora.value, pedido: agPedido.value } };
         if (dados.nome.length < 2) { msg.hidden = false; msg.textContent = "Dê um nome ao agente."; return; }
         if (dados.etapas.some((e) => !e.nome)) { msg.hidden = false; msg.textContent = "Dê um nome a cada etapa."; return; }
-        const { error } = await db.rpc("cw_agente_salvar", { p_id: a ? a.id : null, p_dados: dados });
+        const { error } = await db.rpc("cw_agente_salvar", { p_id: a && !a._copia ? a.id : null, p_dados: dados });
         if (error) { msg.hidden = false; msg.textContent = error.message; return; }
-        $("#detalhe").close(); desenharAgentes(); } }, a ? "Salvar" : "Criar agente"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+        $("#detalhe").close(); desenharAgentes(); } }, a && a._copia ? "Criar a cópia" : a ? "Salvar" : "Criar agente"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
     desenhar(); pintar();
     $("#detalhe").showModal();
   }
