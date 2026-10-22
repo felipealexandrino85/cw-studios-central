@@ -1766,12 +1766,12 @@
           db.from("seo_perguntas").select("*").order("id", { ascending: false }).limit(20)]);
         SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [] };
         await recarregarAgentes();
-        const [ec, el, ee] = await Promise.all([db.from("esteira_cortes").select("estado,terminado").in("estado", ["produzindo", "na_fila", "entregue"]).limit(2000),
+        const [ec, el, ee] = await Promise.all([db.from("esteira_cortes").select("estado,terminado").in("estado", ["produzindo", "na_fila", "entregue", "previa"]).limit(2000),
           db.from("esteira_lotes").select("estado").eq("estado", "conferir"), db.from("esteira_episodios").select("estado").in("estado", ["chegou", "preparando"])]);
         const cs = Array.isArray(ec.data) ? ec.data : [], hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
         SALA.est = { produzindo: cs.filter((x) => x.estado === "produzindo").length, fila: cs.filter((x) => x.estado === "na_fila").length,
           hoje: cs.filter((x) => x.estado === "entregue" && x.terminado && new Date(x.terminado) >= hoje0).length,
-          conferir: (el.data || []).length, preparando: (ee.data || []).length };
+          conferir: (el.data || []).length, preparando: (ee.data || []).length, previas: cs.filter((x) => x.estado === "previa").length };
       }
     }
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo (copa, sofá, jogos)"],
@@ -2390,11 +2390,11 @@
       const lwT = c.measureText("Titeu").width / SC + 12;
       px(t2.x - lwT / 2, t2.y + 6, lwT, 10, "#2a2440"); px(t2.x - lwT / 2 + 3, t2.y + 9.5, 4, 4, E2.produzindo ? "#4cd07d" : E2.conferir ? "#ffb800" : "#ffb800aa");
       txt("Titeu", t2.x + 2.5, t2.y + 13.6, 4.8, "#ffffff", 700);
-      const falaT = E2.conferir ? `👀 ${E2.conferir} lista${E2.conferir > 1 ? "s" : ""} p/ conferir` : E2.produzindo ? `✂️ cortando ${E2.produzindo}${E2.fila ? ` (${E2.fila} na fila)` : ""}`
+      const falaT = E2.previas ? `👀 ${E2.previas} prévia${E2.previas > 1 ? "s" : ""} p/ aprovar` : E2.conferir ? `👀 ${E2.conferir} lista${E2.conferir > 1 ? "s" : ""} p/ conferir` : E2.produzindo ? `✂️ cortando ${E2.produzindo}${E2.fila ? ` (${E2.fila} na fila)` : ""}`
         : E2.preparando ? "🎧 preparando episódio" : E2.hoje ? `✅ ${E2.hoje} corte${E2.hoje > 1 ? "s" : ""} hoje` : (f % 260 < 80 ? "✂️ me manda um episódio" : null);
       if (falaT && SALA.est) {
         c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
-        const sE = P.salas[4], bwT = c.measureText(falaT).width / SC + 10, bxT = Math.max(sE.x + 2, Math.min(t2.x - bwT / 2, sE.x + sE.w - bwT - 2)), byT = t2.y - 50, corT = E2.conferir ? "#ffb800" : "#ffffff";
+        const sE = P.salas[4], bwT = c.measureText(falaT).width / SC + 10, bxT = Math.max(sE.x + 2, Math.min(t2.x - bwT / 2, sE.x + sE.w - bwT - 2)), byT = t2.y - 50, corT = E2.conferir || E2.previas ? "#ffb800" : "#ffffff";
         px(bxT, byT, bwT, 11, corT); px(t2.x - 1, byT + 11, 3, 2, corT); txt(falaT, bxT + bwT / 2, byT + 8, 4.6, "#2a1b40", 600);
       }
     }
@@ -4010,11 +4010,12 @@
   }
   const KITS = { "cardapio-web": "KIT - Cardápio Web", "cw-cast": "KIT - CW Cast" };
   // ---------------------------------------------------------------- esteira de cortes (servidor)
-  const EST = { timer: null, ajustes: {}, marcados: {} };
+  const EST = { timer: null, ajustes: {}, marcados: {}, vista: "cortes", estilos: [] };
   const ESTADO_EP = { chegou: ["Chegou", "tom-neutro"], preparando: ["Preparando", "tom-aviso"], pronto: ["Pronto para cortar", "tom-ok"], erro: ["Erro", "tom-critico"] };
   const ESTADO_LOTE = { selecionando: ["Escolhendo os momentos", "tom-aviso"], conferir: ["Esperando conferência", "tom-aviso"], produzindo: ["Produzindo", "tom-ok"],
     concluido: ["Concluído", "tom-neutro"], erro: ["Erro", "tom-critico"], cancelado: ["Cancelado", "tom-neutro"] };
   const ESTADO_CORTE = { proposto: ["Proposto", "tom-neutro"], descartado: ["Descartado", "tom-neutro"], na_fila: ["Na fila", "tom-neutro"], produzindo: ["Produzindo", "tom-aviso"],
+    previa: ["Prévia: aprovar", "tom-aviso"], aprovado: ["Indo para a Publicação", "tom-ok"],
     entregue: ["Na Publicação", "tom-ok"], reprovado: ["Reprovado no QC", "tom-critico"], erro: ["Erro", "tom-critico"] };
   const mmss = (x) => { x = Math.round(+x || 0); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`; };
   async function desenharEsteira() {
@@ -4023,12 +4024,17 @@
     EST.timer = setInterval(() => { const a = document.activeElement;
       if (aba !== "esteira") return clearInterval(EST.timer);
       if (!document.hidden && !(a && a.closest && a.closest("#est-corpo") && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !$("#detalhe").open) desenharEsteira(); }, 10000);
-    const [eps, lotes, cortes, conta] = await Promise.all([
+    const [eps, lotes, cortes, conta, ests] = await Promise.all([
       db.from("esteira_episodios").select("*").neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
       db.from("esteira_lotes").select("*").order("id", { ascending: false }).limit(15),
       db.from("esteira_cortes").select("*").order("ordem").limit(600),
-      eu.papel === "gestor" ? db.from("servidor_conta").select("estado").eq("editor_slug", "esteira").maybeSingle() : Promise.resolve({ data: { estado: "ok" } })]);
+      eu.papel === "gestor" ? db.from("servidor_conta").select("estado").eq("editor_slug", "esteira").maybeSingle() : Promise.resolve({ data: { estado: "ok" } }),
+      db.from("estilos").select("id,slug,nome,descricao,kit,item_id,ativo,padrao").order("id")]);
     const E = eps.data || [], L = lotes.data || [], C = cortes.data || [];
+    EST.estilos = ests.data || [];
+    const navEst = h("div", { class: "chips" }, [["cortes", "✂️ Cortes"], ["estilos", "🎨 Estilos"]].map(([v, t]) =>
+      h("button", { class: "chip" + (EST.vista === v ? " tom-ok" : ""), style: "cursor:pointer;border:0;font-size:14px;padding:6px 12px", onclick: () => { EST.vista = v; desenharEsteira(); } }, t)));
+    if (EST.vista === "estilos") return desenharEstilos(navEst);
     const epDe = (id) => E.find((e) => e.id === id) || { nome: "episódio " + id };
     const barra = (pct) => h("div", { style: "height:8px;border-radius:6px;background:var(--surface-2);overflow:hidden" }, h("div", { style: `height:100%;width:${pct || 0}%;background:var(--brand)` }));
     const cartaoEp = (e) => { const [rot, tom] = ESTADO_EP[e.estado] || [e.estado, "tom-neutro"];
@@ -4044,12 +4050,17 @@
           c.ajuste ? h("div", { class: "nota" }, "Ajuste: " + c.ajuste) : null),
         td(h("span", { class: "chip " + tom }, rot)), td(c.estado === "produzindo" ? c.etapa || "" : c.erro || (dur ? `em ${duracao(dur)}` : "")),
         h("td", {}, c.publicacao_id ? h("a", { href: "#publicacao", onclick: (ev) => { ev.preventDefault(); trocarAba("publicacao"); } }, "P-" + String(c.publicacao_id).padStart(4, "0")) : null,
+          c.estado === "previa" ? h("button", { class: "botao amarelo peq", onclick: () => verPrevia(c) }, "▶ Ver prévia") : null,
           ["entregue", "reprovado", "erro"].includes(c.estado) ? h("button", { class: "botao leve peq", style: "margin-left:6px", onclick: () => ajustarCorte(c) }, "Pedir ajuste") : null)); };
     const blocoLote = (l) => { const [rot, tom] = ESTADO_LOTE[l.estado] || [l.estado, "tom-neutro"], cs = C.filter((c) => c.lote_id === l.id);
       const ent = cs.filter((c) => c.estado === "entregue").length, ativos = cs.filter((c) => !["proposto", "descartado"].includes(c.estado)).length;
+      const prevs = cs.filter((c) => c.estado === "previa").length, est = EST.estilos.find((x) => x.id === l.estilo_id);
       const cab = h("div", { style: "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap" },
         h("div", {}, h("b", {}, `${epDe(l.episodio_id).nome} · ${l.quantidade} cortes`), h("div", { class: "nota" }, `pedido por ${l.pedido_por.split("@")[0]} ${ha(l.criado)}${l.instrucoes ? " · “" + l.instrucoes.slice(0, 80) + "”" : ""}`)),
-        h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), ativos ? h("span", { class: "chip tom-neutro" }, `${ent}/${ativos} na Publicação`) : null,
+        h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), est ? h("span", { class: "chip tom-neutro" }, "🎨 " + est.nome) : null,
+          l.higgs_orcamento ? h("span", { class: "chip tom-neutro" }, `Higgsfield até ${l.higgs_orcamento}`) : null,
+          prevs ? h("span", { class: "chip tom-aviso" }, `👀 ${prevs} prévia${prevs > 1 ? "s" : ""} para aprovar`) : null,
+          ativos ? h("span", { class: "chip tom-neutro" }, `${ent}/${ativos} na Publicação`) : null,
           ["selecionando", "conferir", "produzindo"].includes(l.estado) ? h("button", { class: "botao perigo peq", onclick: async () => { if (!confirm("Cancelar este lote?")) return; await db.rpc("cw_esteira_cancelar", { p_lote: l.id }); desenharEsteira(); } }, "Cancelar") : null));
       if (l.estado === "selecionando") return h("div", { class: "card", style: "display:grid;gap:8px" }, cab, h("span", { class: "nota" }, "O Claude está lendo o episódio e escolhendo os momentos (uns 10 a 15 minutos)."));
       if (l.estado === "erro") return h("div", { class: "card", style: "display:grid;gap:8px" }, cab, h("span", { class: "nota" }, l.erro || ""));
@@ -4074,11 +4085,11 @@
           h("div", { class: "acoes" }, botao));
       }
       const visiveis = cs.filter((c) => c.estado !== "descartado");
-      return h("details", { class: "card", open: l.estado === "produzindo" }, h("summary", { style: "cursor:pointer;list-style:none" }, cab),
+      return h("details", { class: "card", open: l.estado === "produzindo" || prevs > 0 }, h("summary", { style: "cursor:pointer;list-style:none" }, cab),
         h("div", { class: "tabela", style: "margin-top:10px" }, h("table", {}, h("thead", {}, h("tr", {}, ["#", "Corte", "Situação", "Agora", ""].map((t) => h("th", {}, t)))),
           h("tbody", {}, visiveis.map(linhaCorte)))));
     };
-    encher($("#est-corpo"),
+    encher($("#est-corpo"), navEst,
       eu.papel === "gestor" && (!conta.data || conta.data.estado !== "ok") ? h("div", { class: "aviso" }, "A esteira roda com a conta Claude do CW Studios no servidor. ",
         h("button", { class: "botao amarelo peq", onclick: () => abrirContaServidor("esteira") }, "☁️ Ligar a conta Claude da esteira")) : null,
       h("h3", { class: "grupo" }, "Lotes"),
@@ -4090,14 +4101,70 @@
   function pedirCortes(e) {
     const qtd = h("input", { type: "number", min: 1, max: 30, value: 15, style: "max-width:120px" });
     const instr = h("textarea", { style: "min-height:90px", placeholder: "Opcional: o que priorizar (ex.: falas sobre CMV e delivery, evitar trechos de patrocínio)…" });
+    const ativos = EST.estilos.filter((x) => x.ativo);
+    const estilo = h("select", {}, ativos.map((x) => h("option", { value: x.id }, x.nome + (x.padrao ? " (padrão)" : ""))));
+    estilo.value = (ativos.find((x) => x.padrao) || ativos[0] || {}).id || "";
+    const higgs = h("input", { type: "number", min: 0, max: 50, value: 0, style: "max-width:120px" });
     const msg = h("div", { class: "aviso erro", hidden: true });
     encher($("#detalhe-corpo"), h("h2", {}, "✂️ Gerar cortes"), h("p", { class: "nota", style: "margin:0" }, e.nome + (e.duracao_s ? " · " + mmss(e.duracao_s) : "")),
-      h("label", {}, "Quantos cortes", qtd), h("label", {}, "O que priorizar", instr), msg,
+      h("label", {}, "Quantos cortes", qtd), h("label", {}, "🎨 Estilo de edição", estilo),
+      h("label", {}, "Higgsfield: até quantas gerações neste lote", higgs, h("span", { class: "nota" }, "Foto do gancho e B-roll gerados por IA, com a conta da empresa (limite mensal na aba Ferramentas). 0 = não usa.")),
+      h("label", {}, "O que priorizar", instr), msg,
       h("p", { class: "nota", style: "margin:0" }, "O Claude escolhe os momentos e a lista volta aqui para você conferir antes de produzir."),
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
-        const { error } = await db.rpc("cw_esteira_pedir", { p_episodio: e.id, p_quantidade: +qtd.value || 15, p_instrucoes: instr.value, p_kit: "cw-cast" });
+        const { error } = await db.rpc("cw_esteira_pedir", { p_episodio: e.id, p_quantidade: +qtd.value || 15, p_instrucoes: instr.value, p_kit: "cw-cast",
+          p_estilo: estilo.value ? +estilo.value : null, p_higgs: +higgs.value || 0 });
         if (error) { msg.hidden = false; msg.textContent = error.message; return; }
         $("#detalhe").close(); desenharEsteira(); } }, "Pedir"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+    $("#detalhe").showModal();
+  }
+  async function verPrevia(c) {
+    const { data } = await db.storage.from("previas").createSignedUrl(c.previa, 3600);
+    const nota = h("textarea", { style: "min-height:80px", placeholder: "O que melhorar (ex.: gancho mais curto, trocar a foto, legenda entrando atrasada no 0:12)…" });
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    encher($("#detalhe-corpo"), h("h2", {}, `${c.ordem}. ${c.titulo}`),
+      h("p", { class: "nota", style: "margin:0" }, `${mmss(c.inicio)}–${mmss(c.fim)} do episódio${c.final_drive ? " · no Drive: " + c.final_drive.split("/").slice(-2).join("/") : ""}`),
+      data && data.signedUrl ? h("video", { src: data.signedUrl, controls: true, playsinline: true, style: "width:100%;max-width:340px;max-height:60vh;border-radius:12px;background:#000;justify-self:center" })
+        : h("div", { class: "aviso" }, "Não consegui abrir a prévia."),
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
+        const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: true }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+        $("#detalhe").close(); desenharEsteira(); } }, "✅ Aprovar e mandar para a Publicação")),
+      h("label", {}, "Ou peça uma melhoria (o Titeu refaz este corte)", nota), msg,
+      h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: async () => {
+        const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: false, p_nota: nota.value }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+        $("#detalhe").close(); desenharEsteira(); } }, "✏️ Pedir melhoria"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+    $("#detalhe").showModal();
+  }
+  async function desenharEstilos(navEst) {
+    const g = eu.papel === "gestor";
+    const salvar = async (id, dados) => { const { error } = await db.rpc("cw_estilo_salvar", { p_id: id, p_dados: dados }); if (error) return alert(error.message); desenharEsteira(); };
+    encher($("#est-corpo"), navEst,
+      h("p", { class: "nota", style: "margin:0" }, "Cada estilo é um jeito de editar que o Titeu sabe aplicar: visual, legenda, gancho, sons, trilha. Você escolhe o estilo ao pedir os cortes. As regras são sempre as do time."),
+      h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" },
+        EST.estilos.map((x) => h("div", { class: "card", style: "display:grid;gap:8px;min-width:0;" + (x.ativo ? "" : "opacity:.55") },
+          h("div", { style: "display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap" }, h("b", {}, "🎨 " + x.nome),
+            h("div", { class: "chips" }, x.padrao ? h("span", { class: "chip tom-ok" }, "Padrão") : null, x.kit ? h("span", { class: "chip tom-neutro" }, KITS[x.kit]) : null,
+              !x.ativo ? h("span", { class: "chip tom-neutro" }, "Desligado") : null)),
+          h("span", { class: "nota" }, x.descricao),
+          g ? h("div", { class: "acoes", style: "margin:0" },
+            !x.padrao && x.ativo ? h("button", { class: "botao leve peq", onclick: () => salvar(x.id, { padrao: true }) }, "Tornar padrão") : null,
+            h("button", { class: "botao leve peq", onclick: () => salvar(x.id, { ativo: !x.ativo }) }, x.ativo ? "Desligar" : "Ligar")) : null)),
+        g ? h("button", { class: "card", style: "display:grid;place-items:center;gap:6px;min-height:120px;cursor:pointer;border:2px dashed var(--line);background:transparent", onclick: novoEstilo },
+          h("span", { style: "font-size:30px" }, "＋"), h("b", {}, "Novo estilo"), h("span", { class: "nota" }, "a partir de um pacote enviado por um editor")) : null));
+  }
+  async function novoEstilo() {
+    const { data: itens } = await db.from("kit_itens").select("id,nome,editor_slug,kit,anexos").eq("tipo", "skill").order("enviado_em", { ascending: false });
+    const item = h("select", {}, (itens || []).map((i) => h("option", { value: i.id }, `${i.nome} · ${nomeEditor(i.editor_slug) || i.editor_slug} · ${(i.anexos || []).length} arquivos`)));
+    const nome = h("input", { placeholder: "Ex.: Reels Cardápio Web · Fabiano" }), desc = h("input", { placeholder: "Em uma frase, como fica o vídeo" });
+    const rec = h("textarea", { style: "min-height:160px", placeholder: "Receita: como o Titeu aplica este estilo a UM corte (comandos, scripts e onde fica o final). Use as seções '## EPISÓDIO' (opcional) e '## CORTE'." });
+    const msg = h("div", { class: "aviso erro", hidden: true });
+    encher($("#detalhe-corpo"), h("h2", {}, "🎨 Novo estilo"), h("label", {}, "Pacote (skill com os arquivos do estilo)", item), h("label", {}, "Nome", nome), h("label", {}, "Descrição", desc),
+      h("label", {}, "Receita", rec), h("p", { class: "nota", style: "margin:0" }, "Dica: peça ao Claude do editor que preparou o pacote para escrever a receita junto (\"escreve a receita do meu estilo para o Titeu\")."), msg,
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
+        const slug = nome.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const { error } = await db.rpc("cw_estilo_salvar", { p_id: null, p_dados: { slug, nome: nome.value, descricao: desc.value, item_id: +item.value, receita: rec.value } });
+        if (error) { msg.hidden = false; msg.textContent = error.message; return; } $("#detalhe").close(); desenharEsteira(); } }, "Criar estilo"),
+        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
     $("#detalhe").showModal();
   }
   function ajustarCorte(c) {
