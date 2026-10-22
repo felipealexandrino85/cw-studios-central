@@ -3691,6 +3691,13 @@
       if (aprovar && !quando.value) dispararRobo("publicar");   // o Chico posta agora, sem esperar a próxima passada
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
     }
+    async function ajusteTiteu() {
+      if (caixaMotivo.hidden) { caixaMotivo.hidden = false; motivo.placeholder = "O que o Titeu deve mudar neste corte?"; motivo.focus(); return; }
+      const { error } = await db.rpc("cw_pub_ajuste_titeu", { p_pub: x.id, p_nota: motivo.value });
+      if (error) return erro(error);
+      $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
+      alert("Pronto: o corte voltou para o Titeu com prioridade. Quando ficar pronto, ele volta para cá.");
+    }
     async function mudar(acao) {
       const { error } = await db.rpc("cw_pub_mudar", { p_id: x.id, p_acao: acao });
       if (error) return erro(error);
@@ -3735,9 +3742,12 @@
         h("div", { class: "acoes" },
           h("button", { class: "botao amarelo", onclick: () => decidir(true) }, "Aprovar"),
           h("button", { class: "botao perigo", onclick: () => decidir(false) }, "Recusar"),
+          x.editor_slug === "esteira" && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao Titeu"),
           h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar"))]
-      : [!aguardando && x.legenda && h("div", { class: "campos" }, h("dl", {}, h("dt", {}, "Legenda"), h("dd", {}, x.legenda))), msg,
+      : [!aguardando && x.legenda && h("div", { class: "campos" }, h("dl", {}, h("dt", {}, "Legenda"), h("dd", {}, x.legenda))),
+         pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) ? caixaMotivo : null, msg,
          h("div", { class: "acoes" },
+           pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao Titeu"),
            pode && x.estado === "aprovado" && h("button", { class: "botao leve", onclick: () => mudar("voltar") }, "Voltar para aprovação"),
            pode && x.estado === "erro" && h("button", { class: "botao amarelo", onclick: () => mudar("tentar") }, "Tentar de novo"),
            pode && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao perigo peq", onclick: () => mudar("cancelar") }, "Cancelar"),
@@ -4201,6 +4211,10 @@
         h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), est ? h("span", { class: "chip tom-neutro" }, "🎨 " + est.nome) : null,
           l.higgs_orcamento ? h("span", { class: "chip tom-neutro" }, `Higgsfield até ${l.higgs_orcamento}`) : null,
           prevs ? h("span", { class: "chip tom-aviso" }, `👀 ${prevs} prévia${prevs > 1 ? "s" : ""} para aprovar`) : null,
+          ["selecionando", "conferir", "produzindo"].includes(l.estado) ? h("label", { class: "chip " + (l.auto_aprovar ? "tom-ok" : "tom-neutro"), style: "cursor:pointer;display:inline-flex;gap:6px;align-items:center", onclick: (ev) => ev.stopPropagation(),
+            title: "Ligado: cada corte pronto vai direto para a Publicação; lá dá para pedir ajuste ao Titeu" },
+            h("input", { type: "checkbox", checked: !!l.auto_aprovar, style: "width:auto;margin:0", onchange: async (ev) => { const { error } = await db.rpc("cw_esteira_auto", { p_lote: l.id, p_ligar: ev.target.checked }); if (error) alert(error.message); desenharEsteira(); } }),
+            "Aprovar prévias sozinho") : null,
           ativos ? h("span", { class: "chip tom-neutro" }, `${ent}/${ativos} na Publicação`) : null,
           ["selecionando", "conferir", "produzindo"].includes(l.estado) ? h("button", { class: "botao perigo peq", onclick: async () => { if (!confirm("Cancelar este lote?")) return; await db.rpc("cw_esteira_cancelar", { p_lote: l.id }); desenharEsteira(); } }, "Cancelar") : null));
       if (l.estado === "selecionando") return h("div", { class: "card", style: "display:grid;gap:8px" }, cab, h("span", { class: "nota" }, "O Claude está lendo o episódio e escolhendo os momentos (uns 10 a 15 minutos)."));
@@ -4246,15 +4260,18 @@
     const estilo = h("select", {}, ativos.map((x) => h("option", { value: x.id }, x.nome + (x.padrao ? " (padrão)" : ""))));
     estilo.value = (ativos.find((x) => x.padrao) || ativos[0] || {}).id || "";
     const higgs = h("input", { type: "number", min: 0, max: 50, value: 0, style: "max-width:120px" });
+    const auto = h("input", { type: "checkbox", style: "width:auto;margin:0" });
     const msg = h("div", { class: "aviso erro", hidden: true });
     encher($("#detalhe-corpo"), h("h2", {}, "✂️ Gerar cortes"), h("p", { class: "nota", style: "margin:0" }, e.nome + (e.duracao_s ? " · " + mmss(e.duracao_s) : "")),
       h("label", {}, "Quantos cortes", qtd), h("label", {}, "🎨 Estilo de edição", estilo),
       h("label", {}, "Higgsfield: até quantas gerações neste lote", higgs, h("span", { class: "nota" }, "Foto do gancho e B-roll gerados por IA, com a conta da empresa (limite mensal na aba Ferramentas). 0 = não usa.")),
-      h("label", {}, "O que priorizar", instr), msg,
+      h("label", {}, "O que priorizar", instr),
+      h("label", { class: "check", style: "display:flex;gap:8px;align-items:center" }, auto, "Aprovar as prévias sozinho (cada corte pronto vai direto para a Publicação; lá dá para pedir ajuste)"), msg,
       h("p", { class: "nota", style: "margin:0" }, "O Claude escolhe os momentos e a lista volta aqui para você conferir antes de produzir."),
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
-        const { error } = await db.rpc("cw_esteira_pedir", { p_episodio: e.id, p_quantidade: +qtd.value || 15, p_instrucoes: instr.value, p_kit: "cw-cast",
+        const { data: novo, error } = await db.rpc("cw_esteira_pedir", { p_episodio: e.id, p_quantidade: +qtd.value || 15, p_instrucoes: instr.value, p_kit: "cw-cast",
           p_estilo: estilo.value ? +estilo.value : null, p_higgs: +higgs.value || 0 });
+        if (!error && auto.checked) await db.rpc("cw_esteira_auto", { p_lote: novo, p_ligar: true });
         if (error) { msg.hidden = false; msg.textContent = error.message; return; }
         $("#detalhe").close(); desenharEsteira(); } }, "Pedir"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
     $("#detalhe").showModal();
