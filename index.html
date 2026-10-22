@@ -655,13 +655,13 @@
 
   <section id="aba-reels" hidden>
     <header class="cabeca" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><canvas id="fabiano-retrato" width="22" height="35" style="width:66px;height:105px;image-rendering:pixelated;flex:none" aria-hidden="true"></canvas><div style="flex:1 1 280px;min-width:0"><p class="kicker">Reels da Cardápio Web</p><h1>FabI.Ano</h1>
-      <p class="sub">Cada pasta nova em “2. ENVIE AQUI - Reels (câmera + tela)” vira um reel: o FabI.Ano prepara, edita no estilo do Fabiano e manda a prévia aqui. Você aprova (vai para “4. PRONTOS - Reels”) ou pede ajuste com print.</p></div></header>
+      <p class="sub">Cada pasta nova em “1. ENVIE AQUI › Reels (câmera + tela)” vira um reel: o FabI.Ano prepara, edita no estilo do Fabiano e manda a prévia aqui. Você aprova (vai para a Publicação e, aprovado lá, para a pasta da sprint) ou pede ajuste com print.</p></div></header>
     <div id="reels-corpo" style="display:grid;gap:16px"></div>
   </section>
 
   <section id="aba-esteira" hidden>
     <header class="cabeca" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><canvas id="titeu-retrato" width="22" height="35" style="width:66px;height:105px;image-rendering:pixelated;flex:none" aria-hidden="true"></canvas><div style="flex:1 1 280px;min-width:0"><p class="kicker">Esteira de cortes</p><h1>Titeu</h1>
-      <p class="sub">O episódio que cai em “1. ENVIE AQUI - Podcast” é preparado sozinho no servidor (transcrição e mapa). Depois é só pedir os cortes: o Claude escolhe os momentos, você confere a lista e eles são produzidos em paralelo, caindo um a um na Publicação.</p></div></header>
+      <p class="sub">O episódio que cai em “1. ENVIE AQUI › Podcast” é preparado sozinho no servidor (transcrição e mapa). Depois é só pedir os cortes: o Claude escolhe os momentos, você confere a lista e eles são produzidos em paralelo, caindo um a um na Publicação.</p></div></header>
     <div id="est-corpo" style="display:grid;gap:16px"></div>
   </section>
 
@@ -1088,7 +1088,7 @@
   // ---------------------------------------------------------------- dados (cada papel busca só o que o banco deixa ver)
   async function carregar() {
     const p = eu.papel;
-    const pedidos = [db.from("demandas").select("*").order("criado", { ascending: false }).limit(1000), db.from("editores").select("slug,nome,email,ativo,criado,jira_id,visual,interno").order("nome")];
+    const pedidos = [db.from("demandas").select("*").order("criado", { ascending: false }).limit(1000), db.from("editores").select("slug,nome,email,ativo,criado,jira_id,visual,interno,kit").order("nome")];
     const jiraPedido = p === "solicitante" ? null : Promise.all([db.from("jira_cards").select("*").eq("na_sprint", true).order("status_ordem").limit(1000),
                                                                 db.from("jira_sync").select("*").eq("id", 1).maybeSingle(),
                                                                 db.from("previas").select("editor_slug,trabalho_id,arquivo,imagem,ts").gte("ts", new Date(Date.now() - 3 * 864e5).toISOString())]);
@@ -3380,7 +3380,7 @@
   const quemMandou = (x) => nomeEditor(x.editor_slug) || (x.enviado_por ? x.enviado_por.split("@")[0] : "") || "editor";
   // ---- produção sobe cortes pela página: o vídeo vai do navegador direto para o Drive (conta Google de quem sobe)
   const GOOGLE_WEB = "97328569743-e9cqh8k5o2b78p5a03kf6g5cnash7702.apps.googleusercontent.com";
-  const PASTA_APROVAR_TXT = "CW Studios - Produção/CW Cast - Cortes/11. PUBLICAÇÃO/1. Para aprovar";
+  const PASTA_APROVAR_TXT = "CW Studios - Produção/CW Cast - Cortes/2. PARA APROVAR";
   const acessoDrive = {};
   function pedirAcessoDrive(escopo) {
     return new Promise((ok, falha) => {
@@ -3502,7 +3502,7 @@
       await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
     } }, "Subir");
     encher($("#detalhe-corpo"), h("h2", {}, "Subir cortes"),
-      h("p", { class: "nota", style: "margin:0" }, "Escolha um ou mais vídeos (.mp4 ou .mov). Eles vão para a pasta \"1. Para aprovar\" do Drive com a sua conta Google e viram cards em Para aprovar. Depois é só abrir cada card, ajustar a legenda e aprovar."),
+      h("p", { class: "nota", style: "margin:0" }, "Escolha um ou mais vídeos (.mp4 ou .mov). Eles vão para a pasta \"2. PARA APROVAR\" do Drive com a sua conta Google e viram cards em Para aprovar. Depois é só abrir cada card, ajustar a legenda e aprovar."),
       h("label", { for: "subir-arquivos" }, "Vídeos", entrada), lista, msg,
       h("p", { class: "nota", style: "margin:0" }, "Na primeira vez, o Google pede para liberar o Drive para a Central. Não feche esta janela enquanto envia."),
       h("div", { class: "acoes" }, botao, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
@@ -3629,6 +3629,7 @@
   }
   // link para assistir: o arquivo no Drive (quando o robô já ligou o card) ou a busca pelo nome no Drive (na hora)
   const PASTA_APROVAR = "1Mp8Yi6pvlhk0ouneA1cjch--oqNH59PB";
+  const DESTINOS_SPRINT = ["CW Cast", "CW Chefs", "CW Club", "Growth", "Instagram Cardapio Web", "Instagram Felipe Alexandrino", "Perfil Glauton", "YouTube - Ezequiel", "YouTube - Giro do Food"];
   const linkVideo = (x) => x.drive_id ? `https://drive.google.com/file/d/${x.drive_id}/view`
     : `https://drive.google.com/drive/search?q=${encodeURIComponent((x.arquivo || "").replace(/\.[^.]+$/, ""))}`;
   const mb = (b) => b ? (b >= 1e9 ? (b / 1e9).toFixed(1).replace(".", ",") + " GB" : Math.round(b / 1e6) + " MB") : null;
@@ -3711,6 +3712,9 @@
       lAce,
       longoDemais && h("div", { class: "aviso erro" }, `O vídeo tem ${Math.round(x.duracao_s)} s e a conta aceita até ${cr.max_video_post_duration_sec} s no TikTok.`),
       h("p", { class: "nota", style: "margin:0" }, "Depois de aprovado, pode levar alguns minutos para o vídeo aparecer no perfil."));
+    // pasta da sprint (Drive "CW Studios › SCC NN › Editados IA › <destino>"), para onde o vídeo vai quando é aprovado
+    const destinoPadrao = x.destino || (x.programa === "cardapioweb" || ((D.editores || []).find((e) => e.slug === x.editor_slug) || {}).kit === "cardapio-web" ? "Instagram Cardapio Web" : "CW Cast");
+    const destino = h("select", { id: "pub-destino" }, DESTINOS_SPRINT.map((d) => h("option", { value: d, selected: d === destinoPadrao || null }, d)));
     const motivo = h("textarea", { id: "pub-motivo", placeholder: "O que o editor precisa ajustar?" });
     const caixaMotivo = h("label", { for: "pub-motivo", hidden: true }, "Motivo da recusa", motivo);
     const msg = h("div", { class: "aviso erro", hidden: true });
@@ -3724,6 +3728,7 @@
         if (ttCom1.checked && !ttSua.checked && !ttParc.checked) return erro("Conteúdo comercial: marque \"Sua marca\" e/ou \"Conteúdo de marca\".");
         if (longoDemais) return erro("O vídeo é longo demais para o TikTok desta conta: desmarque o TikTok.");
       }
+      if (aprovar && destino.value !== x.destino) { const r = await db.rpc("cw_pub_destino", { p_pub: x.id, p_destino: destino.value }); if (r.error) return erro(r.error); }
       const { error } = await db.rpc("cw_pub_decidir", { p_id: x.id, p_aprovar: aprovar, p_motivo: motivo.value, p_legenda: legenda.value,
         p_titulo_youtube: tyt.value, p_redes: redes, p_agendado_para: quando.value ? new Date(quando.value).toISOString() : null,
         p_opcoes: { tiktok: { privacidade: ttPriv.value, comentarios: ttCom.checked, dueto: ttDue.checked, stitch: ttSti.checked,
@@ -3756,14 +3761,15 @@
         : x.previa ? h("img", { src: x.previa, alt: "Quadros do corte", style: "width:100%;border-radius:14px" }) : null,
       h("div", { class: "acoes", style: "justify-content:center" },
         h("a", { class: "botao amarelo", href: linkVideo(x), target: "_blank", rel: "noopener" }, x.drive_id ? "▶ Assistir no Drive" : "▶ Achar o vídeo no Drive"),
-        h("a", { class: "botao leve", href: `https://drive.google.com/drive/folders/${PASTA_APROVAR}`, target: "_blank", rel: "noopener" }, "Pasta Para aprovar")),
+        h("a", { class: "botao leve", href: `https://drive.google.com/drive/folders/${PASTA_APROVAR}`, target: "_blank", rel: "noopener" }, "Pasta 2. PARA APROVAR")),
       !x.drive_id && h("p", { class: "nota", style: "margin:0;text-align:center" }, "O player aparece aqui quando o robô ligar o card ao arquivo; até lá, o botão abre a busca do Drive pelo nome."),
       h("dl", { class: "pub-info" },
         [[x.editor_slug ? "Editor" : "Enviado por", quemMandou(x)], ["Enviado", horaBR(x.criado)], ["Duração", x.duracao_s ? Math.round(x.duracao_s) + " s" : "—"],
          ["Arquivo", [x.arquivo, mb(x.tamanho)].filter(Boolean).join(" · ")],
          x.jira && ["Card", h("a", { href: urlJira(x.jira), target: "_blank", rel: "noopener" }, x.jira)], x.episodio && ["Episódio", x.episodio],
          x.decidido_em && [x.estado === "recusado" ? "Recusado por" : "Aprovado por", `${(x.decidido_por || "").split("@")[0]} · ${horaBR(x.decidido_em)}`],
-         x.agendado_para && ["Agendado", horaBR(x.agendado_para)]].filter(Boolean).map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, v)))),
+         x.agendado_para && ["Agendado", horaBR(x.agendado_para)],
+         x.sprint_caminho ? ["Na sprint", x.sprint_caminho] : x.sprint ? ["Sprint", x.sprint] : null].filter(Boolean).map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, v)))),
       avisosPub(x).length ? h("div", { class: "pub-avisos" }, avisosPub(x).map(([t, tm]) => h("span", { class: "chip " + tm }, "⚠ " + t))) : null,
       x.motivo && h("div", { class: "aviso" }, "Motivo da recusa: " + x.motivo),
       x.erro && x.estado !== "postado" && h("div", { class: x.estado === "erro" ? "aviso erro" : "aviso" }, x.erro),
@@ -3782,6 +3788,7 @@
           caixas.map(([c, nome]) => h("label", { class: "check", style: "display:inline-flex;flex-direction:row;gap:6px;align-items:center;white-space:nowrap" }, c, nome))),
         ttBox,
         h("label", { for: "pub-quando" }, "Quando postar (vazio = na próxima passada do robô)", quando),
+        h("label", { for: "pub-destino" }, "Pasta da sprint (contagem dos vídeos feitos com IA)", destino),
         caixaMotivo, msg,
         h("div", { class: "acoes" },
           h("button", { class: "botao amarelo", onclick: () => decidir(true) }, "Aprovar"),
@@ -4298,10 +4305,10 @@
       eu.papel === "gestor" && (!conta.data || conta.data.estado !== "ok") ? h("div", { class: "aviso" }, "A esteira roda com a conta Claude do CW Studios no servidor. ",
         h("button", { class: "botao amarelo peq", onclick: () => abrirContaServidor("esteira") }, "☁️ Ligar a conta Claude da esteira")) : null,
       h("h3", { class: "grupo" }, linha === "reels" ? "Reels" : "Lotes"),
-      L.length ? h("div", { style: "display:grid;gap:12px" }, L.map(blocoLote)) : h("div", { class: "vazio" }, linha === "reels" ? "Nenhum reel ainda. Suba a pasta do reel (câmera e tela) em “2. ENVIE AQUI - Reels (câmera + tela)”." : "Nenhum lote ainda. Quando um episódio estiver pronto, clique em ✂️ Gerar cortes."),
+      L.length ? h("div", { style: "display:grid;gap:12px" }, L.map(blocoLote)) : h("div", { class: "vazio" }, linha === "reels" ? "Nenhum reel ainda. Suba a pasta do reel (câmera e tela) em “1. ENVIE AQUI › Reels (câmera + tela)”." : "Nenhum lote ainda. Quando um episódio estiver pronto, clique em ✂️ Gerar cortes."),
       h("h3", { class: "grupo" }, linha === "reels" ? "Pastas que chegaram" : "Episódios"),
       E.length ? h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px" }, E.map(cartaoEp))
-        : h("div", { class: "vazio" }, "Nenhum episódio ainda. Suba o episódio inteiro em “CW Cast - Cortes/1. ENVIE AQUI - Podcast (episódio inteiro)” que o servidor prepara sozinho."));
+        : h("div", { class: "vazio" }, "Nenhum episódio ainda. Suba o episódio inteiro em “CW Cast - Cortes/1. ENVIE AQUI/Podcast (episódio inteiro)” que o servidor prepara sozinho."));
   }
   function pedirCortes(e) {
     const qtd = h("input", { type: "number", min: 1, max: 30, value: 15, style: "max-width:120px" });
