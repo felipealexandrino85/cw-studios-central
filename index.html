@@ -4338,11 +4338,21 @@
           h("span", { style: "font-size:30px" }, "＋"), h("b", {}, "Novo estilo"), h("span", { class: "nota" }, "a partir de um pacote enviado por um editor")) : null));
   }
   async function novoEstilo() {
-    const { data: itens } = await db.from("kit_itens").select("id,nome,editor_slug,kit,anexos").eq("tipo", "skill").order("enviado_em", { ascending: false });
+    const { data: itens } = await db.from("kit_itens").select("id,nome,editor_slug,kit,anexos,arquivos,descricao").eq("tipo", "skill").order("enviado_em", { ascending: false });
     const item = h("select", {}, (itens || []).map((i) => h("option", { value: i.id }, `${i.nome} · ${nomeEditor(i.editor_slug) || i.editor_slug} · ${(i.anexos || []).length} arquivos`)));
     const nome = h("input", { placeholder: "Ex.: Reels Cardápio Web · Fabiano" }), desc = h("input", { placeholder: "Em uma frase, como fica o vídeo" });
     const rec = h("textarea", { style: "min-height:160px", placeholder: "Receita: como o Titeu aplica este estilo a UM corte (comandos, scripts e onde fica o final). Use as seções '## EPISÓDIO' (opcional) e '## CORTE'." });
     const msg = h("div", { class: "aviso erro", hidden: true });
+    const preencher = () => {   // o pacote trouxe RECEITA.md e APRENDIZADOS.md: já vira a receita do estilo
+      const it = (itens || []).find((i) => i.id === +item.value) || {}, arq = it.arquivos || {};
+      const chave = (n) => Object.keys(arq).find((k) => k.split("/").pop().toUpperCase() === n);
+      const rec = chave("RECEITA.MD"), apr = chave("APRENDIZADOS.MD");
+      if (rec || apr) rec_val((rec ? arq[rec] : "") + (apr ? "\n\n## APRENDIZADOS (valem em todo vídeo)\n" + arq[apr] : ""));
+      if (!nome.value) nome.value = `${it.kit === "cardapio-web" ? "Cardápio Web" : "CW Cast"} · ${nomeEditor(it.editor_slug) || it.editor_slug || ""}`;
+      if (!desc.value && it.descricao) desc.value = it.descricao.slice(0, 160);
+    };
+    const rec_val = (v) => { rec.value = v; };
+    item.onchange = preencher; setTimeout(preencher, 0);
     encher($("#detalhe-corpo"), h("h2", {}, "🎨 Novo estilo"), h("label", {}, "Pacote (skill com os arquivos do estilo)", item), h("label", {}, "Nome", nome), h("label", {}, "Descrição", desc),
       h("label", {}, "Receita", rec), h("p", { class: "nota", style: "margin:0" }, "Dica: peça ao Claude do editor que preparou o pacote para escrever a receita junto (\"escreve a receita do meu estilo para o Titeu\")."), msg,
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
