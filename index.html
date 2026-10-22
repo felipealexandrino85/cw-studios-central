@@ -4562,6 +4562,7 @@
       (a.skills || []).length ? h("div", { class: "chips" }, a.skills.map((x) => h("span", { class: "chip tom-neutro" }, "🧩 " + x.nome))) : h("span", { class: "nota" }, "Sem skills ainda"),
       (a.ferramentas || []).length ? h("span", { class: "nota" }, "Ferramentas: " + a.ferramentas.map((f) => ({ higgsfield: "Higgsfield", openrouter: "OpenRouter" })[f] || f).join(", ")) : null,
       a.trabalha ? h("span", { class: "chip tom-ok", style: "justify-self:start" }, "⚙️ " + comoTrabalha(a)) : null,
+      a.trabalha && (a.etapas || []).length ? h("span", { class: "nota" }, "Etapas: " + a.etapas.map((e, i) => `${i + 1}. ${e.nome}${e.aprovar || i === a.etapas.length - 1 ? " ⏸" : ""}`).join(" → ")) : null,
       h("div", { class: "acoes", style: "margin:0" },
         a.trabalha ? h("button", { class: "botao amarelo peq", onclick: () => abrirTrabalhos(a) }, "📋 Trabalhos") : null,
         h("button", { class: a.trabalha ? "botao leve peq" : "botao amarelo peq", onclick: () => abrirChatRobo(a) }, "💬 Conversar"),
@@ -4740,14 +4741,16 @@
         const { error } = await db.rpc("cw_tarefa_decidir", { p_tarefa: t.id, p_acao: acao, p_nota: nota.value || null, p_imagens: imgs }); if (error) throw error;
         prints.soltar(); abrirTrabalhos(a); } catch (e) { msg.hidden = false; msg.textContent = e.message || e; } };
     const [rot, tom] = ESTADO_TAREFA[t.estado] || [t.estado, "tom-neutro"], ent = t.entrada || {};
+    const nEt = t.etapas_total || (a.etapas || []).length, meio = nEt > 0 && t.etapa_idx < nEt - 1;
     encher($("#detalhe-corpo"), h("h2", {}, `${a.nome} · trabalho #${t.id}`), h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), t.pedido_por ? h("span", { class: "chip" }, "pedido por " + t.pedido_por.split("@")[0]) : null),
       ent.texto ? h("p", { style: "margin:0;white-space:pre-wrap" }, h("b", {}, "Pedido: "), ent.texto) : null, ent.arquivo ? h("p", { class: "nota", style: "margin:0" }, "Material: " + ent.arquivo) : null,
+      nEt && ["previa", "rodando", "na_fila"].includes(t.estado) ? h("p", { class: "nota", style: "margin:0" }, t.etapa || `Etapa ${t.etapa_idx + 1} de ${nEt}`) : null,
       t.ajuste ? h("p", { class: "nota", style: "margin:0" }, "Último ajuste pedido: " + t.ajuste) : null,
       t.resultado ? await blocoResultado(t.resultado) : null, t.entrega_info ? h("p", { class: "nota", style: "margin:0" }, "Entrega: " + t.entrega_info) : null,
       t.erro ? h("div", { class: "aviso erro" }, t.erro) : null,
       ["previa", "erro", "entregue"].includes(t.estado) ? [h("label", {}, "Pedir ajuste", nota), prints.el] : null, msg,
       h("div", { class: "acoes" },
-        t.estado === "previa" ? h("button", { class: "botao amarelo", onclick: () => decidir("aprovar") }, "✓ Aprovar e entregar") : null,
+        t.estado === "previa" ? h("button", { class: "botao amarelo", onclick: () => decidir("aprovar") }, meio ? `✓ Aprovar a etapa ${t.etapa_idx + 1} e seguir` : "✓ Aprovar e entregar") : null,
         ["previa", "erro", "entregue"].includes(t.estado) ? h("button", { class: "botao leve", onclick: () => decidir("ajuste") }, "✏️ Pedir ajuste") : null,
         t.estado === "erro" ? h("button", { class: "botao leve", onclick: () => decidir("tentar") }, "Tentar de novo") : null,
         ["na_fila", "previa", "erro"].includes(t.estado) ? h("button", { class: "botao perigo peq", onclick: () => decidir("descartar") }, "Descartar") : null,
@@ -4795,8 +4798,30 @@
     const higgsIn = h("input", { type: "number", min: 0, max: 20, value: (a && a.higgs) || 0, style: "max-width:120px" });
     const blocoPasta = h("label", {}, "Pasta de entrada", pastaIn), blocoAgenda = h("div", { style: "display:grid;gap:6px" }, h("div", { style: "display:flex;gap:10px;flex-wrap:wrap" }, dias), h("label", {}, "Hora (Brasília)", hora), h("label", {}, "O que fazer", agPedido));
     const blocoSprint = h("label", {}, "Pasta da sprint", destSprint), blocoDest = h("label", {}, "Pasta do Drive", destPasta);
+    // etapas: a linha de produção do agente, em ordem (cada uma usa uma skill e pode parar para aprovação)
+    const etapas = ((a && a.etapas) || []).map((e) => ({ ...e })), listaEt = h("div", { style: "display:grid;gap:8px" });
+    const pintarEt = () => encher(listaEt, etapas.length ? etapas.map((e, i) => {
+      const nomeE = h("input", { value: e.nome || "", maxlength: 60, placeholder: "Ex.: Revisar o b-roll", style: "flex:1;min-width:0", oninput: (ev) => { e.nome = ev.target.value; } });
+      const sel = h("select", { onchange: (ev) => { const x = cat.find((c) => c.origem + ":" + c.id === ev.target.value); e.skill = x ? { origem: x.origem, id: x.id, nome: x.nome } : null; } },
+        h("option", { value: "" }, "Só instruções (sem skill)"),
+        cat.map((x) => h("option", { value: x.origem + ":" + x.id, selected: (e.skill && e.skill.origem === x.origem && +e.skill.id === +x.id) || null }, x.nome + " · " + x.fonte)));
+      const ins = h("textarea", { style: "min-height:50px", maxlength: 3000, placeholder: "O que fazer nesta etapa (ex.: confira se cada b-roll mostra o que o convidado fala; troque os que não combinam)…", oninput: (ev) => { e.instrucao = ev.target.value; } });
+      ins.value = e.instrucao || "";
+      const ult = i === etapas.length - 1;
+      const apr = h("input", { type: "checkbox", checked: ult || !!e.aprovar || null, disabled: ult || null, onchange: (ev) => { e.aprovar = ev.target.checked; } });
+      return h("div", { style: "display:grid;gap:6px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)" },
+        h("div", { style: "display:flex;gap:6px;align-items:center" }, h("b", {}, `${i + 1}.`), nomeE,
+          i ? h("button", { type: "button", class: "botao leve peq", "aria-label": "Subir", onclick: () => { [etapas[i - 1], etapas[i]] = [etapas[i], etapas[i - 1]]; pintarEt(); } }, "↑") : null,
+          h("button", { type: "button", class: "botao perigo peq", "aria-label": "Tirar", onclick: () => { etapas.splice(i, 1); pintarEt(); } }, "✕")),
+        h("label", {}, "Skill", sel), ins,
+        h("label", { class: "check", style: "display:flex;gap:6px;align-items:center" }, apr, ult ? "Para para aprovar (a última sempre para)" : "Parar para alguém aprovar antes de seguir"));
+    }) : h("span", { class: "nota" }, "Sem etapas: ele faz o trabalho inteiro de uma vez, usando as skills escolhidas acima, e para no fim para aprovar."));
+    pintarEt();
+    const blocoEtapas = h("div", { style: "display:grid;gap:6px" }, h("div", { style: "display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap" },
+        h("b", {}, "Etapas (a linha de produção)"), h("button", { type: "button", class: "botao leve peq", onclick: () => { if (etapas.length >= 10) return alert("Até 10 etapas."); etapas.push({ nome: "", instrucao: "", aprovar: false, skill: null }); pintarEt(); } }, "＋ Etapa")),
+      listaEt);
     const blocoTrab = h("div", { style: "display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:12px" },
-      h("label", {}, "Começa", gat), blocoPasta, blocoAgenda, h("label", {}, "Entrega", ent), blocoSprint, blocoDest,
+      h("label", {}, "Começa", gat), blocoPasta, blocoAgenda, blocoEtapas, h("label", {}, "Entrega", ent), blocoSprint, blocoDest,
       h("label", {}, "Higgsfield: até quantas gerações por trabalho (0 = não usa)", higgsIn),
       h("span", { class: "nota" }, "Ele trabalha no servidor com a conta Claude do CW Studios. Todo resultado espera a aprovação de alguém do time antes de ser entregue."));
     const mostrarTrab = () => { blocoTrab.hidden = !trab.checked; blocoPasta.hidden = gat.value !== "pasta"; blocoAgenda.hidden = gat.value !== "agenda";
@@ -4819,9 +4844,11 @@
         const dados = { nome: nome.value.trim(), missao: missao.value.trim(), instrucoes: instr.value, kit: kit.value, visual: v, skills: [...escolhidas.values()],
           ferramentas: ferr.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value),
           trabalha: trab.checked, gatilho: gat.value, pasta: pastaIn.value, entrega: ent.value, higgs: +higgsIn.value || 0,
+          etapas: etapas.map((e) => ({ nome: (e.nome || "").trim(), instrucao: e.instrucao || "", aprovar: !!e.aprovar, skill: e.skill || null })),
           destino: ent.value === "publicacao" ? destSprint.value : ent.value === "pasta" ? destPasta.value : "",
           agenda: { dias: dias.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => +i.value), hora: hora.value, pedido: agPedido.value } };
         if (dados.nome.length < 2) { msg.hidden = false; msg.textContent = "Dê um nome ao agente."; return; }
+        if (dados.etapas.some((e) => !e.nome)) { msg.hidden = false; msg.textContent = "Dê um nome a cada etapa."; return; }
         const { error } = await db.rpc("cw_agente_salvar", { p_id: a ? a.id : null, p_dados: dados });
         if (error) { msg.hidden = false; msg.textContent = error.message; return; }
         $("#detalhe").close(); desenharAgentes(); } }, a ? "Salvar" : "Criar agente"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
