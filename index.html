@@ -4187,7 +4187,8 @@
     const linhaCorte = (c) => { const [rot, tom] = ESTADO_CORTE[c.estado] || [c.estado, "tom-neutro"];
       const dur = c.iniciado && c.terminado ? Math.round((new Date(c.terminado) - new Date(c.iniciado)) / 1000) : null;
       return h("tr", {}, td(c.ordem, 1), h("td", { style: "min-width:200px" }, h("b", {}, c.titulo), h("div", { class: "nota" }, `${mmss(c.inicio)}–${mmss(c.fim)} · ${Math.round(c.fim - c.inicio)} s`),
-          c.ajuste ? h("div", { class: "nota" }, "Ajuste: " + c.ajuste) : null),
+          c.ajuste ? h("div", { class: "nota" }, "Ajuste: " + c.ajuste) : null,
+          c.prioridade > 0 && ["na_fila", "produzindo"].includes(c.estado) ? h("span", { class: "chip tom-aviso", style: "justify-self:start" }, "⚡ ajuste com prioridade") : null),
         td(h("span", { class: "chip " + tom }, rot)), td(c.estado === "produzindo" ? c.etapa || "" : c.erro || (dur ? `em ${duracao(dur)}` : "")),
         h("td", {}, c.publicacao_id ? h("a", { href: "#publicacao", onclick: (ev) => { ev.preventDefault(); trocarAba("publicacao"); } }, "P-" + String(c.publicacao_id).padStart(4, "0")) : null,
           c.estado === "previa" ? h("button", { class: "botao amarelo peq", onclick: () => verPrevia(c) }, "▶ Ver prévia") : null,
