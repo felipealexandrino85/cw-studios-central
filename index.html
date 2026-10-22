@@ -1135,7 +1135,7 @@
   }
 
   function desenhar() {
-    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, inicio: desenharInicio, aovivo: desenharAoVivo, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, cast: abrirCast,
+    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, inicio: desenharInicio, aovivo: () => { desenharAoVivo(); carregarTiteu().then(() => { if (aba === "aovivo") desenharAoVivo(); }); }, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1208,11 +1208,59 @@
   }
   // "editando agora" = passo nos últimos 30 min (ou Premiere em uso); o resto fecha sozinho 2 h depois do último passo
   const ativoRecente = (t) => (t.agora_faz && minutosDesde(t.agora_faz.ts) <= 30) || (t.premiere && t.premiere.ultimo_ativo && minutosDesde(t.premiere.ultimo_ativo) <= 10);
+  // Titeu (esteira de cortes): cortes de hoje e o que está em produção, para o placar e o Ao vivo
+  const TITEU_D = { cortes: [], lotes: [], eps: [], ts: 0 };
+  async function carregarTiteu(forcar) {
+    if (!["gestor", "producao", "editor"].includes(eu.papel) || (!forcar && Date.now() - TITEU_D.ts < 10000)) return;
+    TITEU_D.ts = Date.now();
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const [c, l, e] = await Promise.all([
+      db.from("esteira_cortes").select("id,lote_id,ordem,titulo,estado,etapa,iniciado,terminado,atualizado,inicio,fim").or(`estado.in.(produzindo,na_fila,previa,aprovado),terminado.gte.${hoje.toISOString()}`).limit(500),
+      db.from("esteira_lotes").select("id,episodio_id,estilo_id,estado").order("id", { ascending: false }).limit(30),
+      db.from("esteira_episodios").select("id,nome,estado,etapa,progresso").order("id", { ascending: false }).limit(30)]);
+    TITEU_D.cortes = c.data || []; TITEU_D.lotes = l.data || []; TITEU_D.eps = e.data || [];
+  }
+  function titeuFeitosHoje() {
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    return TITEU_D.cortes.filter((c) => ["previa", "aprovado", "entregue"].includes(c.estado) && c.terminado && new Date(c.terminado) >= hoje)
+      .map((c) => ({ titeu: true, editor_slug: "esteira", quem: "Titeu", status: "entregue", fechado_em: c.terminado, titulo: c.titulo, pecas: 1,
+                     segundos_ativos: c.iniciado ? Math.max(0, (new Date(c.terminado) - new Date(c.iniciado)) / 1000) : 0, etapas: {} }));
+  }
   function feitosHoje() {
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     const base = eu.papel === "gestor" ? D.edicoes.filter((x) => visao.papel !== "editor" || x.editor_slug === visao.editor) : eu.papel === "editor" ? D.entregas : [];
     return base.filter((x) => x.status === "entregue" && x.fechado_em && new Date(x.fechado_em) >= hoje)
+      .concat(visao.papel === "editor" ? [] : titeuFeitosHoje())
       .sort((a, b) => (b.fechado_em || "").localeCompare(a.fechado_em || ""));
+  }
+  // em que etapa o Titeu está, pelo passo que ele está rodando agora
+  function etapaTiteu(t) {
+    t = String(t || "");
+    const R = [[/subindo a prévia|esperando aprovação/i, "Prévia"], [/entregando/i, "Entregando na Publicação"], [/higgsfield|cw-studios › (gerar|status)/i, "Higgsfield (imagem com IA)"],
+      [/--preview/i, "Render da prévia"], [/final_probe|render\.py/i, "Render final"],
+      [/gates\.py|revisar\.py|auditar|plan_validate|editorial_check|tiras_revisor/i, "Revisão técnica"], [/movimento\.py|cx|cy|shots|camera/i, "Enquadramento"], [/emenda|aparar|pontas|refinar_inicios|encaixar_voz|alinhar_frames|rms/i, "Pontas e emendas"],
+      [/plano_rascunho|plan\.json|highlights|hook/i, "Plano do corte (gancho, legenda, B-roll)"], [/transcri|whisper/i, "Transcrição do trecho"],
+      [/cortando o trecho|ffmpeg/i, "Cortando o trecho"], [/REGRAS|references|SKILL|lendo|sed -n|cat /i, "Lendo as regras do estilo"]];
+    return (R.find(([re]) => re.test(t)) || [null, "Preparando"])[1];
+  }
+  function blocoTiteu() {
+    const prod = TITEU_D.cortes.filter((c) => c.estado === "produzindo").sort((a, b) => a.lote_id - b.lote_id || a.ordem - b.ordem);
+    const fila = TITEU_D.cortes.filter((c) => c.estado === "na_fila").length, prev = TITEU_D.cortes.filter((c) => c.estado === "previa").length;
+    const prep = TITEU_D.eps.filter((e) => e.estado === "preparando" || e.estado === "chegou");
+    if (!prod.length && !prep.length) return null;
+    const ret = h("canvas", { width: 22, height: 35, style: "width:44px;height:70px;image-rendering:pixelated;flex:none", "aria-hidden": "true" });
+    ret.getContext("2d").drawImage(bonecoFrente(TITEU, 0), 0, 0);
+    const epDe = (loteId) => { const l = TITEU_D.lotes.find((x) => x.id === loteId); const e = l && TITEU_D.eps.find((x) => x.id === l.episodio_id); return e ? e.nome : ""; };
+    return h("div", { class: "card", style: "display:grid;gap:10px;border:2px solid #ffb800" },
+      h("div", { style: "display:flex;gap:12px;align-items:center;flex-wrap:wrap" }, ret,
+        h("div", { style: "display:grid;gap:2px;flex:1 1 220px;min-width:0" }, h("b", { style: "font-size:17px" }, "Titeu · esteira de cortes"),
+          h("span", { class: "nota" }, `${prod.length} corte${prod.length === 1 ? "" : "s"} em produção${fila ? ` · ${fila} na fila` : ""}${prev ? ` · ${prev} prévia${prev > 1 ? "s" : ""} esperando aprovação` : ""}`)),
+        h("button", { class: "botao leve peq", onclick: () => trocarAba("esteira") }, "Abrir o Titeu")),
+      prep.map((e) => h("div", { class: "nota" }, `🎧 Preparando “${e.nome}”: ${e.etapa || "na fila"} (${e.progresso || 0}%)`)),
+      prod.length ? h("div", { style: "display:grid;gap:8px" }, prod.map((c) => h("div", { style: "display:grid;gap:3px;padding:8px 10px;border-radius:12px;background:var(--surface-2);min-width:0" },
+        h("div", { style: "display:flex;gap:8px;align-items:center;flex-wrap:wrap" }, h("span", { class: "chip tom-ok" }, etapaTiteu(c.etapa)),
+          h("b", {}, `Corte ${c.ordem}: ${c.titulo}`), h("span", { class: "nota" }, `${epDe(c.lote_id)} · ${mmss(c.inicio)}–${mmss(c.fim)}${c.iniciado ? " · começou " + ha(c.iniciado) : ""}`)),
+        c.etapa ? h("code", { style: "font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--text-dim)" }, String(c.etapa).slice(0, 220)) : null))) : null);
   }
   function desenharAoVivo() {
     const recencia = (l) => (l.t.agora_faz && l.t.agora_faz.ts) || l.t.desde || "";
@@ -1222,12 +1270,13 @@
     const pecasHoje = feitos.reduce((a, x) => a + (x.pecas || 1), 0);
     const semNada = D.editores.filter((e) => e.ativo && !linhas.some((l) => l.ed.slug === e.slug));
     encher($("#aovivo"),
-      h("h3", { class: "grupo" }, `Editando agora (${vivas.length})`),
-      vivas.length ? vivas.map(blocoEdicao) : h("div", { class: "vazio" }, "Ninguém editando neste momento."),
+      h("h3", { class: "grupo" }, `Editando agora (${vivas.length + (blocoTiteu() ? 1 : 0)})`),
+      blocoTiteu(),
+      vivas.length ? vivas.map(blocoEdicao) : blocoTiteu() ? null : h("div", { class: "vazio" }, "Ninguém editando neste momento."),
       (numeros || eu.papel === "editor") && [h("h3", { class: "grupo" }, `Feito hoje (${feitos.length} ${feitos.length === 1 ? "vídeo" : "vídeos"}${pecasHoje > feitos.length ? ` · ${pecasHoje} peças` : ""})`),
         feitos.length ? h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Hora"), numeros && h("th", {}, "Editor"), h("th", {}, "Vídeo"),
             h("th", { class: "n" }, "Peças"), numeros && h("th", { class: "n" }, "Tempo ativo"), h("th", {}, "Etapas"))),
-          h("tbody", {}, feitos.map((x) => h("tr", {}, td(horaBR(x.fechado_em).slice(-5)), numeros && td(nomeEditor(x.editor_slug)),
+          h("tbody", {}, feitos.map((x) => h("tr", {}, td(horaBR(x.fechado_em).slice(-5)), numeros && td(x.quem || nomeEditor(x.editor_slug)),
             td([x.titulo, x.jira ? h("span", { class: "nota" }, " · " + x.jira) : x.demanda ? h("span", { class: "nota" }, " · " + x.demanda) : null]),
             td(x.pecas || 1, 1), numeros && td(duracao(x.segundos_ativos || 0), 1),
             td(h("span", { class: "chips" }, Object.keys(x.etapas || {}).filter((k) => (x.etapas[k] || 0) > 30).map((k) => h("span", { class: "chip tom-neutro" }, (ETAPAS.find(([e]) => e === k) || [k, k])[1])))))))))
@@ -1772,6 +1821,7 @@
           db.from("seo_perguntas").select("*").order("id", { ascending: false }).limit(20)]);
         SALA.seo = { st: ss.data || {}, sugestoes: Array.isArray(sl.data) ? sl.data : [], perguntas: Array.isArray(sq.data) ? sq.data : [] };
         await recarregarAgentes();
+        await carregarTiteu();
         const [ec, el, ee] = await Promise.all([db.from("esteira_cortes").select("estado,terminado").in("estado", ["produzindo", "na_fila", "entregue", "previa"]).limit(2000),
           db.from("esteira_lotes").select("estado").eq("estado", "conferir"), db.from("esteira_episodios").select("estado").in("estado", ["chegou", "preparando"])]);
         const cs = Array.isArray(ec.data) ? ec.data : [], hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
