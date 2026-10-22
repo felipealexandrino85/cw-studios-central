@@ -4555,7 +4555,7 @@
     const cartao = (a) => h("div", { class: "card", style: "display:grid;gap:10px;min-width:0" },
       h("div", { style: "display:flex;gap:12px;align-items:center" }, retratoDe(visualRobo(a)),
         h("div", { style: "display:grid;gap:4px;min-width:0" }, h("b", {}, a.nome), h("span", { class: "nota" }, a.missao || "Sem missão escrita"),
-          h("div", { class: "chips" }, h("span", { class: "chip tom-neutro" }, PAPEIS_AG[a.papel || "video"]), a.kit ? h("span", { class: "chip" }, KITS[a.kit]) : null,
+          h("div", { class: "chips" }, h("span", { class: "chip tom-neutro" }, PAPEIS_AG[a.papel || "video"]), h("span", { class: "chip tom-neutro" }, "🧠 " + nomeModelo(a.modelo || "claude:sonnet")), a.kit ? h("span", { class: "chip" }, KITS[a.kit]) : null,
             h("span", { class: "chip " + (a.compartilhar === "time" ? "tom-ok" : a.compartilhar === "pedido" ? "tom-aviso" : "tom-neutro") },
               a.compartilhar === "time" ? "Do time" : a.compartilhar === "pedido" ? "Pedido para compartilhar" : "Privado"),
             !meu(a) ? h("span", { class: "nota" }, "de " + a.criado_por.split("@")[0]) : null))),
@@ -4609,6 +4609,42 @@
       h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
   }
+  // ---- modelo de IA: Claude pela conta do CW Studios (assinatura) ou qualquer modelo do OpenRouter (pago por uso, com preço)
+  const CLAUDE_MODELOS = [["claude:sonnet", "Claude Sonnet · equilíbrio (padrão)"], ["claude:opus", "Claude Opus · o mais forte"], ["claude:haiku", "Claude Haiku · rápido"]];
+  const DESTAQUES_OR = ["google/gemini-2.5-flash", "google/gemini-2.5-flash-lite", "google/gemini-2.5-pro", "openai/gpt-5-mini", "openai/gpt-5-nano", "openai/gpt-5",
+    "openai/gpt-4.1-mini", "deepseek/deepseek-chat-v3.1", "deepseek/deepseek-v3.2", "qwen/qwen3-coder", "moonshotai/kimi-k2", "z-ai/glm-4.6", "x-ai/grok-4-fast"];
+  let LISTA_OR = null;
+  async function modelosOpenRouter() {
+    if (LISTA_OR) return LISTA_OR;
+    try {
+      const j = await (await fetch("https://openrouter.ai/api/v1/models")).json();
+      LISTA_OR = (j.data || []).filter((m) => (m.supported_parameters || []).includes("tools") && !/:batch$/.test(m.id))
+        .map((m) => ({ id: m.id, nome: m.name || m.id, ent: +((m.pricing || {}).prompt || 0) * 1e6, sai: +((m.pricing || {}).completion || 0) * 1e6 }))
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+    } catch (e) { LISTA_OR = []; }
+    return LISTA_OR;
+  }
+  const precoOR = (m) => m.ent || m.sai ? `US$ ${m.ent < 1 ? m.ent.toFixed(2) : m.ent.toFixed(1)} / ${m.sai < 1 ? m.sai.toFixed(2) : m.sai.toFixed(1)} por milhão de tokens` : "grátis";
+  const nomeModelo = (v) => !v ? "" : v.startsWith("or:") ? v.slice(3) : (CLAUDE_MODELOS.find(([k]) => k === v) || [, v])[1].split(" · ")[0];
+  function campoModelo(valor, { herdar = false, mudou = () => {} } = {}) {
+    const sel = h("select", {}), busca = h("input", { type: "search", placeholder: "Buscar no OpenRouter (ex.: gemini, gpt, deepseek, qwen)…" });
+    const nota = h("span", { class: "nota" });
+    const explicar = () => { nota.textContent = sel.value.startsWith("or:") ? "Pago por uso no OpenRouter (fica registrado por trabalho). Modelos fora do Claude podem errar mais ao usar skills e arquivos: teste antes de usar no dia a dia."
+      : sel.value ? "Conta Claude do CW Studios: sem custo por uso, dentro do limite da assinatura." : "Usa o modelo do agente."; };
+    const pintar = async () => {
+      const lista = await modelosOpenRouter(), t = busca.value.trim().toLowerCase();
+      let mostrar = t ? lista.filter((m) => (m.id + " " + m.nome).toLowerCase().includes(t)).slice(0, 60) : lista.filter((m) => DESTAQUES_OR.includes(m.id));
+      if (valor && valor.startsWith("or:") && !mostrar.some((m) => "or:" + m.id === valor)) mostrar = [lista.find((m) => "or:" + m.id === valor) || { id: valor.slice(3), nome: valor.slice(3), ent: 0, sai: 0 }, ...mostrar];
+      encher(sel, herdar ? h("option", { value: "" }, "Igual ao agente") : null,
+        h("optgroup", { label: "Claude · conta do CW Studios (assinatura)" }, CLAUDE_MODELOS.map(([v, tt]) => h("option", { value: v }, tt))),
+        h("optgroup", { label: t ? `OpenRouter · ${mostrar.length} encontrado(s)` : "OpenRouter · mais usados (busque para ver todos)" },
+          mostrar.map((m) => h("option", { value: "or:" + m.id }, `${m.nome} · ${precoOR(m)}`))));
+      sel.value = valor || (herdar ? "" : "claude:sonnet"); explicar();
+    };
+    sel.onchange = () => { valor = sel.value; explicar(); mudou(valor); };
+    busca.oninput = pintar; pintar();
+    return { el: h("div", { style: "display:grid;gap:6px" }, sel, busca, nota), valor: () => sel.value };
+  }
   // ---- Oficina: skills do sistema (criar/melhorar com teste) e trabalhos dos agentes
   const PAPEIS_AG = { video: "🎬 Edição de vídeo", conteudo: "✍️ Conteúdo e texto", design: "🎨 Imagens e design", dados: "📊 Análise e relatórios",
     operacao: "🗂️ Operação e organização", outro: "🧰 Outro" };
@@ -4637,16 +4673,17 @@
     const pedido = h("textarea", { style: "min-height:120px", placeholder: sk ? "O que melhorar (ex.: a legenda tem que quebrar em no máximo 2 linhas; usar a vinheta nova da Biblioteca)…"
       : "O que a skill faz, passo a passo se souber (ex.: recebe um vídeo vertical, tira os silêncios acima de 0,4 s, põe legenda palavra por palavra em amarelo e exporta em 1080x1920)…" });
     const exemplo = h("textarea", { style: "min-height:60px", placeholder: "Teste: o que ela deve fazer no teste (ex.: use o vídeo de referência e entregue o resultado em mp4)" });
-    const refs = campoRefs(), msg = h("div", { class: "aviso erro", hidden: true });
+    const refs = campoRefs(), msg = h("div", { class: "aviso erro", hidden: true }), modeloSk = campoModelo("claude:sonnet");
     encher($("#detalhe-corpo"), h("h2", {}, sk ? `✨ Melhorar "${sk.nome}"` : "🧩 Criar skill"),
       sk ? null : h("label", {}, "Nome", nome), h("label", {}, sk ? "O que mudar" : "O que ela faz", pedido), h("label", {}, "Como testar", exemplo), refs.el,
+      h("label", {}, "Modelo que escreve e testa a skill", modeloSk.el),
       h("p", { class: "nota", style: "margin:0" }, "O Criador de skills (no servidor) escreve a skill, testa com o seu exemplo e mostra o resultado aqui. Ela só passa a valer para os agentes quando alguém aprovar o teste; cada versão fica guardada."),
       msg, h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async (ev) => {
         ev.target.disabled = true; msg.hidden = true;
         try {
           const caminhos = await refs.enviar(`skill/${sk ? sk.slug : "nova"}/${Date.now()}`);
           const { error } = await db.rpc("cw_skill_pedir", { p_skill: sk ? sk.id : null, p_nome: sk ? null : nome.value, p_pedido: pedido.value,
-            p_exemplo: exemplo.value, p_refs: caminhos, p_links: refs.links() });
+            p_exemplo: exemplo.value, p_refs: caminhos, p_links: refs.links(), p_modelo: modeloSk.valor() });
           if (error) throw error;
           $("#detalhe").close(); desenharAgentes();
         } catch (e) { msg.hidden = false; msg.textContent = e.message || e; ev.target.disabled = false; }
@@ -4770,6 +4807,7 @@
     const instr = h("textarea", { style: "min-height:110px", maxlength: 8000, placeholder: "Como ele deve trabalhar, o tom, o formato da resposta, o que nunca fazer…" }); instr.value = a ? a.instrucoes : "";
     const kit = h("select", {}, h("option", { value: "" }, "As duas / nenhuma"), Object.entries(KITS).map(([k, t]) => h("option", { value: k }, t))); kit.value = a && a.kit || "";
     const papel = h("select", {}, Object.entries(PAPEIS_AG).map(([k, t]) => h("option", { value: k }, t))); papel.value = (a && a.papel) || "video";
+    const modeloAg = campoModelo((a && a.modelo) || "claude:sonnet");
     const ferr = ["higgsfield", "openrouter"].map((f) => h("label", { style: "display:flex;gap:6px;align-items:center" },
       h("input", { type: "checkbox", value: f, checked: !!(a && (a.ferramentas || []).includes(f)) }), { higgsfield: "Higgsfield (imagem e vídeo com IA)", openrouter: "OpenRouter (texto barato)" }[f]));
     const prev = h("canvas", { width: 22, height: 35, style: "width:88px;height:140px;image-rendering:pixelated;background:var(--surface-2);border-radius:14px;padding:8px" });
@@ -4822,6 +4860,7 @@
           i ? h("button", { type: "button", class: "botao leve peq", "aria-label": "Subir", onclick: () => { [etapas[i - 1], etapas[i]] = [etapas[i], etapas[i - 1]]; pintarEt(); } }, "↑") : null,
           h("button", { type: "button", class: "botao perigo peq", "aria-label": "Tirar", onclick: () => { etapas.splice(i, 1); pintarEt(); } }, "✕")),
         h("label", {}, "Skill", sel), ins,
+        h("label", {}, "Modelo desta etapa", campoModelo(e.modelo || "", { herdar: true, mudou: (v) => { e.modelo = v || null; } }).el),
         h("label", { class: "check", style: "display:flex;gap:6px;align-items:center" }, apr, ult ? "Para para aprovar (a última sempre para)" : "Parar para alguém aprovar antes de seguir"));
     }) : h("span", { class: "nota" }, "Sem etapas: ele faz o trabalho inteiro de uma vez, usando as skills escolhidas acima, e para no fim para aprovar."));
     pintarEt();
@@ -4864,17 +4903,17 @@
           h("label", {}, "Camisa", cores("camisa", [...CAMISAS, ...MAIS_CAMISAS])), h("label", {}, "Cabelo", cores("cabelo", [...CABELOS, ...MAIS_CABELOS])),
           h("label", {}, "Pele", cores("pele", PELES)),
           h("div", { style: "display:flex;gap:8px;flex-wrap:wrap" }, h("label", {}, "Penteado", opc("estilo", ESTILOS.map((n, i) => [i, n]))), h("label", {}, "Acessório", opc("acessorio", ACESSORIOS))))),
-      h("label", {}, "Nome", nome), h("label", {}, "Papel (o que ele faz)", papel), h("label", {}, "Missão", missao),
+      h("label", {}, "Nome", nome), h("label", {}, "Papel (o que ele faz)", papel), h("label", {}, "Modelo de IA", modeloAg.el), h("label", {}, "Missão", missao),
       h("div", { style: "display:grid;gap:6px" }, h("div", { style: "display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap" }, h("b", {}, "Skills que ele junta"), contador), filtro, lista),
       h("label", {}, "Instruções", instr), h("label", {}, "Marca (opcional)", kit),
       h("div", { style: "display:grid;gap:4px" }, h("b", {}, "Ferramentas pagas da empresa"), ferr, h("span", { class: "nota" }, "Na conversa, cada geração paga pede o seu OK.")),
       h("label", { class: "check", style: "display:flex;gap:8px;align-items:center" }, trab, h("b", {}, "Trabalha sozinho no servidor"), h("span", { class: "nota" }, "(além de conversar)")), blocoTrab,
       msg,
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
-        const dados = { nome: nome.value.trim(), papel: papel.value, missao: missao.value.trim(), instrucoes: instr.value, kit: kit.value, visual: v, skills: [...escolhidas.values()],
+        const dados = { nome: nome.value.trim(), papel: papel.value, modelo: modeloAg.valor(), missao: missao.value.trim(), instrucoes: instr.value, kit: kit.value, visual: v, skills: [...escolhidas.values()],
           ferramentas: ferr.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => i.value),
           trabalha: trab.checked, gatilho: gat.value, pasta: pastaIn.value, entrega: ent.value, higgs: +higgsIn.value || 0,
-          etapas: etapas.map((e) => ({ nome: (e.nome || "").trim(), instrucao: e.instrucao || "", aprovar: !!e.aprovar, skill: e.skill || null })),
+          etapas: etapas.map((e) => ({ nome: (e.nome || "").trim(), instrucao: e.instrucao || "", aprovar: !!e.aprovar, skill: e.skill || null, modelo: e.modelo || null })),
           estilos: estilosAg.map((x) => ({ origem: x.origem, id: x.id, nome: x.nome })), estilo_padrao: padraoEst,
           destino: ent.value === "publicacao" ? destSprint.value : ent.value === "pasta" ? destPasta.value : "",
           agenda: { dias: dias.map((l) => l.querySelector("input")).filter((i) => i.checked).map((i) => +i.value), hora: hora.value, pedido: agPedido.value } };
