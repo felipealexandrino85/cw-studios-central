@@ -687,7 +687,7 @@
   <section id="aba-sala" hidden>
     <header class="cabeca"><p class="kicker">Operação</p><h1>Sala do CW Studios</h1>
       <p class="sub" id="sala-sub">O time ao vivo. Na mesa e digitando é edição acontecendo agora; na copa, no sofá ou jogando é online sem vídeo aberto; cochilando é fora. Clique num bonequinho para ver o que ele está fazendo, ou na Dinha, da recepção, para o resumo do dia.</p></header>
-    <div class="acoes"><button class="botao leve" id="sala-cheia">Tela cheia (para TV)</button></div>
+    <div class="acoes"><button class="botao leve" id="sala-cheia">Tela cheia (para TV)</button><button class="botao leve" id="sala-luz" aria-pressed="false">💡 Ligar a luz</button></div>
     <div class="sala-topo" id="sala-topo"></div>
     <div class="sala-palco" id="sala-palco"><canvas id="sala-canvas" aria-label="Sala do CW Studios com o time ao vivo" role="img"></canvas></div>
     <div class="sala-feed" id="sala-feed"></div>
@@ -2097,7 +2097,12 @@
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
     const px = (x, y, w, hh, cor) => { c.fillStyle = cor; c.fillRect(Math.round(x) * SC, Math.round(y) * SC, Math.round(w) * SC, Math.round(hh) * SC); };
     const txt = (s, x, y, tam, cor, peso, alinha) => { c.font = `${peso || 700} ${tam * SC}px Inter, system-ui, sans-serif`; c.textAlign = alinha || "center"; c.fillStyle = cor; c.fillText(s, x * SC, y * SC); };
-    const f = SALA.quadro, hora = new Date().getHours(), noite = hora >= 19 || hora < 6;
+    const f = SALA.quadro, hora = new Date().getHours(), escuro = hora >= 19 || hora < 6;
+    if (SALA.luz === undefined) { try { SALA.luz = localStorage.getItem("cw-sala-luz") === "1"; } catch { SALA.luz = false; } }
+    const noite = escuro && !SALA.luz;   // luz acesa: a Sala fica clara mesmo de noite
+    { const b = $("#sala-luz");
+      if (b && !b.onclick) b.onclick = () => { SALA.luz = !SALA.luz; try { localStorage.setItem("cw-sala-luz", SALA.luz ? "1" : "0"); } catch {} };
+      if (b) { const txtB = SALA.luz ? "🌙 Apagar a luz" : "💡 Ligar a luz"; if (b.textContent !== txtB) { b.textContent = txtB; b.setAttribute("aria-pressed", String(!!SALA.luz)); } } }
     const ruido = (x, y) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
     // ---- lado de fora: grama, árvores, calçada, rua
     px(0, 0, P.W, P.H, "#6b9b46");
@@ -2115,7 +2120,7 @@
     px(0, calc + 1.6 * T, P.W, 2.6 * T, "#4b4c55"); for (let x = (f * 2) % 24 - 24; x < P.W; x += 24) px(x, calc + 2.85 * T, 12, 1, "#e8d36a");
     const carro = ((f * 3) % (P.W + 120)) - 60;
     px(carro, calc + 1.9 * T, 22, 9, "#e9e4dc"); px(carro + 4, calc + 1.9 * T - 4, 14, 5, "#cfd8e6"); px(carro + 3, calc + 1.9 * T + 9, 4, 2, "#1c1c28"); px(carro + 15, calc + 1.9 * T + 9, 4, 2, "#1c1c28");
-    for (let x = 2 * T; x < P.W; x += 7 * T) { px(x, calc - 9, 1, 10, "#3b3f4a"); px(x - 1, calc - 11, 3, 2, noite ? "#ffe9a3" : "#c9c9c9"); }
+    for (let x = 2 * T; x < P.W; x += 7 * T) { px(x, calc - 9, 1, 10, "#3b3f4a"); px(x - 1, calc - 11, 3, 2, escuro ? "#ffe9a3" : "#c9c9c9"); }
     // ---- prédio: pisos, paredes altas com papel de parede (vista 3/4), topo das paredes, portas
     const spr = (im, x, y) => c.drawImage(im, (Math.round(x) - 1) * SC, (Math.round(y) - 1) * SC, im.width * SC, im.height * SC);
     const piso = (s) => {
@@ -2159,7 +2164,7 @@
       c.moveTo((x + 0.5) * SC, (y + 0.5) * SC); c.lineTo((x + 0.5 + Math.sin(b) * 2) * SC, (y + 0.5 - Math.cos(b) * 2) * SC); c.stroke(); };
     const [rec, copa, est, lou] = P.salas;
     // recepção
-    spr(janelaS(22, 14, noite), rec.x + 6, rec.y + 4);
+    spr(janelaS(22, 14, escuro), rec.x + 6, rec.y + 4);
     px(rec.x + (rec.w - 44) / 2, rec.y + 5, 44, 9, "#59327a"); px(rec.x + (rec.w - 44) / 2, rec.y + 13, 44, 1, "#3e2257"); txt("CW STUDIOS", rec.x + rec.w / 2, rec.y + 11.4, 4.6, "#ffb800", 900);
     relogio(rec.x + rec.w - 10, rec.y + 9);
     spr(plantaS(1), rec.x + 3, rec.y + 18); spr(plantaS(1), rec.x + rec.w - 17, rec.y + 18);
@@ -2193,7 +2198,7 @@
     c.drawImage(bonecoFrente(CHICO, chicoPostando && f % 4 < 2 ? 1 : 0), (chico.x - 11) * SC, (chico.y - 33) * SC, 22 * SC, 35 * SC);
     if (chicoPostando || chicoFila) { px(chico.x - 4, chico.y - 13, 5, 7, "#2a2a33"); px(chico.x - 3, chico.y - 12, 3, 5, f % 6 < 3 ? "#7fd3ff" : "#a543fa"); }   // celular postando
     // lounge
-    spr(janelaS(22, 14, noite), lou.x + 6, lou.y + 4); spr(quadroS("#56a85a"), lou.x + 38, lou.y + 5); spr(estanteS(), lou.x + lou.w - 20, lou.y + 2);
+    spr(janelaS(22, 14, escuro), lou.x + 6, lou.y + 4); spr(quadroS("#56a85a"), lou.x + 38, lou.y + 5); spr(estanteS(), lou.x + lou.w - 20, lou.y + 2);
     spr(tapeteS(52, 34, "#7a4fd6", "#5e3aa8"), lou.x + 2, lou.y + 22);
     spr(sofaS(36, "#7a4fd6"), lou.x + 6, lou.y + 24); spr(mesaCentroS(), lou.x + 14, lou.y + 44);
     spr(arcadeS(), lou.x + 4, lou.y + 62); if (f % 10 < 5) px(lou.x + 6, lou.y + 68, 8, 1, "#ffffff");
