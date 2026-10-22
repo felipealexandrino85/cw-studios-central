@@ -3691,9 +3691,12 @@
       if (aprovar && !quando.value) dispararRobo("publicar");   // o Chico posta agora, sem esperar a próxima passada
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
     }
+    let printsTiteu = null;
     async function ajusteTiteu() {
-      if (caixaMotivo.hidden) { caixaMotivo.hidden = false; motivo.placeholder = "O que o Titeu deve mudar neste corte?"; motivo.focus(); return; }
-      const { error } = await db.rpc("cw_pub_ajuste_titeu", { p_pub: x.id, p_nota: motivo.value });
+      if (caixaMotivo.hidden || !printsTiteu) { caixaMotivo.hidden = false; motivo.placeholder = "O que o Titeu deve mudar e em que momento (ex.: de 0:18 a 0:29 a câmera corta quem fala)?";
+        if (!printsTiteu) { printsTiteu = campoPrints(); caixaMotivo.after(printsTiteu.el); } motivo.focus(); return; }
+      const imgs = await printsTiteu.enviar("pub-" + x.id);
+      const { error } = await db.rpc("cw_pub_ajuste_titeu", { p_pub: x.id, p_nota: motivo.value, p_imagens: imgs });
       if (error) return erro(error);
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
       alert("Pronto: o corte voltou para o Titeu com prioridade. Quando ficar pronto, ele volta para cá.");
@@ -4198,7 +4201,9 @@
       const dur = c.iniciado && c.terminado ? Math.round((new Date(c.terminado) - new Date(c.iniciado)) / 1000) : null;
       return h("tr", {}, td(c.ordem, 1), h("td", { style: "min-width:200px" }, h("b", {}, c.titulo), h("div", { class: "nota" }, `${mmss(c.inicio)}–${mmss(c.fim)} · ${Math.round(c.fim - c.inicio)} s`),
           c.ajuste ? h("div", { class: "nota" }, "Ajuste: " + c.ajuste) : null,
-          c.prioridade > 0 && ["na_fila", "produzindo"].includes(c.estado) ? h("span", { class: "chip tom-aviso", style: "justify-self:start" }, "⚡ ajuste com prioridade") : null),
+          c.prioridade > 0 && ["na_fila", "produzindo"].includes(c.estado) ? h("span", { class: "chip tom-aviso", style: "justify-self:start" }, "⚡ ajuste com prioridade") : null,
+          c.ajuste_conferido ? h("span", { class: "chip " + (c.ajuste_conferido === "sim" ? "tom-ok" : "tom-critico"), style: "justify-self:start", title: c.ajuste_nota || "" },
+            (c.ajuste_conferido === "sim" ? "✅ ajuste conferido" : "❌ ajuste não atendido") + (c.ajuste_nota ? ": " + c.ajuste_nota.slice(0, 90) : "")) : null),
         td(h("span", { class: "chip " + tom }, rot)), td(c.estado === "produzindo" ? c.etapa || "" : c.erro || (dur ? `em ${duracao(dur)}` : "")),
         h("td", {}, c.publicacao_id ? h("a", { href: "#publicacao", onclick: (ev) => { ev.preventDefault(); trocarAba("publicacao"); } }, "P-" + String(c.publicacao_id).padStart(4, "0")) : null,
           c.estado === "previa" ? h("button", { class: "botao amarelo peq", onclick: () => verPrevia(c) }, "▶ Ver prévia") : null,
@@ -4276,9 +4281,30 @@
         $("#detalhe").close(); desenharEsteira(); } }, "Pedir"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
     $("#detalhe").showModal();
   }
+  // prints anexados ao pedido de ajuste (escolher arquivo ou colar com Ctrl+V); sobem para o bucket privado "ajustes"
+  function campoPrints() {
+    const arquivos = [], lista = h("div", { class: "chips" });
+    const pintar = () => encher(lista, arquivos.map((f, i) => h("span", { class: "chip tom-neutro" }, "🖼 " + (f.name || "print " + (i + 1)),
+      h("button", { type: "button", style: "border:0;background:none;cursor:pointer", "aria-label": "Tirar", onclick: () => { arquivos.splice(i, 1); pintar(); } }, "✕"))));
+    const entrada = h("input", { type: "file", accept: "image/*", multiple: true, onchange: (ev) => { for (const f of ev.target.files) if (arquivos.length < 6) arquivos.push(f); ev.target.value = ""; pintar(); } });
+    const el = h("div", { style: "display:grid;gap:6px" }, h("span", { class: "nota" }, "Prints do problema (opcional, ajuda muito): escolha a imagem ou cole com Ctrl+V aqui na janela."), entrada, lista);
+    const colar = (ev) => { for (const it of ev.clipboardData ? ev.clipboardData.items : []) if (it.type.startsWith("image/") && arquivos.length < 6) { const f = it.getAsFile(); if (f) { arquivos.push(f); pintar(); } } };
+    $("#detalhe").addEventListener("paste", colar);
+    return { el, async enviar(prefixo) {
+      $("#detalhe").removeEventListener("paste", colar);
+      const caminhos = [];
+      for (const [i, f] of arquivos.entries()) {
+        const cam = `${prefixo}/${Date.now()}-${i}.${(f.type.split("/")[1] || "png").replace("jpeg", "jpg")}`;
+        const { error } = await db.storage.from("ajustes").upload(cam, f, { contentType: f.type || "image/png" });
+        if (!error) caminhos.push(cam);
+      }
+      return caminhos;
+    }, soltar() { $("#detalhe").removeEventListener("paste", colar); } };
+  }
   async function verPrevia(c) {
     const { data } = await db.storage.from("previas").createSignedUrl(c.previa, 3600);
-    const nota = h("textarea", { style: "min-height:80px", placeholder: "O que melhorar (ex.: gancho mais curto, trocar a foto, legenda entrando atrasada no 0:12)…" });
+    const nota = h("textarea", { style: "min-height:80px", placeholder: "O que melhorar e em que momento (ex.: de 0:18 a 0:29 a câmera corta quem fala; legenda entrando atrasada no 0:12)…" });
+    const prints = campoPrints();
     const msg = h("div", { class: "aviso erro", hidden: true });
     encher($("#detalhe-corpo"), h("h2", {}, `${c.ordem}. ${c.titulo}`),
       h("p", { class: "nota", style: "margin:0" }, `${mmss(c.inicio)}–${mmss(c.fim)} do episódio${c.final_drive ? " · no Drive: " + c.final_drive.split("/").slice(-2).join("/") : ""}`),
@@ -4287,9 +4313,10 @@
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
         const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: true }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
         $("#detalhe").close(); desenharEsteira(); } }, "✅ Aprovar e mandar para a Publicação")),
-      h("label", {}, "Ou peça uma melhoria (o Titeu refaz este corte)", nota), msg,
+      h("label", {}, "Ou peça uma melhoria (o Titeu refaz este corte e confere se ficou como você pediu)", nota), prints.el, msg,
       h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: async () => {
-        const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: false, p_nota: nota.value }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+        const imgs = await prints.enviar("corte-" + c.id);
+        const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: false, p_nota: nota.value, p_imagens: imgs }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
         $("#detalhe").close(); desenharEsteira(); } }, "✏️ Pedir melhoria"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
   }
@@ -4326,9 +4353,11 @@
     $("#detalhe").showModal();
   }
   function ajustarCorte(c) {
-    const t = h("textarea", { style: "min-height:90px", placeholder: "O que mudar neste corte (ex.: começar 2 s depois, legenda maior, trocar o gancho)…" });
-    encher($("#detalhe-corpo"), h("h2", {}, "Pedir ajuste"), h("p", { class: "nota", style: "margin:0" }, `${c.ordem}. ${c.titulo}`), h("label", {}, "Ajuste", t),
-      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => { const { error } = await db.rpc("cw_esteira_ajuste", { p_corte: c.id, p_texto: t.value });
+    const t = h("textarea", { style: "min-height:90px", placeholder: "O que mudar e em que momento (ex.: de 0:18 a 0:29 a câmera corta quem fala; começar 2 s depois)…" });
+    const prints = campoPrints();
+    encher($("#detalhe-corpo"), h("h2", {}, "Pedir ajuste"), h("p", { class: "nota", style: "margin:0" }, `${c.ordem}. ${c.titulo}`), h("label", {}, "Ajuste", t), prints.el,
+      h("p", { class: "nota", style: "margin:0" }, "O corte volta para a frente da fila. Depois de refazer, o Titeu tira quadros do momento citado e confere se ficou como você pediu; quando acerta, isso vira lição para os próximos cortes."),
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => { const imgs = await prints.enviar("corte-" + c.id); const { error } = await db.rpc("cw_esteira_ajuste", { p_corte: c.id, p_texto: t.value, p_imagens: imgs });
         if (error) return alert(error.message); $("#detalhe").close(); desenharEsteira(); } }, "Mandar de volta para a produção"),
         h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
     $("#detalhe").showModal();
