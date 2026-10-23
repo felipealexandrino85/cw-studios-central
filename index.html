@@ -1862,6 +1862,15 @@
             conferir: (el.data || []).filter((x) => (x.linha || "cortes") === ln).length, preparando: (ee.data || []).filter((x) => (x.linha || "cortes") === ln).length,
             previas: cs.filter((x) => x.estado === "previa").length }; };
         SALA.est = contar("cortes"); SALA.estR = contar("reels");
+        // agente que trabalha quando um vídeo fica pronto (a Capitu, das capas): mesa própria na Edição
+        const { data: capAg } = await db.from("agentes").select("id,nome,visual").eq("ativo", true).eq("trabalha", true).eq("gatilho", "video").order("id").limit(1);
+        SALA.capista = (capAg || [])[0] || null;
+        if (SALA.capista) {
+          const { data: ts } = await db.from("agente_tarefas").select("estado,terminado").eq("agente_id", SALA.capista.id).in("estado", ["na_fila", "rodando", "previa", "aprovada", "entregue"]).order("id", { ascending: false }).limit(300);
+          const T2 = ts || [];
+          SALA.capas = { rodando: T2.filter((x) => x.estado === "rodando").length, fila: T2.filter((x) => x.estado === "na_fila").length,
+            previas: T2.filter((x) => x.estado === "previa").length, hoje: T2.filter((x) => ["aprovada", "entregue", "previa"].includes(x.estado) && x.terminado && new Date(x.terminado) >= hoje0).length };
+        }
       }
     }
     encher($("#sala-legenda"), [["#4cd07d", "Editando agora"], ["#f5d04a", "Parado na mesa"], ["#c9bfe0", "Online, sem vídeo (copa, sofá, jogos)"],
@@ -2181,8 +2190,8 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }])), cv = $("#sala-canvas"), T = TILE;
-    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu"), mesaFabia = P.mesas.find((m) => m.ed.npc === "fabia");
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }].concat(SALA.capista ? [{ slug: "__capista", nome: SALA.capista.nome, npc: "capista" }] : []))), cv = $("#sala-canvas"), T = TILE;
+    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu"), mesaFabia = P.mesas.find((m) => m.ed.npc === "fabia"), mesaCapa = P.mesas.find((m) => m.ed.npc === "capista");
     P.mesas = P.mesas.filter((m) => !m.ed.npc);   // as mesas dos agentes (Zé Algoritmo e Doti) na Edição
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
@@ -2382,6 +2391,16 @@
       px(mx - 3, my - 13, 6, 9, ativo ? "#f7f7f2" : "#3a3550");
       if (ativo) { const yb = my - 6 - (f % 8); px(mx - 2, yb, 4, 1, ["#ffb800", "#a543fa", "#ff6b5b"][Math.floor(f / 8) % 3]); px(mx - 2, my - 6, 4, 1, "#ffb800"); }
     }
+    if (mesaCapa) {   // agente das capas: monitor com a capa vertical sendo montada (foto, faixas coral/amarela e o texto aparecendo)
+      const mx = mesaCapa.x, my = mesaCapa.y, E4 = SALA.capas || {}, ativo = (E4.rodando || 0) > 0;
+      c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
+      px(mx - 9, my - 14, 18, 11, "#24203a");
+      px(mx - 3, my - 14, 7, 11, ativo ? "#6b4f8f" : "#3a3550");
+      px(mx - 2, my - 13, 2, 2, "#e0a97f"); px(mx + 1, my - 7, 2, 2, "#c98a5e");
+      const n = ativo ? 1 + Math.floor(f / 4) % 4 : 3;
+      if (n > 0) px(mx - 3, my - 10, 7, 1, "#ff6b5b"); if (n > 1) px(mx - 2, my - 9, 5, 1, "#ffb800"); if (n > 2) px(mx - 2, my - 8, 5, 1, "#ffb800");
+      if (ativo && f % 6 < 3) px(mx + 5, my - 12, 2, 2, "#ffffff");   // o cursor clicando
+    }
     for (const m of P.mesas) {
       const st = estadoSala(m.ed), seed = hashSlug(m.ed.slug);
       const cores = coresDe(m.ed);
@@ -2450,6 +2469,12 @@
     px(fab.x - 7, fab.y, 14, 2, "#00000026");
     c.drawImage(bonecoCostas(FABIA, fabAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (fab.x - 11) * SC, (fab.y - 24) * SC, 22 * SC, 27 * SC);
     c.drawImage(cadeiraCostas(), (fab.x - 10) * SC, (fab.y - 6) * SC, 20 * SC, 13 * SC);
+    if (mesaCapa) {
+      const cp = { x: mesaCapa.x, y: mesaCapa.y + 22 }, cpAtivo = ((SALA.capas || {}).rodando || 0) > 0;
+      px(cp.x - 7, cp.y, 14, 2, "#00000026");
+      c.drawImage(bonecoCostas(visualRobo(SALA.capista), cpAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (cp.x - 11) * SC, (cp.y - 24) * SC, 22 * SC, 27 * SC);
+      c.drawImage(cadeiraCostas(), (cp.x - 10) * SC, (cp.y - 6) * SC, 20 * SC, 13 * SC);
+    }
     const bia = { x: mesaBia.x, y: mesaBia.y + 22 };
     px(bia.x - 7, bia.y, 14, 2, "#00000026");
     c.drawImage(bonecoCostas(BIA, f % 6 < 3 ? 0 : 2), (bia.x - 11) * SC, (bia.y - 24) * SC, 22 * SC, 27 * SC);
@@ -2518,6 +2543,20 @@
         c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
         const sE = P.salas[4], bwT = c.measureText(falaT).width / SC + 10, bxT = Math.max(sE.x + 2, Math.min(t2.x - bwT / 2, sE.x + sE.w - bwT - 2)), byT = t2.y - 50, corT = E2.conferir || E2.previas ? "#ffb800" : "#ffffff";
         px(bxT, byT, bwT, 11, corT); px(t2.x - 1, byT + 11, 3, 2, corT); txt(falaT, bxT + bwT / 2, byT + 8, 4.6, "#2a1b40", 600);
+      }
+    }
+    if (mesaCapa) {   // agente das capas: plaquinha e balão
+      const t4 = { x: mesaCapa.x, y: mesaCapa.y + 22 }, E4 = SALA.capas || {}, nomeC = SALA.capista.nome;
+      c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
+      const lwC = c.measureText(nomeC).width / SC + 12;
+      px(t4.x - lwC / 2, t4.y + 6, lwC, 10, "#2a2440"); px(t4.x - lwC / 2 + 3, t4.y + 9.5, 4, 4, E4.rodando ? "#4cd07d" : "#ffb800aa");
+      txt(nomeC, t4.x + 2.5, t4.y + 13.6, 4.8, "#ffffff", 700);
+      const falaC = E4.previas ? `🖼️ ${E4.previas} capa${E4.previas > 1 ? "s" : ""} p/ aprovar` : E4.rodando ? `🎨 fazendo capa${E4.fila ? ` (+${E4.fila})` : ""}`
+        : E4.hoje ? `✅ ${E4.hoje} capa${E4.hoje > 1 ? "s" : ""} hoje` : (f % 300 < 90 ? "🖼️ esperando vídeo pronto" : null);
+      if (falaC) {
+        c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
+        const sE = P.salas[4], bw = c.measureText(falaC).width / SC + 10, bx = Math.max(sE.x + 2, Math.min(t4.x - bw / 2, sE.x + sE.w - bw - 2)), by = t4.y - 50, cor = E4.previas ? "#ffb800" : "#ffffff";
+        px(bx, by, bw, 11, cor); px(t4.x - 1, by + 11, 3, 2, cor); txt(falaC, bx + bw / 2, by + 8, 4.6, "#2a1b40", 600);
       }
     }
     // Zé Algoritmo: plaquinha e balão
@@ -4669,7 +4708,7 @@
   // ---- Oficina: skills do sistema (criar/melhorar com teste) e trabalhos dos agentes
   const PAPEIS_AG = { video: "🎬 Edição de vídeo", conteudo: "✍️ Conteúdo e texto", design: "🎨 Imagens e design", dados: "📊 Análise e relatórios",
     operacao: "🗂️ Operação e organização", outro: "🧰 Outro" };
-  const comoTrabalha = (a) => ({ pedido: "trabalha quando alguém pede", pasta: `vigia 1. ENVIE AQUI/${a.pasta || "?"}`,
+  const comoTrabalha = (a) => ({ pedido: "trabalha quando alguém pede", video: "trabalha quando um vídeo fica pronto", pasta: `vigia 1. ENVIE AQUI/${a.pasta || "?"}`,
     agenda: `agenda ${((a.agenda || {}).dias || []).map((d) => ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"][d]).join(", ")} às ${(a.agenda || {}).hora || "08:00"}` })[a.gatilho] || "trabalha"
     + " · " + ({ aprovacao: "fica para aprovar", publicacao: "vai para a Publicação", pasta: "vai para pasta do Drive" })[a.entrega || "aprovacao"];
   async function blocoResultado(res) {   // texto + arquivos (vídeo, imagem, texto) guardados no bucket "oficina"
@@ -4849,7 +4888,8 @@
       if (!cat.length) encher(lista, h("span", { class: "nota" }, "Ainda não há skills aprovadas no kit nem na Biblioteca.")); };
     // como ele trabalha (sozinho, no servidor)
     const trab = h("input", { type: "checkbox", checked: !!(a && a.trabalha) });
-    const gat = h("select", {}, [["pedido", "Quando alguém pede aqui na página"], ["pasta", "Quando cai arquivo numa pasta do Drive"], ["agenda", "Num horário (agenda)"]].map(([v2, t]) => h("option", { value: v2 }, t)));
+    const gat = h("select", {}, [["pedido", "Quando alguém pede aqui na página"], ["pasta", "Quando cai arquivo numa pasta do Drive"], ["agenda", "Num horário (agenda)"],
+      ["video", "Quando um vídeo fica pronto (prévia do Titeu ou do FabI.Ano)"]].map(([v2, t]) => h("option", { value: v2 }, t)));
     gat.value = (a && a.gatilho) || "pedido";
     const pastaIn = h("input", { value: (a && a.pasta) || "", placeholder: "Ex.: Anúncios do Glauton (fica em 1. ENVIE AQUI)", maxlength: 60 });
     const ag = (a && a.agenda) || {}, diasNomes = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
