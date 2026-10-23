@@ -4433,10 +4433,13 @@
         $("#detalhe").close(); desenharEsteira(); } }, "✏️ Pedir melhoria"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     $("#detalhe").showModal();
   }
-  const ESTADO_VER = { pedido: ["Na fila", "tom-neutro"], criando: ["Titeu estudando", "tom-aviso"], testando: ["Fazendo o teste", "tom-aviso"],
+  const ESTADO_VER = { pedido: ["Na fila", "tom-neutro"], criando: ["Estudando", "tom-aviso"], testando: ["Fazendo o teste", "tom-aviso"],
     aguardando: ["Teste pronto: aprovar?", "tom-critico"], aprovada: ["Aprovada", "tom-ok"], recusada: ["Pediram mudança", "tom-neutro"],
     erro: ["Deu erro", "tom-critico"], descartada: ["Descartada", "tom-neutro"] };
   // referências de estilo: imagens e vídeos curtos (até 50 MB) + links de vídeo público (YouTube, Instagram, TikTok)
+  const rotuloVer = (v, quem) => { const [rot, tom] = ESTADO_VER[v.estado] || [v.estado, "tom-neutro"];
+    return [v.estado === "criando" ? `${quem} estudando` : v.estado === "testando" ? `${quem} testando` : rot, tom]; };
+  const quemEstilo = () => linhaEst() === "reels" ? "FabI.Ano" : "Titeu";
   function campoRefs() {
     const arquivos = [], lista = h("div", { class: "chips" });
     const pintar = () => encher(lista, arquivos.map((f, i) => h("span", { class: "chip tom-neutro" }, (f.type.startsWith("video/") ? "🎬 " : "🖼 ") + f.name,
@@ -4493,7 +4496,7 @@
         if (error) throw error;
         $("#detalhe").close(); desenharEsteira();
       } catch (e) { msg.hidden = false; msg.textContent = e.message || e; } };
-    const [rot, tom] = ESTADO_VER[v.estado] || [v.estado, "tom-neutro"];
+    const [rot, tom] = rotuloVer(v, quemEstilo());
     encher($("#detalhe-corpo"), h("h2", {}, `${x.nome} · versão ${v.versao}`), h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot),
         h("span", { class: "chip" }, "pedido por " + (v.pedido_por || "").split("@")[0])),
       v.pedido ? h("p", { style: "margin:0" }, h("b", {}, "Pedido: "), v.pedido) : null,
@@ -4516,7 +4519,7 @@
     const { data: vers } = ids.length ? await db.from("estilo_versoes").select("id,estilo_id,versao,pedido,pedido_por,estado,etapa,notas,erro,previa,criado,atualizado")
       .in("estilo_id", ids).neq("estado", "descartada").order("versao", { ascending: false }).limit(200) : { data: [] };
     const versoesDe = (id) => (vers || []).filter((v) => v.estilo_id === id);
-    const linhaVer = (x, v) => { const [rot, tom] = ESTADO_VER[v.estado] || [v.estado, "tom-neutro"];
+    const linhaVer = (x, v) => { const [rot, tom] = rotuloVer(v, quemEstilo());
       return h("button", { class: "subir-item", style: "text-align:left;cursor:pointer;border:1px solid var(--line);background:var(--surface-2);display:grid;gap:2px", onclick: () => verVersao(x, v) },
         h("div", { class: "chips" }, h("b", {}, "v" + v.versao + (v.versao === x.versao && v.estado === "aprovada" ? " · em uso" : "")), h("span", { class: "chip " + tom }, rot)),
         h("span", { class: "nota" }, (v.etapa && ["criando", "testando"].includes(v.estado) ? v.etapa + " · " : "") + (v.pedido || "").slice(0, 110))); };
@@ -4757,7 +4760,7 @@
       try { if (acao === "mudar" && !nota.value.trim()) throw new Error("Diga o que mudar.");
         const { error } = await db.rpc("cw_skill_decidir", { p_versao: v.id, p_acao: acao, p_nota: nota.value || null }); if (error) throw error;
         $("#detalhe").close(); desenharAgentes(); } catch (e) { msg.hidden = false; msg.textContent = e.message || e; } };
-    const [rot, tom] = ESTADO_VER[v.estado] || [v.estado, "tom-neutro"];
+    const [rot, tom] = rotuloVer(v, "Criador de skills");
     encher($("#detalhe-corpo"), h("h2", {}, `🧩 ${sk.nome} · versão ${v.versao}`), h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot),
         h("span", { class: "chip" }, "pedido por " + (v.pedido_por || "").split("@")[0])),
       h("p", { style: "margin:0;white-space:pre-wrap" }, h("b", {}, "Pedido: "), v.pedido), v.exemplo ? h("p", { class: "nota", style: "margin:0" }, "Teste: " + v.exemplo) : null,
@@ -4791,7 +4794,7 @@
         h("div", { class: "chips" }, x.versao ? h("span", { class: "chip tom-neutro" }, "v" + x.versao) : null, x.origem === "kit" ? h("span", { class: "chip tom-neutro" }, "do Kit") : null,
           x.kit ? h("span", { class: "chip tom-neutro" }, KITS[x.kit]) : null, !x.ativo ? h("span", { class: "chip tom-neutro" }, x.versao ? "Desligada" : "Em criação") : null)),
       h("span", { class: "nota" }, (x.descricao || "").slice(0, 220)),
-      vDe(x.id).slice(0, 3).map((v) => { const [rot, tom] = ESTADO_VER[v.estado] || [v.estado, "tom-neutro"];
+      vDe(x.id).slice(0, 3).map((v) => { const [rot, tom] = rotuloVer(v, "Criador de skills");
         return h("button", { class: "subir-item", style: "text-align:left;cursor:pointer;border:1px solid var(--line);background:var(--surface-2);display:grid;gap:2px", onclick: () => verVersaoSkill(x, v) },
           h("div", { class: "chips" }, h("b", {}, "v" + v.versao + (v.versao === x.versao && v.estado === "aprovada" ? " · em uso" : "")), h("span", { class: "chip " + tom }, rot)),
           h("span", { class: "nota" }, (v.etapa && ["criando", "testando"].includes(v.estado) ? v.etapa + " · " : "") + (v.pedido || "").slice(0, 110))); }),
