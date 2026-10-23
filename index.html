@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap">
 <!-- a versão no endereço obriga o navegador a baixar o módulo novo a cada publicação (suba junto com cada mudança) -->
-<link rel="stylesheet" href="cast.css?v=2026-10-21a">
-<script src="cast.js?v=2026-10-21a"></script>
+<link rel="stylesheet" href="cast.css?v=2026-10-23a">
+<script src="cast.js?v=2026-10-23a"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
@@ -1032,10 +1032,9 @@
   }
 
   // seções do CW Cast, abertas por baixo do item no menu lateral
-  const CAST_SECOES = [[null, [["painel", "Painel"]]], ["Produção", [["mes", "Calendário"], ["conf", "Conferência"], ["alertas", "Pendências"]]],
-    ["Resultados", [["meta", "Meta de seguidores"], ["eps", "Episódios e vídeos"], ["metricas", "Métricas"]]],
-    ["Gestão", [["riscos", "Riscos"], ["melhorias", "Melhorias"], ["reuniao", "Reunião"], ["equipe", "Equipe"]]]];
-  let castSecao = "painel", castCont = {}, castMenuAberto = false;
+  const CAST_SECOES = [[null, [["resultados", "Resultados"], ["meta", "Metas"]]], ["Produção", [["mes", "Calendário"], ["conf", "Conferência"], ["alertas", "Pendências"]]],
+    ["Mais", [["painel", "Resumo da semana"], ["eps", "Episódios e vídeos"], ["metricas", "Métricas detalhadas"], ["riscos", "Riscos"], ["melhorias", "Melhorias"], ["reuniao", "Reunião"], ["equipe", "Equipe"]]]];
+  let castSecao = "resultados", castCont = {}, castMenuAberto = false;
   function subCast() {
     return h("div", { class: "sb-sub", id: "sb-sub-cast", hidden: !castMenuAberto }, CAST_SECOES.map(([grupo, itens]) => [grupo && h("p", {}, grupo),
       itens.map(([id, nome]) => h("button", { class: "sb-subitem" + (aba === "cast" && castSecao === id ? " is-active" : ""), "data-cast": id,
@@ -1799,7 +1798,7 @@
         if (mudou) { const sub = $("#sb-sub-cast"); if (sub) sub.replaceWith(subCast()); }
         atualizarSubCast();
       } });
-    if (castSecao !== "painel") irParaSecaoCast(castSecao);
+    if (castSecao !== "resultados") irParaSecaoCast(castSecao);
     castDb.puxar();
     setInterval(() => { if (aba === "cast" && !document.hidden) castDb.puxar(); }, 20000);
   }

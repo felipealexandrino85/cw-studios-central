@@ -307,3 +307,9 @@
 
 /* as seções do CW Cast ficam no menu lateral da Central */
 #cast-root #cast-tabs { display: none; }
+#cast-root .kbtn { text-align: left; font: inherit; color: inherit; cursor: pointer; }
+#cast-root .kbtn.on { border-color: var(--eminence); box-shadow: inset 0 0 0 1px var(--eminence); }
+#cast-root .cb-mid { fill: var(--muted); opacity: .45; }
+#cast-root .lg.mid { background: var(--muted); opacity: .45; }
+#cast-root .mgrid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+#cast-root .mcard .big b { font-size: 32px; }

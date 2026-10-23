@@ -105,7 +105,7 @@ window.iniciarCast = function (CTX) {
   var team = { names: TEAM_FIXA.slice(), defaults: {} };
   var cache = null;
   var db = null, canWrite = true, dbOk = false, saving = 0, lastErr = "";
-  var st = { tab: "painel", rf: "abertos", mf: "abertas", cf: "todos", repWeek: null, copyFallback: "", month: MONTHS.indexOf(TODAY.slice(0, 7)) >= 0 ? TODAY.slice(0, 7) : MONTHS[0], owner: "", type: "", panel: undefined };
+  var st = { tab: "resultados", rm: "views", rf: "abertos", mf: "abertas", cf: "todos", repWeek: null, copyFallback: "", month: MONTHS.indexOf(TODAY.slice(0, 7)) >= 0 ? TODAY.slice(0, 7) : MONTHS[0], owner: "", type: "", panel: undefined };
 
   function cards() {
     if (cache) return cache;
@@ -375,7 +375,7 @@ window.iniciarCast = function (CTX) {
     if (e.key === "Escape" && st.panel !== undefined) { st.panel = undefined; renderPanel(); }
     if ((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("cell") && e.target.dataset.day) { e.preventDefault(); openPanel(e.target.dataset.day); }
     if (e.key === "Enter" && e.target.id === "new-title") document.querySelector('[data-act="add"]').click();
-    if (e.key === "Enter" && e.target.closest && e.target.closest(".entry") && e.target.type === "number") { var rb = e.target.closest(".entry").querySelector('[data-act="reg-seg"]'); if (rb) rb.click(); }
+    if (e.key === "Enter" && e.target.closest && e.target.closest(".entry") && e.target.inputMode === "numeric") { var rb = e.target.closest(".entry").querySelector('[data-act="reg-seg"]'); if (rb) rb.click(); }
   });
   ROOT.addEventListener("change", function (e) {
     var t = e.target;
@@ -450,6 +450,7 @@ window.iniciarCast = function (CTX) {
   function gField(t, commit) {
     var col = t.dataset.col, id = t.dataset.id, k = t.dataset.k;
     var v = t.type === "checkbox" ? t.checked : t.type === "number" ? (t.value === "" ? null : Number(t.value)) : t.value;
+    if (col === "seguidores" && k === "total" && v != null) v = Number(String(t.value).replace(/\D/g, "")) || null;   // "11.007" é onze mil e sete, não 11,007
     var p = k.split("."), patch = {};
     if (p.length === 2) { var o = Object.assign({}, gGet(col, id)[p[0]] || {}); o[p[1]] = v; patch[p[0]] = o; } else patch[k] = v;
     gPut(col, id, patch);
@@ -467,6 +468,7 @@ window.iniciarCast = function (CTX) {
     });
     db.doc("videos/estudio").onSnapshot(function (d) { if (d.exists) { S.videos.set("estudio", d.data()); gRender(); } });
     db.doc("config/meta").onSnapshot(function (d) { if (d.exists) { S.config.set("meta", d.data()); gRender(); } });
+    db.doc("config/metas").onSnapshot(function (d) { if (d.exists) { S.config.set("metas", d.data()); gRender(); } });
   }
 
   /* ----- campos de formulário (todos gravam no db pelo gField) ----- */
@@ -583,7 +585,7 @@ window.iniciarCast = function (CTX) {
   function hojeTxt(r) { return r.hoje ? sgn(r.hoje.ganho) + (r.hoje.dias > 1 ? " em " + r.hoje.dias + "d" : "") : "sem leitura"; }
   function segEntry() {
     if (!canWrite) return "";
-    return '<div class="entry"><label class="f">Data<input type="date" value="' + TODAY + '"></label><label class="f">Seguidores do perfil<input type="number" inputmode="numeric" placeholder="total nesse dia"></label><button class="btn" data-act="reg-seg">Registrar</button></div>';
+    return '<div class="entry"><label class="f">Data<input type="date" value="' + TODAY + '"></label><label class="f">Seguidores do perfil<input type="text" inputmode="numeric" placeholder="total nesse dia (ex.: 11010)"></label><button class="btn" data-act="reg-seg">Registrar</button></div>';
   }
   function metaMini(r) {
     var m = r.m;
@@ -613,7 +615,7 @@ window.iniciarCast = function (CTX) {
   }
   function viewMeta() {
     var r = igMeta(), m = r.m, d = dis_();
-    var html = '<section class="card hero"><div class="cardhead"><h3>+' + fN(m.meta) + " seguidores no @cw.cast</h3><span class=\"pill " + r.status + '">' + SL[r.status] + '</span></div><div class="herogrid"><div><div class="big"><b>' + (r.faltam == null ? "—" : fN(r.faltam)) + "</b><span>seguidores faltam até " + br(m.fim) + "</span></div>" + meterHtml(r) +
+    var html = metasTrimestre() + '<h2 style="font-size:16px;margin:22px 0 6px">Seguidores em detalhe</h2><section class="card hero"><div class="cardhead"><h3>+' + fN(m.meta) + " seguidores no @cw.cast</h3><span class=\"pill " + r.status + '">' + SL[r.status] + '</span></div><div class="herogrid"><div><div class="big"><b>' + (r.faltam == null ? "—" : fN(r.faltam)) + "</b><span>seguidores faltam até " + br(m.fim) + "</span></div>" + meterHtml(r) +
       '<div class="mrow"><span>Conquistados <b>' + sgn(r.ganhos) + "</b></span><span>Esperado até hoje <b>+" + fN(Math.round(r.esperado)) + "</b></span><span>Seguidores agora <b>" + fN(r.atual) + "</b>" + (r.last ? " (" + dm(r.last.fim) + ")" : "") + "</span></div></div>" +
       '<div class="tiles"><div class="kpi"><span>Precisamos por dia</span><b>' + (r.dia == null ? "—" : fN(Math.ceil(r.dia))) + '</b><small>recalculado a cada leitura</small></div><div class="kpi"><span>Plano original</span><b>' + fN(Math.ceil(r.original)) + "</b><small>por dia, desde " + dm(add(r.zero, 1)) + "</small></div>" +
       '<div class="kpi"><span>Média até agora</span><b>' + fD(r.media) + "</b><small>por dia</small></div><div class=\"kpi\"><span>Ganho de hoje</span><b>" + hojeTxt(r) + "</b><small>" + (r.hoje ? "leitura de " + dm(r.hoje.d) : "registre a leitura de hoje") + "</small></div></div></div>" +
@@ -670,9 +672,109 @@ window.iniciarCast = function (CTX) {
   function calRiscos() { return cards().filter(function (c) { return c.risk && c.risk.on && c.status !== "concluido" && (!c.date || c.date >= add(TODAY, -3)); }); }
 
   /* ----- views ----- */
+  /* ========== RESULTADOS: as 5 métricas do dia a dia do @cw.cast (robô do Instagram, todo dia de manhã) ========== */
+  var RM = [["views", "Visualizações"], ["ganho", "Seguidores ganhos"], ["salvamentos", "Salvamentos"], ["comentarios", "Comentários"], ["compart", "Compartilhamentos"]];
+  var RMN = {}; RM.forEach(function (x) { RMN[x[0]] = x[1]; });
+  function igDia(d) {   // números de um dia; seguidores ganhos = seguiram - deixaram (Instagram) ou a diferença entre as leituras
+    var i = S.ig_diario.get(d) || {}, o = { views: i.views, salvamentos: i.salvamentos, comentarios: i.comentarios, compart: i.compart, ganho: null };
+    if (i.seguiram != null && i.deixaram != null) o.ganho = i.seguiram - i.deixaram;
+    else {
+      var a = S.seguidores.get(d), b = S.seguidores.get(add(d, -1));
+      if (a && b && a.total != null && b.total != null && !isNaN(Number(a.total)) && !isNaN(Number(b.total))) o.ganho = Number(a.total) - Number(b.total);
+    }
+    ["views", "salvamentos", "comentarios", "compart"].forEach(function (k) { if (o[k] != null) o[k] = Number(o[k]); });
+    return o;
+  }
+  function somaDias(k, de, ate) {   // soma de k entre duas datas (inclusive) e quantos dias tinham dado
+    var s = 0, n = 0;
+    for (var d = de; d <= ate; d = add(d, 1)) { var v = igDia(d)[k]; if (v != null && !isNaN(v)) { s += v; n++; } }
+    return { s: s, n: n };
+  }
+  function ultimoDia() {   // último dia fechado com número do Instagram (hoje ainda está em andamento)
+    for (var k = 1; k <= 5; k++) { var d = add(TODAY, -k), x = igDia(d); if (x.views != null || x.ganho != null) return d; }
+    return add(TODAY, -1);
+  }
+  function rmChart(k, fim) {
+    var dias = [], i;
+    for (i = 29; i >= 0; i--) { var d = add(fim, -i); dias.push({ d: d, v: igDia(d)[k] }); }
+    var vals = dias.map(function (x) { return x.v; }).filter(function (v) { return v != null && !isNaN(v); });
+    if (!vals.length) return '<div class="empty-note">Ainda sem dados de ' + esc(RMN[k].toLowerCase()) + '. O robô começa a trazer este número na próxima leitura.</div>';
+    var max = Math.max.apply(null, vals.concat([1])), min = Math.min.apply(null, vals.concat([0])), W = 700, H = 220, L = 46, R = 8, T = 16, B = 26, n = dias.length, step = (W - L - R) / n, bw = Math.max(4, step * 0.66);
+    var y = function (v) { return T + (H - T - B) * (1 - (v - min) / Math.max(max - min, 1)); }, s = '<svg viewBox="0 0 700 220" role="img" aria-label="' + esc(RMN[k]) + ' por dia, últimos 30 dias" class="segchart">';
+    [min, (min + max) / 2, max].forEach(function (v) { s += '<line class="cg" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text class="ct" x="' + (L - 6) + '" y="' + (y(v) + 3) + '" text-anchor="end">' + fN(Math.round(v)) + "</text>"; });
+    var media = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+    dias.forEach(function (x, j) {
+      var cx = L + step * j + step / 2;
+      if (x.v != null && !isNaN(x.v)) { var y0 = y(Math.max(min, 0)), y1 = y(x.v); s += '<rect class="' + (x.v >= media ? "cb-ok" : "cb-mid") + '" x="' + (cx - bw / 2) + '" y="' + Math.min(y0, y1) + '" width="' + bw + '" height="' + Math.max(Math.abs(y0 - y1), 1) + '" rx="3"><title>' + dm(x.d) + ": " + fN(x.v) + "</title></rect>"; }
+      if (j % 5 === 4 || j === n - 1) s += '<text class="ct" x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle">' + dm(x.d) + "</text>";
+    });
+    s += '<line class="cl" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(media) + '" y2="' + y(media) + '"/><text class="clt" x="' + (W - R) + '" y="' + (y(media) - 6) + '" text-anchor="end">média ' + fD(media) + "/dia</text></svg>";
+    return s;
+  }
+  function viewResultados() {
+    var fim = ultimoDia(), ini7 = add(fim, -6), ant7 = add(fim, -13), x = igDia(fim), k = st.rm || "views";
+    var html = '<p class="hint" style="margin-top:0">Instagram do @cw.cast. Os números entram sozinhos todo dia de manhã; o dia de hoje aparece amanhã, já fechado. Metas e projeção do trimestre na aba ' + go("meta", "Metas") + ".</p>";
+    html += '<div class="kpis">' + RM.map(function (m) {
+      var a = somaDias(m[0], ini7, fim), b = somaDias(m[0], ant7, add(ini7, -1)), v = x[m[0]];
+      return '<button class="kpi kbtn' + (k === m[0] ? " on" : "") + '" data-act="rm" data-m="' + m[0] + '"><span>' + esc(m[1]) + "</span><b>" + (m[0] === "ganho" ? sgn(v) : fN(v)) + "</b><small>em " + dm(fim) + "</small>" +
+        "<small>7 dias: " + (a.n ? (m[0] === "ganho" ? sgn(a.s) : fN(a.s)) : "—") + "</small>" + (a.n && b.n ? dlt(a.s, b.s) : "") + "</button>";
+    }).join("") + "</div>";
+    html += '<section class="card"><div class="cardhead"><h3>' + esc(RMN[k]) + ' por dia</h3><span class="quiet">últimos 30 dias · toque num número acima para trocar</span></div>' + rmChart(k, fim) +
+      '<div class="legend2"><span><i class="lg ok"></i>Acima da média</span><span><i class="lg mid"></i>Abaixo da média</span></div></section>';
+    var rows = "";
+    for (var i = 0; i < 14; i++) {
+      var d = add(fim, -i), z = igDia(d);
+      rows += "<tr><td>" + DNAME[toD(d).getUTCDay()] + " " + dm(d) + "</td><td>" + fN(z.views) + "</td><td>" + sgn(z.ganho) + "</td><td>" + fN(z.salvamentos) + "</td><td>" + fN(z.comentarios) + "</td><td>" + fN(z.compart) + "</td></tr>";
+    }
+    html += '<section class="card"><div class="cardhead"><h3>Dia a dia</h3></div><div class="tablewrap flat"><table class="hist"><thead><tr><th>Dia</th>' + RM.map(function (m) { return "<th>" + esc(m[1]) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div></section>";
+    var yo = 0, ys = 0, yn = 0;
+    for (var j = 0; j < 7; j++) { var yy = S.yt_diario.get(add(fim, -j - 2)); if (yy) { yo += Number(yy.org) || 0; ys += Number(yy.subs) || 0; yn++; } }
+    html += '<section class="card"><div class="cardhead"><h3>YouTube</h3><span class="quiet">7 dias até ' + dm(add(fim, -2)) + " (o YouTube fecha com 2 dias de atraso)</span></div>" +
+      (yn ? '<div class="trio"><div><span>Views orgânicas</span><b>' + fN(yo) + "</b></div><div><span>Inscritos</span><b>" + sgn(ys) + "</b></div><div><span>Detalhe</span><b>" + go("metricas", "Métricas detalhadas") + "</b></div></div>" : '<div class="empty-note">Sem leitura do YouTube nesses dias.</div>') + "</section>";
+    return '<div class="stack">' + html + "</div>";
+  }
+
+  /* ----- metas do trimestre: seguidores (config/meta) + views, salvamentos, comentários e compartilhamentos (config/metas) ----- */
+  function metaTri(k, alvo, m) {
+    var ontem = add(TODAY, -1), ate = ontem < m.fim ? ontem : m.fim, feito = somaDias(k, m.inicio, ate);
+    var total = Math.max(diff(m.fim, m.inicio) + 1, 1), passados = Math.max(Math.min(diff(ate, m.inicio) + 1, total), 0), restam = Math.max(diff(m.fim, ate), 0);
+    var r14 = somaDias(k, add(ate, -13), ate), ritmo = r14.n ? r14.s / r14.n : null;
+    var proj = ritmo == null ? null : feito.s + ritmo * restam, esperado = alvo ? alvo * passados / total : null;
+    var falta = alvo ? Math.max(alvo - feito.s, 0) : null, precisa = alvo && restam ? falta / restam : null;
+    var status = !alvo || proj == null ? "none" : proj >= alvo ? "ok" : proj >= alvo * 0.85 ? "warn" : "bad";
+    var desde = null; for (var d = m.inicio; d <= ate; d = add(d, 1)) { if (igDia(d)[k] != null) { desde = d; break; } }
+    return { k: k, alvo: alvo, feito: feito.s, dias: feito.n, ritmo: ritmo, proj: proj, esperado: esperado, falta: falta, precisa: precisa, restam: restam, status: status, desde: desde };
+  }
+  function metaCard(t, rotulo) {
+    var pct = t.alvo ? Math.max(0, Math.min(100, t.feito / t.alvo * 100)) : 0, ep = t.alvo ? Math.min(100, t.esperado / t.alvo * 100) : 0;
+    return '<section class="card mcard"><div class="cardhead"><h3>' + esc(rotulo) + '</h3><span class="pill ' + t.status + '">' + (t.status === "ok" ? "Bate a meta" : t.status === "warn" ? "Perto" : t.status === "bad" ? "Não bate" : t.alvo ? "Sem dado" : "Sem meta") + "</span></div>" +
+      '<div class="big"><b>' + fN(Math.round(t.feito)) + "</b><span>" + (t.alvo ? "de " + fN(t.alvo) + " no trimestre" : "no trimestre (defina a meta abaixo)") + "</span></div>" +
+      (t.alvo ? '<div class="meter" role="img" aria-label="Progresso da meta"><i style="width:' + pct + '%"></i><u style="left:' + ep + '%" title="Esperado até ontem"></u></div>' : "") +
+      '<div class="trio"><div><span>Ritmo (14 dias)</span><b>' + (t.ritmo == null ? "—" : fD(t.ritmo)) + "</b></div><div><span>Precisa por dia</span><b>" + (t.precisa == null ? "—" : fN(Math.ceil(t.precisa))) + "</b></div><div><span>Projeção no fim</span><b>" + (t.proj == null ? "—" : fN(Math.round(t.proj))) + "</b></div></div>" +
+      (t.desde && t.desde > add(TODAY, -80) && t.k !== "views" && t.dias < 20 ? '<p class="hint" style="margin:6px 0 0">Contando desde ' + dm(t.desde) + ", quando o robô começou a ler este número.</p>" : "") + "</section>";
+  }
+  function metasTrimestre() {
+    var r = igMeta(), m = r.m, mt = S.config.get("metas") || {}, pj = projecao(r);
+    var seg = { status: projStatus(pj, r), feito: r.ganhos, alvo: m.meta, proj: pj ? pj.final : null };
+    var html = '<h2 style="font-size:16px;margin:4px 0 6px">Metas do trimestre <span class="quiet" style="font-size:12px">' + br(m.inicio) + " a " + br(m.fim) + "</span></h2>" +
+      '<p class="hint" style="margin-top:0">Projeção = o que já foi feito + o ritmo médio dos últimos 14 dias até o fim do trimestre.</p><div class="cols mgrid">';
+    html += '<section class="card mcard"><div class="cardhead"><h3>Seguidores ganhos</h3><span class="pill ' + seg.status + '">' + (seg.status === "ok" ? "Bate a meta" : seg.status === "warn" ? "Perto" : seg.status === "bad" ? "Não bate" : "Sem dado") + "</span></div>" +
+      '<div class="big"><b>' + sgn(r.ganhos) + "</b><span>de " + fN(m.meta) + " no trimestre</span></div>" + meterHtml(r) +
+      '<div class="trio"><div><span>Ritmo (7 dias)</span><b>' + (pj ? fD(pj.ritmo) : "—") + "</b></div><div><span>Precisa por dia</span><b>" + (r.dia == null ? "—" : fN(Math.ceil(r.dia))) + "</b></div><div><span>Projeção no fim</span><b>" + (pj ? "+" + fN(Math.round(pj.final)) : "—") + "</b></div></div></section>";
+    [["views", "Visualizações"], ["salvamentos", "Salvamentos"], ["comentarios", "Comentários"], ["compart", "Compartilhamentos"]].forEach(function (x) {
+      html += metaCard(metaTri(x[0], Number(mt[x[0]]) || 0, m), x[1]);
+    });
+    html += "</div>";
+    html += '<details class="card"><summary>Definir metas do trimestre</summary><div class="more-f"><div class="fields">' + txt("config", "meta", "meta", "Seguidores novos", m.meta, "number") +
+      txt("config", "metas", "views", "Visualizações", mt.views, "number") + txt("config", "metas", "salvamentos", "Salvamentos", mt.salvamentos, "number") +
+      txt("config", "metas", "comentarios", "Comentários", mt.comentarios, "number") + txt("config", "metas", "compart", "Compartilhamentos", mt.compart, "number") + "</div>" +
+      '<p class="hint">Valores somados do trimestre inteiro (' + br(m.inicio) + " a " + br(m.fim) + '). O período e a base de seguidores ficam em "Ajustar base e meta", lá embaixo.</p></div></details>';
+    return html;
+  }
+
   function viewFor() {
-    var m = { painel: viewPainel, mes: viewMonth, "30": viewNext30, conf: viewConf, meta: viewMeta, eps: viewEps, metricas: viewMetricas, riscos: viewRiscos, melhorias: viewMelhorias, reuniao: viewReuniao, alertas: viewAlerts, equipe: viewTeam };
-    var body = (m[st.tab] || viewPainel)();
+    var m = { resultados: viewResultados, painel: viewPainel, mes: viewMonth, "30": viewNext30, conf: viewConf, meta: viewMeta, eps: viewEps, metricas: viewMetricas, riscos: viewRiscos, melhorias: viewMelhorias, reuniao: viewReuniao, alertas: viewAlerts, equipe: viewTeam };
+    var body = (m[st.tab] || viewResultados)();
     if (st.tab === "mes" || st.tab === "30") body = '<div class="seg" role="tablist" aria-label="Visão do calendário"><button data-tab="mes"' + (st.tab === "mes" ? ' class="on"' : "") + '>Mês</button><button data-tab="30"' + (st.tab === "30" ? ' class="on"' : "") + ">Próximos 30 dias</button></div>" + body;
     return body;
   }
@@ -771,6 +873,7 @@ window.iniciarCast = function (CTX) {
 
   /* ----- estrutura do aplicativo: menu lateral e cabeçalho de página ----- */
   var ICONS = {
+    resultados: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
     painel: '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
     mes: '<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2v4M16 2v4"/>',
     conf: '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>',
@@ -783,12 +886,13 @@ window.iniciarCast = function (CTX) {
     reuniao: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
     equipe: '<circle cx="9" cy="8" r="3.5"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M17 4.5a3.5 3.5 0 0 1 0 7M22 21v-1a5 5 0 0 0-3-4.6"/>'
   };
-  var NAV = [["Visão geral", [["painel", "Painel"]]], ["Produção", [["mes", "Calendário"], ["conf", "Conferência"], ["alertas", "Pendências"]]], ["Resultados", [["meta", "Meta de seguidores"], ["eps", "Episódios e vídeos"], ["metricas", "Métricas"]]], ["Gestão", [["riscos", "Riscos"], ["melhorias", "Melhorias"], ["reuniao", "Reunião"], ["equipe", "Equipe"]]]];
+  var NAV = [["Resultados", [["resultados", "Resultados"], ["meta", "Metas"]]], ["Produção", [["mes", "Calendário"], ["conf", "Conferência"], ["alertas", "Pendências"]]], ["Mais", [["painel", "Resumo da semana"], ["eps", "Episódios e vídeos"], ["metricas", "Métricas detalhadas"], ["riscos", "Riscos"], ["melhorias", "Melhorias"], ["reuniao", "Reunião"], ["equipe", "Equipe"]]]];
   var PAGES = {
-    painel: ["Painel", function () { var mo = mondayOf(TODAY); return "Hoje, " + br(TODAY) + " · semana de " + dm(mo) + " a " + dm(add(mo, 6)); }],
+    resultados: ["Resultados do @cw.cast", "Views, seguidores ganhos, salvamentos, comentários e compartilhamentos, dia a dia"],
+    painel: ["Resumo da semana", function () { var mo = mondayOf(TODAY); return "Hoje, " + br(TODAY) + " · semana de " + dm(mo) + " a " + dm(add(mo, 6)); }],
     mes: ["Calendário", "Gravações, edições, aprovações e publicações do trimestre"], "30": ["Calendário", "Gravações, edições, aprovações e publicações do trimestre"],
     conf: ["Conferência dos episódios", "Seis checagens por episódio, com prazo antes da publicação"], alertas: ["Pendências", "Prazos de agendamento, aprovações e itens sem responsável"],
-    meta: ["Meta de seguidores", "+2.000 novos seguidores no @cw.cast até 31/12/2026"], metricas: ["Métricas", "YouTube e Instagram, semana a semana"], eps: ["Episódios e vídeos", "Desempenho por episódio: views, primeiros 7 dias, CTR e retenção"],
+    meta: ["Metas do trimestre", "Onde estamos, quanto falta e a projeção até o fim do trimestre"], metricas: ["Métricas detalhadas", "YouTube, Instagram e TikTok, semana a semana"], eps: ["Episódios e vídeos", "Desempenho por episódio: views, primeiros 7 dias, CTR e retenção"],
     riscos: ["Riscos", "Problemas, riscos e ações corretivas"], melhorias: ["Melhorias", "Propostas baseadas nos indicadores"], reuniao: ["Reunião", "Relatório pronto para a reunião com o Felipe"], equipe: ["Equipe", "Quem faz o quê"]
   };
   function pageHead() {
@@ -1004,9 +1108,10 @@ window.iniciarCast = function (CTX) {
     if (a === "new-mel" && canWrite) { var id2 = newId("m"); gPut("melhorias", id2, { titulo: "", base: "", hipotese: "", medir: "", resp: "", prazo: "", status: "proposta", resultado: "", criado: TODAY }); st.mf = "abertas"; renderMain(); var e2 = document.getElementById(fid("melhorias", id2, "titulo")); if (e2) e2.focus(); return true; }
     if (a === "new-sem" && canWrite) { var id3 = newId("w"); gPut("metricas", id3, { fim: TODAY, periodo_ig: "", periodo_yt: "", fonte: "", ig: {}, yt: {}, melhores: "", piores: "", analise: "" }); renderMain(); return true; }
     if (a === "del-g") { if (!canWrite) return true; if (d.sure) { gDel(d.col, d.id); renderTabs(); renderMain(); } else { d.sure = "1"; t.textContent = "Confirmar exclusão"; } return true; }
+    if (a === "rm") { st.rm = d.m; renderMain(); return true; }
     if (a === "reg-seg" && canWrite) {
-      var box = t.closest(".entry"), dt = box.querySelector('input[type="date"]').value || TODAY, tv = box.querySelector('input[type="number"]').value;
-      if (tv === "" || isNaN(Number(tv))) { box.querySelector('input[type="number"]').focus(); return true; }
+      var box = t.closest(".entry"), dt = box.querySelector('input[type="date"]').value || TODAY, tv = String(box.querySelector('input[type="text"],input[type="number"]').value || "").replace(/\D/g, "");
+      if (tv === "") { box.querySelector('input[inputmode="numeric"]').focus(); return true; }
       gPut("seguidores", dt, { total: Number(tv), nota: "" }); renderTabs(); renderMain(); return true;
     }
     if (a === "rep-prev" || a === "rep-next") { st.repWeek = add(st.repWeek || mondayOf(TODAY), a === "rep-next" ? 7 : -7); st.copyFallback = ""; renderMain(); return true; }
