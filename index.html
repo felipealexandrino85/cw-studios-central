@@ -594,6 +594,9 @@
       <div class="acoes"><button class="botao">Salvar regra</button><button class="botao leve" type="button" id="regra-limpar">Limpar</button></div>
       <div id="msg-regra" class="aviso erro" hidden></div>
     </form>
+    <h3 class="grupo">Dicionário do time (marcas, nomes e termos)</h3>
+    <p class="nota" style="margin:0">Como escrever nas legendas e textos. O revisor de legendas corrige sozinho todo corte e todo reel com este dicionário antes do vídeo final, e o Claude de todo mundo recebe a lista. Em "errados", ponha como a transcrição costuma escrever (separe por vírgula).</p>
+    <div id="dicionario" style="display:grid;gap:10px"></div>
     <h3 class="grupo" id="tit-sug-editores" hidden>Sugestões dos editores</h3>
     <p class="nota" style="margin:0" id="nota-sug-editores" hidden>Regras que o Claude de cada editor tirou do CLAUDE.md dele e as que a Doti tirou do desempenho dos cortes. Aceita vira regra do time e entra em todo Claude, inclusive na estação. Dá para ajustar o texto antes.</p>
     <div class="alertas" id="sug-editores"></div>
@@ -1672,7 +1675,25 @@
         sg.origem ? h("span", { class: "nota", style: "flex-basis:100%" }, sg.origem) : null);
     }));
   }
+  async function desenharDicionario() {
+    const el = $("#dicionario"); if (!el) return;
+    const { data } = await db.from("glossario").select("id,certo,errados,obs,ativo").order("certo");
+    const certo = h("input", { placeholder: "Jeito certo (ex.: Domino's)", maxlength: 80 }), errados = h("input", { placeholder: "Como sai errado (ex.: dominos, dominós)" });
+    const obs = h("input", { placeholder: "Observação (opcional)" }), msg = h("div", { class: "aviso erro", hidden: true });
+    let editando = null;
+    const salvar = async (id, c, e, o, ativo) => { const { error } = await db.rpc("cw_glossario_salvar", { p_id: id, p_certo: c, p_errados: e, p_obs: o, p_ativo: ativo });
+      if (error) { msg.hidden = false; msg.textContent = error.message; return false; } return true; };
+    encher(el, h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Certo", "Sai errado como", "Obs.", ""].map((t) => h("th", {}, t)))),
+        h("tbody", {}, (data || []).map((g) => h("tr", { style: g.ativo ? "" : "opacity:.5" }, td(h("b", {}, g.certo)), td((g.errados || []).join(", ")), td(g.obs || "–"),
+          h("td", { class: "n" }, h("button", { class: "botao leve peq", onclick: () => { editando = g.id; certo.value = g.certo; errados.value = (g.errados || []).join(", "); obs.value = g.obs || ""; certo.focus(); } }, "Editar"), " ",
+            h("button", { class: "botao leve peq", onclick: async () => { if (await salvar(g.id, g.certo, g.errados, g.obs, !g.ativo)) desenharDicionario(); } }, g.ativo ? "Pausar" : "Ativar"))))))),
+      h("form", { class: "painel", onsubmit: async (ev) => { ev.preventDefault(); msg.hidden = true;
+          if (await salvar(editando, certo.value, errados.value.split(",").map((x) => x.trim()).filter(Boolean), obs.value, true)) { editando = null; desenharDicionario(); } } },
+        h("div", { style: "display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))" }, certo, errados, obs),
+        h("div", { class: "acoes" }, h("button", { class: "botao" }, "Salvar no dicionário")), msg));
+  }
   function desenharPadrao() {
+    desenharDicionario();
     if (eu.papel === "gestor") desenharSugEditores();
     const salvar = async (r, mudanca) => {
       const { error } = await db.rpc("cw_regra_salvar", { p_id: r.id, p_texto: r.texto, p_tipo: r.tipo, p_origem: r.origem, p_ativa: mudanca.ativa });
