@@ -3729,6 +3729,7 @@
   }
   function abrirPub(x) {
     const pode = podeAprovar(), aguardando = x.estado === "aguardando" || x.estado === "recusado";
+    const agenteIA = x.destino === "Instagram Cardapio Web" ? "FabI.Ano" : "Titeu";   // reels da Cardápio Web: FabI.Ano; cortes: Titeu
     const legenda = h("textarea", { id: "pub-legenda", style: "min-height:140px" }); legenda.value = x.legenda || "";
     const contLeg = h("span", { class: "nota" });
     const contar = () => { const n = legenda.value.length, ht = hashtags(legenda.value);
@@ -3799,13 +3800,13 @@
     }
     let printsTiteu = null;
     async function ajusteTiteu() {
-      if (caixaMotivo.hidden || !printsTiteu) { caixaMotivo.hidden = false; motivo.placeholder = "O que o Titeu deve mudar e em que momento (ex.: de 0:18 a 0:29 a câmera corta quem fala)?";
+      if (caixaMotivo.hidden || !printsTiteu) { caixaMotivo.hidden = false; motivo.placeholder = "O que o " + agenteIA + " deve mudar e em que momento (ex.: de 0:18 a 0:29 a câmera corta quem fala)?";
         if (!printsTiteu) { printsTiteu = campoPrints(); caixaMotivo.after(printsTiteu.el); } motivo.focus(); return; }
       const imgs = await printsTiteu.enviar("pub-" + x.id);
       const { error } = await db.rpc("cw_pub_ajuste_titeu", { p_pub: x.id, p_nota: motivo.value, p_imagens: imgs });
       if (error) return erro(error);
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
-      alert("Pronto: o corte voltou para o Titeu com prioridade. Quando ficar pronto, ele volta para cá.");
+      alert(`Pronto: o vídeo voltou para o ${agenteIA} com prioridade. Quando ficar pronto, ele volta para cá.`);
     }
     async function mudar(acao) {
       const { error } = await db.rpc("cw_pub_mudar", { p_id: x.id, p_acao: acao });
@@ -3853,12 +3854,12 @@
         h("div", { class: "acoes" },
           h("button", { class: "botao amarelo", onclick: () => decidir(true) }, "Aprovar"),
           h("button", { class: "botao perigo", onclick: () => decidir(false) }, "Recusar"),
-          x.editor_slug === "esteira" && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao Titeu"),
+          x.editor_slug === "esteira" && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao " + agenteIA),
           h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar"))]
       : [!aguardando && x.legenda && h("div", { class: "campos" }, h("dl", {}, h("dt", {}, "Legenda"), h("dd", {}, x.legenda))),
          pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) ? caixaMotivo : null, msg,
          h("div", { class: "acoes" },
-           pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao Titeu"),
+           pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao " + agenteIA),
            pode && x.estado === "aprovado" && h("button", { class: "botao leve", onclick: () => mudar("voltar") }, "Voltar para aprovação"),
            pode && x.estado === "erro" && h("button", { class: "botao amarelo", onclick: () => mudar("tentar") }, "Tentar de novo"),
            pode && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao perigo peq", onclick: () => mudar("cancelar") }, "Cancelar"),
@@ -4425,7 +4426,7 @@
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
         const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: true }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
         $("#detalhe").close(); desenharEsteira(); } }, "✅ Aprovar e mandar para a Publicação")),
-      h("label", {}, "Ou peça uma melhoria (o Titeu refaz este corte e confere se ficou como você pediu)", nota), prints.el, msg,
+      h("label", {}, linhaEst() === "reels" ? "Ou peça uma melhoria (o FabI.Ano refaz este reel e confere se ficou como você pediu)" : "Ou peça uma melhoria (o Titeu refaz este corte e confere se ficou como você pediu)", nota), prints.el, msg,
       h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: async () => {
         const imgs = await prints.enviar("corte-" + c.id);
         const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: false, p_nota: nota.value, p_imagens: imgs }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
@@ -4567,7 +4568,7 @@
     const t = h("textarea", { style: "min-height:90px", placeholder: "O que mudar e em que momento (ex.: de 0:18 a 0:29 a câmera corta quem fala; começar 2 s depois)…" });
     const prints = campoPrints();
     encher($("#detalhe-corpo"), h("h2", {}, "Pedir ajuste"), h("p", { class: "nota", style: "margin:0" }, `${c.ordem}. ${c.titulo}`), h("label", {}, "Ajuste", t), prints.el,
-      h("p", { class: "nota", style: "margin:0" }, "O corte volta para a frente da fila. Depois de refazer, o Titeu tira quadros do momento citado e confere se ficou como você pediu; quando acerta, isso vira lição para os próximos cortes."),
+      h("p", { class: "nota", style: "margin:0" }, (linhaEst() === "reels" ? "O reel volta para a frente da fila. Depois de refazer, o FabI.Ano" : "O corte volta para a frente da fila. Depois de refazer, o Titeu") + " tira quadros do momento citado e confere se ficou como você pediu; quando acerta, isso vira lição para os próximos cortes."),
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => { const imgs = await prints.enviar("corte-" + c.id); const { error } = await db.rpc("cw_esteira_ajuste", { p_corte: c.id, p_texto: t.value, p_imagens: imgs });
         if (error) return alert(error.message); $("#detalhe").close(); desenharEsteira(); } }, "Mandar de volta para a produção"),
         h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
