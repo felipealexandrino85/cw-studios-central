@@ -448,6 +448,12 @@
     main { padding-block: 22px 48px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  .pub-capas { display: grid; gap: 6px; }
+  .pub-capas .grade { display: flex; gap: 10px; flex-wrap: wrap; }
+  .capa-op { width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 3px solid transparent; padding: 0; overflow: hidden; background: var(--surface-2); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 4px; font: inherit; color: inherit; }
+  .capa-op img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .capa-op.on { border-color: var(--amarelo, #FFB600); }
+  .capa-op.sem small { color: var(--texto-2, #777); }
 </style>
 </head>
 <body>
@@ -3657,8 +3663,9 @@
       botao.disabled = true; let ok = 0;
       for (const l of linhas) {
         l.st.textContent = "programando…";
+        const capa = (l.x.capas || [])[0] ? await linkCapa(l.x.capas[0].caminho) : {};   // em lote: a primeira capa da Capitu
         const { error } = await db.rpc("cw_pub_decidir", { p_id: l.x.id, p_aprovar: true, p_motivo: null, p_legenda: l.leg.value, p_titulo_youtube: l.tyt.value,
-          p_redes: redes, p_agendado_para: l.quando.value ? new Date(l.quando.value).toISOString() : null, p_opcoes: {} });
+          p_redes: redes, p_agendado_para: l.quando.value ? new Date(l.quando.value).toISOString() : null, p_opcoes: capa });
         if (error) { l.st.textContent = "✗ " + error.message; l.st.style.color = "var(--critico-tx)"; l.det.open = true; } else { l.st.textContent = "✓ programado"; ok++; }
       }
       if (linhas.some((l) => !l.quando.value)) dispararRobo("publicar");
@@ -3707,6 +3714,11 @@
     if (/\.mov$/i.test(x.arquivo || "") && x.tamanho > 250e6) a.push(["Arquivo .mov grande: o envio às redes pode demorar", "tom-neutro"]);
     return a;
   }
+  // link da capa para o robô (o Instagram baixa a imagem por URL): vale 7 dias, o bastante para posts agendados
+  async function linkCapa(caminho) {
+    const { data } = await db.storage.from("oficina").createSignedUrl(caminho, 7 * 24 * 3600);
+    return data && data.signedUrl ? { capa: caminho, capa_url: data.signedUrl } : { capa: caminho };
+  }
   function cartaoPub(x) {
     const [rot, tom] = ESTADO_PUB[x.estado] || [x.estado, "tom-neutro"];
     const pv = x.prevoo || {};
@@ -3738,6 +3750,19 @@
     const tyt = h("input", { id: "pub-tyt", maxlength: 100, value: x.titulo_youtube || x.titulo });
     const quando = h("input", { id: "pub-quando", type: "datetime-local" });
     if (x.agendado_para) { const d = new Date(x.agendado_para); quando.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+    // capa: as que a Capitu fez para este corte; quem aprova escolhe (vai como capa do Reels e miniatura do YouTube)
+    const capas = x.capas || [];
+    let capaEscolhida = (x.opcoes || {}).capa !== undefined ? (x.opcoes || {}).capa : ((capas[0] || {}).caminho || "");
+    const capaOpcoes = [];
+    const marcaCapa = () => capaOpcoes.forEach(([cam, el]) => el.classList.toggle("on", cam === capaEscolhida));
+    const capaBox = capas.length ? h("div", { class: "pub-capas" }, h("span", { class: "nota" }, "Capa (feita pela Capitu): toque para escolher"),
+      h("div", { class: "grade" }, capas.map((c) => { const img = h("img", { alt: "Capa " + (c.nome || "") });
+          db.storage.from("oficina").createSignedUrl(c.caminho, 3600).then(({ data }) => { if (data) img.src = data.signedUrl; });
+          const el = h("button", { type: "button", class: "capa-op", onclick: () => { capaEscolhida = c.caminho; marcaCapa(); } }, img);
+          capaOpcoes.push([c.caminho, el]); return el; }),
+        (() => { const el = h("button", { type: "button", class: "capa-op sem", onclick: () => { capaEscolhida = ""; marcaCapa(); } }, "Sem capa", h("small", {}, "quadro do vídeo"));
+          capaOpcoes.push(["", el]); return el; })())) : null;
+    setTimeout(marcaCapa, 0);
     const ttTravado = !(PUB.situacao || {}).tiktok_publico;   // até o TikTok aprovar o app, ele só posta em conta privada
     const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" });
       c.checked = (x.redes || []).includes(k) && !(k === "tiktok" && ttTravado); if (k === "tiktok" && ttTravado) c.disabled = true;
@@ -3789,10 +3814,11 @@
         if (longoDemais) return erro("O vídeo é longo demais para o TikTok desta conta: desmarque o TikTok.");
       }
       if (aprovar && destino.value !== x.destino) { const r = await db.rpc("cw_pub_destino", { p_pub: x.id, p_destino: destino.value }); if (r.error) return erro(r.error); }
+      const capa = aprovar && capaEscolhida ? await linkCapa(capaEscolhida) : {};
       const { error } = await db.rpc("cw_pub_decidir", { p_id: x.id, p_aprovar: aprovar, p_motivo: motivo.value, p_legenda: legenda.value,
         p_titulo_youtube: tyt.value, p_redes: redes, p_agendado_para: quando.value ? new Date(quando.value).toISOString() : null,
-        p_opcoes: { tiktok: { privacidade: ttPriv.value, comentarios: ttCom.checked, dueto: ttDue.checked, stitch: ttSti.checked,
-          sua_marca: ttSua.checked, conteudo_marca: ttParc.checked, aceite: ttAce.checked } } });
+        p_opcoes: Object.assign({ tiktok: { privacidade: ttPriv.value, comentarios: ttCom.checked, dueto: ttDue.checked, stitch: ttSti.checked,
+          sua_marca: ttSua.checked, conteudo_marca: ttParc.checked, aceite: ttAce.checked } }, capa) });
       if (error) return erro(error);
       if (aprovar && !quando.value) dispararRobo("publicar");   // o Chico posta agora, sem esperar a próxima passada
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
@@ -3847,6 +3873,7 @@
         h("fieldset", { style: "border:0;padding:0;margin:0;display:flex;gap:14px;flex-wrap:wrap" }, h("legend", { class: "nota" }, "Postar em"),
           caixas.map(([c, nome]) => h("label", { class: "check", style: "display:inline-flex;flex-direction:row;gap:6px;align-items:center;white-space:nowrap" }, c, nome))),
         ttBox,
+        capaBox,
         h("label", { for: "pub-quando" }, "Quando postar (vazio = na próxima passada do robô)", quando),
         h("label", { for: "pub-destino" }, "Pasta da sprint (contagem dos vídeos feitos com IA)", destino),
         caixaMotivo, msg,
