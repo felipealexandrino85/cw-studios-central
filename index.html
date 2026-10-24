@@ -454,6 +454,8 @@
   .capa-op img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .capa-op.on { border-color: var(--amarelo, #FFB600); }
   .capa-op.sem small { color: var(--texto-2, #777); }
+  .capa-op { position: relative; }
+  .capa-ver { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 999px; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -3750,19 +3752,47 @@
     const tyt = h("input", { id: "pub-tyt", maxlength: 100, value: x.titulo_youtube || x.titulo });
     const quando = h("input", { id: "pub-quando", type: "datetime-local" });
     if (x.agendado_para) { const d = new Date(x.agendado_para); quando.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
-    // capa: as que a Capitu fez para este corte; quem aprova escolhe (vai como capa do Reels e miniatura do YouTube)
-    const capas = x.capas || [];
+    // capa: pedida aqui na Publicação (botão "Gerar capa"); a Capitu faz e as opções aparecem; quem aprova escolhe uma
+    let capas = x.capas || [];
     let capaEscolhida = (x.opcoes || {}).capa !== undefined ? (x.opcoes || {}).capa : ((capas[0] || {}).caminho || "");
-    const capaOpcoes = [];
+    const capaOpcoes = [], gradeCapas = h("div", { class: "grade" }), statusCapa = h("span", { class: "nota" });
     const marcaCapa = () => capaOpcoes.forEach(([cam, el]) => el.classList.toggle("on", cam === capaEscolhida));
-    const capaBox = capas.length ? h("div", { class: "pub-capas" }, h("span", { class: "nota" }, "Capa (feita pela Capitu): toque para escolher"),
-      h("div", { class: "grade" }, capas.map((c) => { const img = h("img", { alt: "Capa " + (c.nome || "") });
+    function desenharCapas() {
+      capaOpcoes.length = 0;
+      encher(gradeCapas, capas.map((c) => { const img = h("img", { alt: "Capa " + (c.nome || "") });
           db.storage.from("oficina").createSignedUrl(c.caminho, 3600).then(({ data }) => { if (data) img.src = data.signedUrl; });
-          const el = h("button", { type: "button", class: "capa-op", onclick: () => { capaEscolhida = c.caminho; marcaCapa(); } }, img);
+          const el = h("button", { type: "button", class: "capa-op", title: "Usar esta capa", onclick: () => { capaEscolhida = c.caminho; marcaCapa(); } }, img,
+            h("a", { class: "capa-ver", href: "#", onclick: async (ev) => { ev.preventDefault(); ev.stopPropagation();
+              const { data } = await db.storage.from("oficina").createSignedUrl(c.caminho, 3600); if (data) window.open(data.signedUrl, "_blank", "noopener"); } }, "ver"));
           capaOpcoes.push([c.caminho, el]); return el; }),
-        (() => { const el = h("button", { type: "button", class: "capa-op sem", onclick: () => { capaEscolhida = ""; marcaCapa(); } }, "Sem capa", h("small", {}, "quadro do vídeo"));
-          capaOpcoes.push(["", el]); return el; })())) : null;
-    setTimeout(marcaCapa, 0);
+        capas.length ? (() => { const el = h("button", { type: "button", class: "capa-op sem", onclick: () => { capaEscolhida = ""; marcaCapa(); } }, "Sem capa", h("small", {}, "quadro do vídeo"));
+          capaOpcoes.push(["", el]); return el; })() : null);
+      marcaCapa();
+    }
+    let vigiaCapa = null;
+    async function acompanharCapa() {
+      const { data } = await db.from("agente_tarefas").select("id,estado,etapa,erro").eq("publicacao_id", x.id).order("id", { ascending: false }).limit(1);
+      const t = (data || [])[0];
+      if (!t) { statusCapa.textContent = capas.length ? "" : "Ainda sem capa para este corte."; return; }
+      if (["na_fila", "rodando"].includes(t.estado)) {
+        statusCapa.textContent = t.estado === "na_fila" ? "⏳ Na fila da Capitu…" : "🎨 A Capitu está fazendo a capa" + (t.etapa ? ": " + t.etapa : "…");
+        botaoCapa.disabled = true; clearTimeout(vigiaCapa); vigiaCapa = setTimeout(() => { if ($("#detalhe").open) acompanharCapa(); }, 8000); return;
+      }
+      botaoCapa.disabled = false;
+      if (t.estado === "erro") { statusCapa.textContent = "✗ A Capitu não conseguiu: " + (t.erro || "erro"); return; }
+      const { data: p } = await db.from("publicacoes").select("capas").eq("id", x.id).single();   // capa pronta: entra no card
+      if (p && JSON.stringify(p.capas || []) !== JSON.stringify(capas)) { capas = p.capas || []; x.capas = capas; capaEscolhida = (capas[0] || {}).caminho || ""; desenharCapas(); }
+      statusCapa.textContent = capas.length ? "Toque na capa para escolher (a borda amarela é a que vai)." : "";
+    }
+    const botaoCapa = h("button", { type: "button", class: "botao leve peq", onclick: async () => {
+      const { error } = await db.rpc("cw_pub_gerar_capa", { p_pub: x.id });
+      if (error) { statusCapa.textContent = "✗ " + error.message; return; }
+      statusCapa.textContent = "⏳ Pedido enviado para a Capitu…"; botaoCapa.disabled = true; acompanharCapa();
+    } }, capas.length ? "🎨 Gerar outra capa" : "🎨 Gerar capa com a Capitu");
+    const capaBox = x.editor_slug === "esteira" ? h("div", { class: "pub-capas" },
+      h("div", { class: "acoes", style: "justify-content:space-between;align-items:center" }, h("b", {}, "Capa"), botaoCapa),
+      gradeCapas, statusCapa) : null;
+    desenharCapas(); if (capaBox) acompanharCapa();
     const ttTravado = !(PUB.situacao || {}).tiktok_publico;   // até o TikTok aprovar o app, ele só posta em conta privada
     const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" });
       c.checked = (x.redes || []).includes(k) && !(k === "tiktok" && ttTravado); if (k === "tiktok" && ttTravado) c.disabled = true;
