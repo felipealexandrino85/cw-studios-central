@@ -670,6 +670,12 @@
     <div id="reels-corpo" style="display:grid;gap:16px"></div>
   </section>
 
+  <section id="aba-canal2" hidden>
+    <header class="cabeca" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><canvas id="zeca-retrato" width="22" height="35" style="width:66px;height:105px;image-rendering:pixelated;flex:none" aria-hidden="true"></canvas><div style="flex:1 1 280px;min-width:0"><p class="kicker">Segundo canal do CW Cast</p><h1>Zeca</h1>
+      <p class="sub">Usa os mesmos episódios do podcast, mas escolhe OUTROS momentos (os que o canal oficial não cortou) e edita no estilo do canal 2: legenda discreta, frases animadas sobre a câmera e imagens da internet. Os cortes dele não aparecem no Titeu.</p></div></header>
+    <div id="canal2-corpo" style="display:grid;gap:16px"></div>
+  </section>
+
   <section id="aba-esteira" hidden>
     <header class="cabeca" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><canvas id="titeu-retrato" width="22" height="35" style="width:66px;height:105px;image-rendering:pixelated;flex:none" aria-hidden="true"></canvas><div style="flex:1 1 280px;min-width:0"><p class="kicker">Esteira de cortes</p><h1>Titeu</h1>
       <p class="sub">O episódio que cai em “1. ENVIE AQUI › Podcast” é preparado sozinho no servidor (transcrição e mapa). Depois é só pedir os cortes: o Claude escolhe os momentos, você confere a lista e eles são produzidos em paralelo, caindo um a um na Publicação.</p></div></header>
@@ -871,10 +877,10 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]],
              ["Gestão", [["relatorio", "Relatório"], ["agentes", "Oficina"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
-    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Oficina"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Oficina"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]]],
+    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Oficina"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Oficina"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
   };
   const EXTRAS = { gestor: ["pedir", "escritorio", "padrao", "kit"], producao: ["pedir"], editor: [], solicitante: [] };   // abas sem item no menu
@@ -895,6 +901,7 @@
     servidor: "M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01",
     esteira: "M3 17h18M5 17V9l4 3V9l4 3V9l4 3v5M7 21h.01M12 21h.01M17 21h.01",
     reels: "M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM10 9l5 3-5 3z",
+    canal2: "M4 7h16v10H4zM8 21h8M12 17v4M9 10l5 2-5 2z",
     agentes: "M12 3v3M7 8h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3zM9 13h.01M15 13h.01M9.5 17h5M2 13v2M22 13v2",
     conhecimento: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-1.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
@@ -1152,7 +1159,7 @@
   }
 
   function desenhar() {
-    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, reels: desenharEsteira, inicio: desenharInicio, aovivo: () => { desenharAoVivo(); carregarTiteu().then(() => { if (aba === "aovivo") desenharAoVivo(); }); }, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, cast: abrirCast,
+    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, canal2: desenharEsteira, reels: desenharEsteira, inicio: desenharInicio, aovivo: () => { desenharAoVivo(); carregarTiteu().then(() => { if (aba === "aovivo") desenharAoVivo(); }); }, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1868,9 +1875,9 @@
             hoje: cs.filter((x) => x.estado === "entregue" && x.terminado && new Date(x.terminado) >= hoje0).length,
             conferir: (el.data || []).filter((x) => (x.linha || "cortes") === ln).length, preparando: (ee.data || []).filter((x) => (x.linha || "cortes") === ln).length,
             previas: cs.filter((x) => x.estado === "previa").length }; };
-        SALA.est = contar("cortes"); SALA.estR = contar("reels");
+        SALA.est = contar("cortes"); SALA.estR = contar("reels"); SALA.estZ = contar("canal2");
         // agente que trabalha quando um vídeo fica pronto (a Capitu, das capas): mesa própria na Edição
-        const { data: capAg } = await db.from("agentes").select("id,nome,visual").eq("ativo", true).eq("trabalha", true).eq("gatilho", "video").order("id").limit(1);
+        const { data: capAg } = await db.from("agentes").select("id,nome,visual").eq("ativo", true).eq("trabalha", true).or("gatilho.eq.video,papel.eq.design").order("id").limit(1);
         SALA.capista = (capAg || [])[0] || null;
         if (SALA.capista) {
           const { data: ts } = await db.from("agente_tarefas").select("estado,terminado").eq("agente_id", SALA.capista.id).in("estado", ["na_fila", "rodando", "previa", "aprovada", "entregue"]).order("id", { ascending: false }).limit(300);
@@ -2052,6 +2059,7 @@
   // Doti: analista de desempenho dos cortes no Instagram (toda segunda às 9h)
   const FABIA = { cabelo: "#2b1d14", pele: "#e0a97f", camisa: "#a543fa", calca: "#2a2a33", estilo: 0, acessorio: "oculos", barba: "curta" };
   const TITEU = { cabelo: "#1c1c28", pele: "#c98a5e", camisa: "#ffb800", calca: "#2a2a33", estilo: 4, acessorio: "fone", barba: "curta" };
+  const ZECA = { cabelo: "#3a2a1c", pele: "#d9a27a", camisa: "#3cff8c", calca: "#1e1e26", estilo: 2, acessorio: "bone", barba: "cavanhaque" };   // canal 2 (verde-neon)
   const LIA = { cabelo: "#1f1a2e", pele: "#8d5a3b", camisa: "#2f8f5b", calca: "#2a2a33", estilo: 3, acessorio: "oculos", feminino: true };
   const BIA = { cabelo: "#c58b4b", pele: "#e0a97f", camisa: "#ff6b5b", calca: "#3b4a6b", estilo: 2, acessorio: "fone", feminino: true };
   const cadeiraCostas = () => sprite("cadeira", 20, 13, (p) => { p(2, 0, 16, 8, "#4067c4"); p(2, 0, 16, 2, "#5a82dc"); p(14, 2, 4, 6, "#3355a6"); p(8, 8, 4, 3, "#2d3448"); p(4, 11, 12, 2, "#2d3448"); });
@@ -2197,8 +2205,8 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }].concat(SALA.capista ? [{ slug: "__capista", nome: SALA.capista.nome, npc: "capista" }] : []))), cv = $("#sala-canvas"), T = TILE;
-    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu"), mesaFabia = P.mesas.find((m) => m.ed.npc === "fabia"), mesaCapa = P.mesas.find((m) => m.ed.npc === "capista");
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }, { slug: "__zeca", nome: "Zeca", npc: "zeca" }].concat(SALA.capista ? [{ slug: "__capista", nome: SALA.capista.nome, npc: "capista" }] : []))), cv = $("#sala-canvas"), T = TILE;
+    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu"), mesaFabia = P.mesas.find((m) => m.ed.npc === "fabia"), mesaCapa = P.mesas.find((m) => m.ed.npc === "capista"), mesaZeca = P.mesas.find((m) => m.ed.npc === "zeca");
     P.mesas = P.mesas.filter((m) => !m.ed.npc);   // as mesas dos agentes (Zé Algoritmo e Doti) na Edição
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
@@ -2345,7 +2353,7 @@
     P.salas.forEach((s) => { c.font = `800 ${5.4 * SC}px Inter, system-ui, sans-serif`; const lw = c.measureText(s.nome).width / SC + 10;
       px(s.x + s.w / 2 - lw / 2, s.y - 12, lw, 11, "#2a2440"); txt(s.nome, s.x + s.w / 2, s.y - 4.2, 5.4, "#ffffff", 800); });
     // ---- mesas da edição (uma por editor) e os bonequinhos
-    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }, { agente: "bia", x: mesaBia.x - 22, y: mesaBia.y - 18, w: 44, h: 50 }, { titeu: true, x: mesaTiteu.x - 22, y: mesaTiteu.y - 18, w: 44, h: 50 }, { fabia: true, x: mesaFabia.x - 22, y: mesaFabia.y - 18, w: 44, h: 50 }];
+    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }, { agente: "bia", x: mesaBia.x - 22, y: mesaBia.y - 18, w: 44, h: 50 }, { titeu: true, x: mesaTiteu.x - 22, y: mesaTiteu.y - 18, w: 44, h: 50 }, { fabia: true, x: mesaFabia.x - 22, y: mesaFabia.y - 18, w: 44, h: 50 }].concat(mesaZeca ? [{ zeca: true, x: mesaZeca.x - 22, y: mesaZeca.y - 18, w: 44, h: 50 }] : []);
     const pessoas = [];
     // cada um que não está trabalhando ganha um lugar fixo (o mesmo enquanto ficar assim): quem está online vai jogar,
     // tomar café ou mexer no celular; quem está fora cochila nos sofás e poltronas
@@ -2390,6 +2398,12 @@
       for (let k = 0; k < 6; k++) px(mx - 9 + ((k * 4 + (ativo ? f : 0)) % 18), my - 5, 1, 1, "#e8e2d6");
       for (let k = 0; k < 3; k++) px(mx - 8 + ((k * 6 + (ativo ? f : 0)) % 16), my - 11, 4, 5, ["#ffb800", "#a543fa", "#ff6b5b"][k]);   // quadros
       if (ativo && f % 8 < 4) { px(mx + 1, my - 13, 1, 9, "#ffffff"); px(mx, my - 13, 3, 1, "#ff4d4d"); }   // a tesoura cortando
+    }
+    if (mesaZeca) {   // Zeca, canal 2: monitor com a palavra em verde-neon piscando quando trabalha
+      const mx = mesaZeca.x, my = mesaZeca.y, EZ = SALA.estZ || {}, ativo = (EZ.produzindo || 0) + (EZ.preparando || 0) > 0;
+      c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
+      px(mx - 9, my - 14, 18, 11, ativo ? "#101418" : "#24203a");
+      px(mx - 7, my - 11, 10, 2, ativo && f % 6 < 4 ? "#3cff8c" : "#2c5a3e"); px(mx - 7, my - 8, 6, 1, "#e8e2d6"); px(mx - 7, my - 6, 12, 1, "#e8e2d6");
     }
     {   // FabI.Ano, os reels: monitor com um celular vertical e as pílulas da marca subindo quando trabalha
       const mx = mesaFabia.x, my = mesaFabia.y, E3 = SALA.estR || {}, ativo = (E3.produzindo || 0) + (E3.preparando || 0) > 0;
@@ -2476,6 +2490,12 @@
     px(fab.x - 7, fab.y, 14, 2, "#00000026");
     c.drawImage(bonecoCostas(FABIA, fabAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (fab.x - 11) * SC, (fab.y - 24) * SC, 22 * SC, 27 * SC);
     c.drawImage(cadeiraCostas(), (fab.x - 10) * SC, (fab.y - 6) * SC, 20 * SC, 13 * SC);
+    if (mesaZeca) {
+      const zc = { x: mesaZeca.x, y: mesaZeca.y + 22 }, zcAtivo = ((SALA.estZ || {}).produzindo || 0) + ((SALA.estZ || {}).preparando || 0) > 0;
+      px(zc.x - 7, zc.y, 14, 2, "#00000026");
+      c.drawImage(bonecoCostas(ZECA, zcAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (zc.x - 11) * SC, (zc.y - 24) * SC, 22 * SC, 27 * SC);
+      c.drawImage(cadeiraCostas(), (zc.x - 10) * SC, (zc.y - 6) * SC, 20 * SC, 13 * SC);
+    }
     if (mesaCapa) {
       const cp = { x: mesaCapa.x, y: mesaCapa.y + 22 }, cpAtivo = ((SALA.capas || {}).rodando || 0) > 0;
       px(cp.x - 7, cp.y, 14, 2, "#00000026");
@@ -2550,6 +2570,20 @@
         c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
         const sE = P.salas[4], bwT = c.measureText(falaT).width / SC + 10, bxT = Math.max(sE.x + 2, Math.min(t2.x - bwT / 2, sE.x + sE.w - bwT - 2)), byT = t2.y - 50, corT = E2.conferir || E2.previas ? "#ffb800" : "#ffffff";
         px(bxT, byT, bwT, 11, corT); px(t2.x - 1, byT + 11, 3, 2, corT); txt(falaT, bxT + bwT / 2, byT + 8, 4.6, "#2a1b40", 600);
+      }
+    }
+    if (mesaZeca) {   // Zeca: plaquinha e balão
+      const t5 = { x: mesaZeca.x, y: mesaZeca.y + 22 }, E5 = SALA.estZ || {};
+      c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
+      const lwZ = c.measureText("Zeca").width / SC + 12;
+      px(t5.x - lwZ / 2, t5.y + 6, lwZ, 10, "#2a2440"); px(t5.x - lwZ / 2 + 3, t5.y + 9.5, 4, 4, E5.produzindo ? "#4cd07d" : "#3cff8caa");
+      txt("Zeca", t5.x + 2.5, t5.y + 13.6, 4.8, "#ffffff", 700);
+      const falaZ = E5.previas ? `👀 ${E5.previas} corte${E5.previas > 1 ? "s" : ""} p/ aprovar` : E5.conferir ? `👀 ${E5.conferir} lista p/ conferir` : E5.produzindo ? `✂️ cortando ${E5.produzindo}`
+        : E5.hoje ? `✅ ${E5.hoje} corte${E5.hoje > 1 ? "s" : ""} hoje` : (f % 320 < 80 ? "🎬 canal 2 no ar" : null);
+      if (falaZ && SALA.estZ) {
+        c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
+        const sE = P.salas[4], bw = c.measureText(falaZ).width / SC + 10, bx = Math.max(sE.x + 2, Math.min(t5.x - bw / 2, sE.x + sE.w - bw - 2)), by = t5.y - 50, cor = E5.previas || E5.conferir ? "#ffb800" : "#ffffff";
+        px(bx, by, bw, 11, cor); px(t5.x - 1, by + 11, 3, 2, cor); txt(falaZ, bx + bw / 2, by + 8, 4.6, "#2a1b40", 600);
       }
     }
     if (mesaCapa) {   // agente das capas: plaquinha e balão
@@ -3177,6 +3211,7 @@
     if (alvo.seo) return abrirChatZe();
     if (alvo.titeu) return trocarAba("esteira");
     if (alvo.fabia) return trocarAba("reels");
+    if (alvo.zeca) return trocarAba("canal2");
     if (alvo.ed.slug === meuSlug()) return abrirChatSala();   // o editor clica no próprio bonequinho (ou mesa) e conversa com o Claude dele
     const st = estadoSala(alvo.ed);
     const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
@@ -4336,18 +4371,20 @@
     previa: ["Prévia: aprovar", "tom-aviso"], aprovado: ["Indo para a Publicação", "tom-ok"],
     entregue: ["Na Publicação", "tom-ok"], reprovado: ["Reprovado no QC", "tom-critico"], erro: ["Erro", "tom-critico"] };
   const mmss = (x) => { x = Math.round(+x || 0); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`; };
-  const linhaEst = () => aba === "reels" ? "reels" : "cortes";
-  const corpoEst = () => $(linhaEst() === "reels" ? "#reels-corpo" : "#est-corpo");
+  const linhaEst = () => aba === "reels" ? "reels" : aba === "canal2" ? "canal2" : "cortes";
+  const corpoEst = () => $({ reels: "#reels-corpo", canal2: "#canal2-corpo" }[linhaEst()] || "#est-corpo");
+  const nomeLinha = (ln) => ({ reels: "FabI.Ano", canal2: "Zeca" }[ln || linhaEst()] || "Titeu");
   async function desenharEsteira() {
     { const cv = $("#titeu-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(TITEU, 0), 0, 0); cv.dataset.ok = "1"; } }
     { const cv = $("#fabiano-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(FABIA, 0), 0, 0); cv.dataset.ok = "1"; } }
+    { const cv = $("#zeca-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(ZECA, 0), 0, 0); cv.dataset.ok = "1"; } }
     const linha = linhaEst();
     clearInterval(EST.timer);
     EST.timer = setInterval(() => { const a = document.activeElement;
-      if (!["esteira", "reels"].includes(aba)) return clearInterval(EST.timer);
-      if (!document.hidden && !(a && a.closest && a.closest("#est-corpo, #reels-corpo") && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !$("#detalhe").open) desenharEsteira(); }, 10000);
+      if (!["esteira", "reels", "canal2"].includes(aba)) return clearInterval(EST.timer);
+      if (!document.hidden && !(a && a.closest && a.closest("#est-corpo, #reels-corpo, #canal2-corpo") && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !$("#detalhe").open) desenharEsteira(); }, 10000);
     const [eps, lotes, cortes, conta, ests] = await Promise.all([
-      db.from("esteira_episodios").select("*").eq("linha", linha).neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
+      db.from("esteira_episodios").select("*").eq("linha", linha === "canal2" ? "cortes" : linha).neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
       db.from("esteira_lotes").select("*").eq("linha", linha).order("id", { ascending: false }).limit(15),
       db.from("esteira_cortes").select("*").order("ordem").limit(600),
       eu.papel === "gestor" ? db.from("servidor_conta").select("estado").eq("editor_slug", "esteira").maybeSingle() : Promise.resolve({ data: { estado: "ok" } }),
@@ -4365,7 +4402,7 @@
         h("span", { class: "nota" }, [e.duracao_s ? "Duração " + mmss(e.duracao_s) : null, e.tamanho ? (e.tamanho / 1e9).toFixed(1) + " GB" : null, "chegou " + ha(e.criado)].filter(Boolean).join(" · ")),
         e.estado === "preparando" ? [barra(e.progresso), h("span", { class: "nota" }, e.etapa || "")] : null,
         e.estado === "erro" ? h("span", { class: "nota" }, e.erro || "") : null,
-        e.estado === "pronto" && linha === "cortes" ? h("button", { class: "botao amarelo peq", style: "justify-self:start", onclick: () => pedirCortes(e) }, "✂️ Gerar cortes") : null); };
+        e.estado === "pronto" && linha !== "reels" ? h("button", { class: "botao amarelo peq", style: "justify-self:start", onclick: () => pedirCortes(e) }, "✂️ Gerar cortes") : null); };
     const linhaCorte = (c) => { const [rot, tom] = ESTADO_CORTE[c.estado] || [c.estado, "tom-neutro"];
       const dur = c.iniciado && c.terminado ? Math.round((new Date(c.terminado) - new Date(c.iniciado)) / 1000) : null;
       return h("tr", {}, td(c.ordem, 1), h("td", { style: "min-width:200px" }, h("b", {}, c.titulo), h("div", { class: "nota" }, `${mmss(c.inicio)}–${mmss(c.fim)} · ${Math.round(c.fim - c.inicio)} s`),
@@ -4482,7 +4519,7 @@
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
         const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: true }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
         $("#detalhe").close(); desenharEsteira(); } }, "✅ Aprovar e mandar para a Publicação")),
-      h("label", {}, linhaEst() === "reels" ? "Ou peça uma melhoria (o FabI.Ano refaz este reel e confere se ficou como você pediu)" : "Ou peça uma melhoria (o Titeu refaz este corte e confere se ficou como você pediu)", nota), prints.el, msg,
+      h("label", {}, linhaEst() === "reels" ? "Ou peça uma melhoria (o FabI.Ano refaz este reel e confere se ficou como você pediu)" : `Ou peça uma melhoria (o ${nomeLinha()} refaz este corte e confere se ficou como você pediu)`, nota), prints.el, msg,
       h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: async () => {
         const imgs = await prints.enviar("corte-" + c.id);
         const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: false, p_nota: nota.value, p_imagens: imgs }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
@@ -4495,7 +4532,7 @@
   // referências de estilo: imagens e vídeos curtos (até 50 MB) + links de vídeo público (YouTube, Instagram, TikTok)
   const rotuloVer = (v, quem) => { const [rot, tom] = ESTADO_VER[v.estado] || [v.estado, "tom-neutro"];
     return [v.estado === "criando" ? `${quem} estudando` : v.estado === "testando" ? `${quem} testando` : rot, tom]; };
-  const quemEstilo = () => linhaEst() === "reels" ? "FabI.Ano" : "Titeu";
+  const quemEstilo = () => nomeLinha();
   function campoRefs() {
     const arquivos = [], lista = h("div", { class: "chips" });
     const pintar = () => encher(lista, arquivos.map((f, i) => h("span", { class: "chip tom-neutro" }, (f.type.startsWith("video/") ? "🎬 " : "🖼 ") + f.name,
@@ -4528,7 +4565,7 @@
     encher($("#detalhe-corpo"), h("h2", {}, x ? `✨ Melhorar "${x.nome}"` : "🎨 Criar estilo por referência"),
       x ? null : h("label", {}, "Nome do estilo", nome), x ? null : h("label", {}, "Partir de qual estilo (scripts, fontes e sons que ele já usa)", base),
       h("label", {}, x ? "O que mudar" : "Como deve ficar", pedido), refs.el,
-      h("p", { class: "nota", style: "margin:0" }, `O ${linhaEst() === "reels" ? "FabI.Ano" : "Titeu"} estuda as referências, escreve a versão nova do estilo e faz um corte de teste. Ela só passa a valer quando alguém aprovar o teste aqui em Estilos; a versão de hoje continua guardada.`),
+      h("p", { class: "nota", style: "margin:0" }, `O ${nomeLinha()} estuda as referências, escreve a versão nova do estilo e faz um corte de teste. Ela só passa a valer quando alguém aprovar o teste aqui em Estilos; a versão de hoje continua guardada.`),
       msg, h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async (ev) => {
         ev.target.disabled = true; msg.hidden = true;
         try {
@@ -4627,7 +4664,7 @@
     const t = h("textarea", { style: "min-height:90px", placeholder: "O que mudar e em que momento (ex.: de 0:18 a 0:29 a câmera corta quem fala; começar 2 s depois)…" });
     const prints = campoPrints();
     encher($("#detalhe-corpo"), h("h2", {}, "Pedir ajuste"), h("p", { class: "nota", style: "margin:0" }, `${c.ordem}. ${c.titulo}`), h("label", {}, "Ajuste", t), prints.el,
-      h("p", { class: "nota", style: "margin:0" }, (linhaEst() === "reels" ? "O reel volta para a frente da fila. Depois de refazer, o FabI.Ano" : "O corte volta para a frente da fila. Depois de refazer, o Titeu") + " tira quadros do momento citado e confere se ficou como você pediu; quando acerta, isso vira lição para os próximos cortes."),
+      h("p", { class: "nota", style: "margin:0" }, (linhaEst() === "reels" ? "O reel volta para a frente da fila. Depois de refazer, o FabI.Ano" : `O corte volta para a frente da fila. Depois de refazer, o ${nomeLinha()}`) + " tira quadros do momento citado e confere se ficou como você pediu; quando acerta, isso vira lição para os próximos cortes."),
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => { const imgs = await prints.enviar("corte-" + c.id); const { error } = await db.rpc("cw_esteira_ajuste", { p_corte: c.id, p_texto: t.value, p_imagens: imgs });
         if (error) return alert(error.message); $("#detalhe").close(); desenharEsteira(); } }, "Mandar de volta para a produção"),
         h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
@@ -4646,6 +4683,7 @@
   }
   const ROBOS_FIXOS = [
     { id: "fabiano-ia", nome: "FabI.Ano", missao: "Edita os reels da Cardápio Web no estilo do Fabiano", cores: () => FABIA, abrir: () => trocarAba("reels"), estilos: () => { EST.vista = "estilos"; trocarAba("reels"); }, papeis: ["gestor", "producao", "editor"] },
+    { id: "zeca", nome: "Zeca", missao: "Segundo canal do CW Cast: outros momentos dos episódios, edição básica com frases animadas", cores: () => ZECA, abrir: () => trocarAba("canal2"), estilos: () => { EST.vista = "estilos"; trocarAba("canal2"); }, papeis: ["gestor", "producao", "editor"] },
     { id: "titeu", nome: "Titeu", missao: "A esteira de cortes: prepara os episódios e produz os cortes em paralelo", cores: () => TITEU, abrir: () => trocarAba("esteira"), estilos: () => { EST.vista = "estilos"; trocarAba("esteira"); }, papeis: ["gestor", "producao", "editor"] },
     { id: "ze", nome: "Zé Algoritmo", missao: "SEO do YouTube do CW Cast (todo dia às 22h)", cores: () => ZE, abrir: () => abrirChatZe(), papeis: ["gestor", "producao"] },
     { id: "bia", nome: "Doti", missao: "Desempenho dos cortes no Instagram (segunda, 9h)", cores: () => BIA, abrir: () => abrirChatAgente("bia"), papeis: ["gestor", "producao", "editor"] },
