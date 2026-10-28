@@ -1001,7 +1001,8 @@
     await carregar();
     montarVerComo();
     montarNav(location.hash.slice(1));
-    setInterval(carregar, 20000);
+    setInterval(() => { if (!document.hidden) carregar(); }, 20000);   // aba esquecida em segundo plano não gasta tráfego
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) carregar(); });
     setInterval(atualizarAoVivo, 8000);
   }
   function mostrarEntrar(msg) {
@@ -1103,19 +1104,29 @@
   }
 
   // ---------------------------------------------------------------- dados (cada papel busca só o que o banco deixa ver)
+  let carregando = false;
   async function carregar() {
+    if (carregando) return;   // uma leva por vez (o timer e a volta da aba não se somam)
+    carregando = true;
+    try { await carregarAgora(); } finally { carregando = false; }
+  }
+  // o que muda pouco e pesa (relatório de 400 dias, kit com conteúdo) só vem de tempos em tempos ou quando a aba dele está aberta
+  const RECARGA = {};
+  const precisa = (chave, ms, abas) => { if (abas.includes(aba) || !RECARGA[chave] || Date.now() - RECARGA[chave] > ms) { RECARGA[chave] = Date.now(); return true; } return false; };
+  const IMG_PREVIA = {};
+  async function carregarAgora() {
     const p = eu.papel;
     const pedidos = [db.from("demandas").select("*").order("criado", { ascending: false }).limit(1000), db.from("editores").select("slug,nome,email,ativo,criado,jira_id,visual,interno,kit").order("nome")];
     const jiraPedido = p === "solicitante" ? null : Promise.all([db.from("jira_cards").select("*").eq("na_sprint", true).order("status_ordem").limit(1000),
                                                                 db.from("jira_sync").select("*").eq("id", 1).maybeSingle(),
-                                                                db.from("previas").select("editor_slug,trabalho_id,arquivo,imagem,ts").gte("ts", new Date(Date.now() - 3 * 864e5).toISOString())]);
+                                                                db.from("previas").select("editor_slug,trabalho_id,arquivo,ts").gte("ts", new Date(Date.now() - 3 * 864e5).toISOString())]);
     if (p === "gestor") {
       const desde = new Date(Date.now() - 400 * 864e5).toISOString();
-      pedidos.push(db.rpc("cw_ao_vivo"), db.from("edicoes").select("*").gte("aberto_em", desde).order("aberto_em", { ascending: false }).limit(5000),
+      pedidos.push(db.rpc("cw_ao_vivo"), precisa("edicoes", 120000, ["relatorio", "inicio"]) ? db.from("edicoes").select("*").gte("aberto_em", desde).order("aberto_em", { ascending: false }).limit(5000) : Promise.resolve({ data: D.edicoes }),
         db.from("gestores").select("email").order("email"),
         db.from("demanda_eventos").select("demanda_id,ts,categoria,detalhe").eq("tipo", "refazer").gte("ts", desde), db.rpc("cw_posicoes"),
         db.from("regras").select("*").order("id"), db.from("producao").select("email").order("email"),
-        db.from("kit_itens").select("*").order("enviado_em", { ascending: false }).limit(500));
+        precisa("kit", 300000, ["kit", "padrao"]) ? db.from("kit_itens").select("*").order("enviado_em", { ascending: false }).limit(500) : Promise.resolve({ data: D.kit }));
     } else if (p === "producao") {
       pedidos.push(db.rpc("cw_ao_vivo"));
     } else if (p === "editor") {
@@ -1138,7 +1149,13 @@
     }
     if (jiraPedido) {
       const [jc, js, pv] = await jiraPedido; D.jira = jc.data || []; D.jiraSync = js.data || null;
-      D.previas = Object.fromEntries((pv.data || []).map((x) => [x.editor_slug + "/" + x.trabalho_id, x]));
+      // a imagem (base64) só desce quando a prévia é nova ou mudou
+      const faltam = (pv.data || []).filter((x) => (IMG_PREVIA[x.editor_slug + "/" + x.trabalho_id] || {}).ts !== x.ts);
+      if (faltam.length) {
+        const { data: imgs } = await db.from("previas").select("editor_slug,trabalho_id,imagem,ts").in("trabalho_id", [...new Set(faltam.map((x) => x.trabalho_id))]);
+        for (const x of imgs || []) IMG_PREVIA[x.editor_slug + "/" + x.trabalho_id] = { ts: x.ts, imagem: x.imagem };
+      }
+      D.previas = Object.fromEntries((pv.data || []).map((x) => [x.editor_slug + "/" + x.trabalho_id, { ...x, imagem: (IMG_PREVIA[x.editor_slug + "/" + x.trabalho_id] || {}).imagem }]));
     }
     await carregarNotasDeAjuste();
     if (["gestor", "producao"].includes(p)) await carregarPublicacao();
@@ -3474,10 +3491,18 @@
   const ESTADO_PUB = { aguardando: ["Aguardando aprovação", "tom-aviso"], aprovado: ["Aprovado", "tom-ok"], postando: ["Postando", "tom-ok"],
     postado: ["Postado", "tom-ok"], recusado: ["Recusado", "tom-critico"], erro: ["Erro ao postar", "tom-critico"], cancelado: ["Cancelado", "tom-neutro"] };
   const podeAprovar = () => ["gestor", "producao"].includes(eu.papel);
+  const COLS_PUB = "id,programa,editor_slug,titulo,episodio,jira,legenda,titulo_youtube,redes,arquivo,pasta,drive_id,tamanho,duracao_s,agendado_para,estado,motivo,decidido_por,decidido_em,resultados,tentativas,erro,criado,atualizado,opcoes,enviado_por,prevoo,destino,sprint,sprint_copiado_em,sprint_caminho,capas";
+  const MINI_PUB = {};
   async function carregarPublicacao() {
     const [l, st] = await Promise.all([
-      db.from("publicacoes").select("*").order("id", { ascending: false }).limit(150), db.rpc("cw_pub_situacao")]);
-    PUB.lista = l.data || []; PUB.situacao = st.data || {}; PUB.carregado = Date.now();
+      db.from("publicacoes").select(COLS_PUB).order("id", { ascending: false }).limit(150), db.rpc("cw_pub_situacao")]);
+    const lista = l.data || [];
+    const faltam = lista.filter((x) => !MINI_PUB[x.id] || MINI_PUB[x.id].atualizado !== x.atualizado || !MINI_PUB[x.id].previa).map((x) => x.id);   // miniatura só do que mudou
+    for (let i = 0; i < faltam.length; i += 50) {
+      const { data } = await db.from("publicacoes").select("id,previa,atualizado").in("id", faltam.slice(i, i + 50));
+      for (const x of data || []) MINI_PUB[x.id] = { atualizado: x.atualizado, previa: x.previa };
+    }
+    PUB.lista = lista.map((x) => ({ ...x, previa: (MINI_PUB[x.id] || {}).previa || null })); PUB.situacao = st.data || {}; PUB.carregado = Date.now();
   }
   const quemMandou = (x) => nomeEditor(x.editor_slug) || (x.enviado_por ? x.enviado_por.split("@")[0] : "") || "editor";
   // ---- produção sobe cortes pela página: o vídeo vai do navegador direto para o Drive (conta Google de quem sobe)
@@ -4386,10 +4411,10 @@
     const [eps, lotes, cortes, conta, ests] = await Promise.all([
       db.from("esteira_episodios").select("*").eq("linha", linha === "canal2" ? "cortes" : linha).neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
       db.from("esteira_lotes").select("*").eq("linha", linha).order("id", { ascending: false }).limit(15),
-      db.from("esteira_cortes").select("*").order("ordem").limit(600),
+      db.from("esteira_cortes").select("*").order("id", { ascending: false }).limit(600),   // os mais novos (por ordem, os lotes novos sumiam depois de 600)
       eu.papel === "gestor" ? db.from("servidor_conta").select("estado").eq("editor_slug", "esteira").maybeSingle() : Promise.resolve({ data: { estado: "ok" } }),
       db.from("estilos").select("id,slug,nome,descricao,kit,item_id,ativo,padrao,linha,versao,base_id").eq("linha", linha).order("id")]);
-    const E = eps.data || [], L = (lotes.data || []).filter((l) => !l.teste_versao_id), C = cortes.data || [];   // testes de estilo aparecem em Estilos
+    const E = eps.data || [], L = (lotes.data || []).filter((l) => !l.teste_versao_id), C = (cortes.data || []).sort((a, b) => a.ordem - b.ordem);   // testes de estilo aparecem em Estilos
     EST.estilos = ests.data || [];
     const navEst = h("div", { class: "chips" }, [["cortes", linha === "reels" ? "🎬 Reels" : "✂️ Cortes"], ["estilos", "🎨 Estilos"]].map(([v, t]) =>
       h("button", { class: "chip" + (EST.vista === v ? " tom-ok" : ""), style: "cursor:pointer;border:0;font-size:14px;padding:6px 12px", onclick: () => { EST.vista = v; desenharEsteira(); } }, t)));
@@ -4409,7 +4434,8 @@
           c.ajuste ? h("div", { class: "nota" }, "Ajuste: " + c.ajuste) : null,
           c.prioridade > 0 && ["na_fila", "produzindo"].includes(c.estado) ? h("span", { class: "chip tom-aviso", style: "justify-self:start" }, "⚡ ajuste com prioridade") : null,
           c.ajuste_conferido ? h("span", { class: "chip " + (c.ajuste_conferido === "sim" ? "tom-ok" : "tom-critico"), style: "justify-self:start", title: c.ajuste_nota || "" },
-            (c.ajuste_conferido === "sim" ? "✅ ajuste conferido" : "❌ ajuste não atendido") + (c.ajuste_nota ? ": " + c.ajuste_nota.slice(0, 90) : "")) : null),
+            (c.ajuste_conferido === "sim" ? "✅ ajuste conferido" : "❌ ajuste não atendido") + (c.ajuste_nota ? ": " + c.ajuste_nota.slice(0, 90) : "")) : null,
+          c.ajuste_mudancas && !["na_fila", "produzindo"].includes(c.estado) ? h("div", { class: "nota" }, "Mudou: " + c.ajuste_mudancas) : null),
         td(h("span", { class: "chip " + tom }, rot)), td(c.estado === "produzindo" ? c.etapa || "" : c.erro || (dur ? `em ${duracao(dur)}` : "")),
         h("td", {}, c.publicacao_id ? h("a", { href: "#publicacao", onclick: (ev) => { ev.preventDefault(); trocarAba("publicacao"); } }, "P-" + String(c.publicacao_id).padStart(4, "0")) : null,
           c.estado === "previa" ? h("button", { class: "botao amarelo peq", onclick: () => verPrevia(c) }, "▶ Ver prévia") : null,
@@ -4420,7 +4446,7 @@
       const cab = h("div", { style: "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap" },
         h("div", {}, h("b", {}, `${epDe(l.episodio_id).nome} · ${l.quantidade} cortes`), h("div", { class: "nota" }, `pedido por ${l.pedido_por.split("@")[0]} ${ha(l.criado)}${l.instrucoes ? " · “" + l.instrucoes.slice(0, 80) + "”" : ""}`)),
         h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), est ? h("span", { class: "chip tom-neutro" }, "🎨 " + est.nome) : null,
-          l.higgs_orcamento ? h("span", { class: "chip tom-neutro" }, `Higgsfield até ${l.higgs_orcamento}`) : null,
+          h("span", { class: "chip tom-neutro", title: "Desde 28/10/2026 a esteira gera b-roll no Higgsfield sem limite por lote" }, "Higgsfield liberado"),
           prevs ? h("span", { class: "chip tom-aviso" }, `👀 ${prevs} prévia${prevs > 1 ? "s" : ""} para aprovar`) : null,
           ["selecionando", "conferir", "produzindo"].includes(l.estado) ? h("label", { class: "chip " + (l.auto_aprovar ? "tom-ok" : "tom-neutro"), style: "cursor:pointer;display:inline-flex;gap:6px;align-items:center", onclick: (ev) => ev.stopPropagation(),
             title: "Ligado: cada corte pronto vai direto para a Publicação; lá dá para pedir ajuste ao Titeu" },
@@ -4479,15 +4505,45 @@
       h("label", {}, "O que priorizar", instr),
       h("label", { class: "check", style: "display:flex;gap:8px;align-items:center" }, auto, "Aprovar as prévias sozinho (cada corte pronto vai direto para a Publicação; lá dá para pedir ajuste)"), msg,
       h("p", { class: "nota", style: "margin:0" }, "O Claude escolhe os momentos e a lista volta aqui para você conferir antes de produzir."),
-      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: umaVez(async () => {
         const { data: novo, error } = await db.rpc("cw_esteira_pedir", { p_episodio: e.id, p_quantidade: +qtd.value || 15, p_instrucoes: instr.value, p_kit: "cw-cast",
           p_estilo: estilo.value ? +estilo.value : null, p_higgs: +higgs.value || 0 });
-        if (!error && auto.checked) await db.rpc("cw_esteira_auto", { p_lote: novo, p_ligar: true });
         if (error) { msg.hidden = false; msg.textContent = error.message; return; }
-        $("#detalhe").close(); desenharEsteira(); } }, "Pedir"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+        if (auto.checked) { const r = await db.rpc("cw_esteira_auto", { p_lote: novo, p_ligar: true }); if (r.error) { msg.hidden = false; msg.textContent = "Lote criado, mas a aprovação automática não ligou: " + r.error.message; return; } }
+        $("#detalhe").close(); desenharEsteira(); }) }, "Pedir"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
     $("#detalhe").showModal();
   }
   // prints anexados ao pedido de ajuste (escolher arquivo ou colar com Ctrl+V); sobem para o bucket privado "ajustes"
+  // ajuste cirúrgico (28/10/2026): um item por pedido, com a área e o momento; o servidor mexe só nisso e trava o resto
+  const AREAS_AJUSTE = [["", "Área (automático)"], ["b-roll", "B-roll (vídeos de apoio)"], ["imagens", "Imagens/frases do motion"], ["legenda", "Legenda"],
+    ["headline", "Headline / gancho"], ["áudio", "Áudio / volume"], ["trilha", "Trilha"], ["enquadramento", "Enquadramento / câmera"],
+    ["início/fim", "Início, fim ou tirar fala"], ["fonte", "Fonte / @"], ["outro", "Outro"]];
+  // botão que dispara uma ação no banco: fica desligado até terminar (duplo clique criava lote duplicado)
+  const umaVez = (fn) => async (ev) => { const b = ev.currentTarget; if (b.disabled) return; b.disabled = true; try { await fn(ev); } finally { b.disabled = false; } };
+  function campoAjuste() {
+    const lista = h("div", { style: "display:grid;gap:8px" });
+    const linhas = [];
+    const novo = () => {
+      const area = h("select", { "aria-label": "Área" }, AREAS_AJUSTE.map(([v, t]) => h("option", { value: v }, t)));
+      const momento = h("input", { placeholder: "Momento (ex.: 0:12 ou 0:18–0:29)", "aria-label": "Momento", style: "min-width:0" });
+      const pedido = h("textarea", { placeholder: "O que mudar (ex.: b-roll sem relação com a fala, troque por um vídeo de motoboy entregando)", style: "min-height:56px" });
+      const linha = { area, momento, pedido };
+      const tirar = h("button", { type: "button", class: "botao leve peq", "aria-label": "Tirar item", onclick: () => { linhas.splice(linhas.indexOf(linha), 1); caixa.remove(); } }, "✕");
+      const caixa = h("div", { class: "card", style: "display:grid;gap:6px;padding:10px;min-width:0" },
+        h("div", { style: "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:6px" }, area, momento, tirar), pedido);
+      linhas.push(linha); lista.append(caixa); pedido.focus();
+    };
+    novo();
+    const el = h("div", { style: "display:grid;gap:6px" }, lista,
+      h("button", { type: "button", class: "botao leve peq", style: "justify-self:start", onclick: novo }, "+ outro item"),
+      h("span", { class: "nota" }, "Um item por mudança. O corte só muda no que você pedir: o resto (headline, imagens, enquadramento…) fica igual."));
+    const texto = () => linhas.map(({ area, momento, pedido }) => {
+      const p = pedido.value.trim(); if (!p) return "";
+      const tag = [area.value, momento.value.trim()].filter(Boolean).join(" · ");
+      return (tag ? `[${tag}] ` : "") + p.replace(/\s*\n+\s*/g, " ");
+    }).filter(Boolean).join("\n");
+    return { el, texto };
+  }
   function campoPrints() {
     const arquivos = [], lista = h("div", { class: "chips" });
     const pintar = () => encher(lista, arquivos.map((f, i) => h("span", { class: "chip tom-neutro" }, "🖼 " + (f.name || "print " + (i + 1)),
@@ -4509,21 +4565,26 @@
   }
   async function verPrevia(c) {
     const { data } = await db.storage.from("previas").createSignedUrl(c.previa, 3600);
-    const nota = h("textarea", { style: "min-height:80px", placeholder: "O que melhorar e em que momento (ex.: de 0:18 a 0:29 a câmera corta quem fala; legenda entrando atrasada no 0:12)…" });
+    const nota = campoAjuste();
     const prints = campoPrints();
     const msg = h("div", { class: "aviso erro", hidden: true });
     encher($("#detalhe-corpo"), h("h2", {}, `${c.ordem}. ${c.titulo}`),
       h("p", { class: "nota", style: "margin:0" }, `${mmss(c.inicio)}–${mmss(c.fim)} do episódio${c.final_drive ? " · no Drive: " + c.final_drive.split("/").slice(-2).join("/") : ""}`),
-      data && data.signedUrl ? h("video", { src: data.signedUrl, controls: true, playsinline: true, style: "width:100%;max-width:340px;max-height:60vh;border-radius:12px;background:#000;justify-self:center" })
+      data && data.signedUrl ? h("video", { src: data.signedUrl, controls: true, playsinline: true, preload: "metadata", style: "width:100%;max-width:340px;max-height:60vh;border-radius:12px;background:#000;justify-self:center" })
         : h("div", { class: "aviso" }, "Não consegui abrir a prévia."),
-      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => {
+      c.ajuste_mudancas ? h("div", { class: "aviso" }, h("b", {}, "O que mudou nesta versão: "), c.ajuste_mudancas) : null,
+      c.previa_anterior ? h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: umaVez(async () => {
+        const { error } = await db.rpc("cw_esteira_voltar", { p_corte: c.id }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+        prints.soltar(); $("#detalhe").close(); desenharEsteira(); }) }, "↩ Voltar à versão anterior")) : null,
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: umaVez(async () => {
         const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: true }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
-        $("#detalhe").close(); desenharEsteira(); } }, "✅ Aprovar e mandar para a Publicação")),
-      h("label", {}, linhaEst() === "reels" ? "Ou peça uma melhoria (o FabI.Ano refaz este reel e confere se ficou como você pediu)" : `Ou peça uma melhoria (o ${nomeLinha()} refaz este corte e confere se ficou como você pediu)`, nota), prints.el, msg,
-      h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: async () => {
+        prints.soltar(); $("#detalhe").close(); desenharEsteira(); }) }, "✅ Aprovar e mandar para a Publicação")),
+      h("label", {}, linhaEst() === "reels" ? "Ou peça uma melhoria (o FabI.Ano refaz este reel e confere se ficou como você pediu)" : `Ou peça uma melhoria (o ${nomeLinha()} muda só o que você pedir e confere se ficou certo)`), nota.el, prints.el, msg,
+      h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: umaVez(async () => {
+        if (!nota.texto()) { msg.hidden = false; msg.textContent = "Escreva o que mudar em pelo menos um item."; return; }
         const imgs = await prints.enviar("corte-" + c.id);
-        const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: false, p_nota: nota.value, p_imagens: imgs }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
-        $("#detalhe").close(); desenharEsteira(); } }, "✏️ Pedir melhoria"), h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
+        const { error } = await db.rpc("cw_esteira_previa", { p_corte: c.id, p_aprovar: false, p_nota: nota.texto(), p_imagens: imgs }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+        $("#detalhe").close(); desenharEsteira(); }) }, "✏️ Pedir melhoria"), h("button", { class: "botao leve", onclick: () => { prints.soltar(); $("#detalhe").close(); } }, "Fechar")));
     $("#detalhe").showModal();
   }
   const ESTADO_VER = { pedido: ["Na fila", "tom-neutro"], criando: ["Estudando", "tom-aviso"], testando: ["Fazendo o teste", "tom-aviso"],
@@ -4661,13 +4722,14 @@
     $("#detalhe").showModal();
   }
   function ajustarCorte(c) {
-    const t = h("textarea", { style: "min-height:90px", placeholder: "O que mudar e em que momento (ex.: de 0:18 a 0:29 a câmera corta quem fala; começar 2 s depois)…" });
+    const t = campoAjuste();
     const prints = campoPrints();
-    encher($("#detalhe-corpo"), h("h2", {}, "Pedir ajuste"), h("p", { class: "nota", style: "margin:0" }, `${c.ordem}. ${c.titulo}`), h("label", {}, "Ajuste", t), prints.el,
+    encher($("#detalhe-corpo"), h("h2", {}, "Pedir ajuste"), h("p", { class: "nota", style: "margin:0" }, `${c.ordem}. ${c.titulo}`), h("label", {}, "Ajuste"), t.el, prints.el,
       h("p", { class: "nota", style: "margin:0" }, (linhaEst() === "reels" ? "O reel volta para a frente da fila. Depois de refazer, o FabI.Ano" : `O corte volta para a frente da fila. Depois de refazer, o ${nomeLinha()}`) + " tira quadros do momento citado e confere se ficou como você pediu; quando acerta, isso vira lição para os próximos cortes."),
-      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: async () => { const imgs = await prints.enviar("corte-" + c.id); const { error } = await db.rpc("cw_esteira_ajuste", { p_corte: c.id, p_texto: t.value, p_imagens: imgs });
-        if (error) return alert(error.message); $("#detalhe").close(); desenharEsteira(); } }, "Mandar de volta para a produção"),
-        h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
+      h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: umaVez(async () => { if (!t.texto()) return alert("Escreva o que mudar em pelo menos um item.");
+        const imgs = await prints.enviar("corte-" + c.id); const { error } = await db.rpc("cw_esteira_ajuste", { p_corte: c.id, p_texto: t.texto(), p_imagens: imgs });
+        if (error) return alert(error.message); $("#detalhe").close(); desenharEsteira(); }) }, "Mandar de volta para a produção"),
+        h("button", { class: "botao leve", onclick: () => { prints.soltar(); $("#detalhe").close(); } }, "Cancelar")));
     $("#detalhe").showModal();
   }
   // ---------------------------------------------------------------- agentes: robozinhos que juntam skills (rodam no servidor)
