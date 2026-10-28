@@ -4428,26 +4428,30 @@
         e.estado === "preparando" ? [barra(e.progresso), h("span", { class: "nota" }, e.etapa || "")] : null,
         e.estado === "erro" ? h("span", { class: "nota" }, e.erro || "") : null,
         e.estado === "pronto" && linha !== "reels" ? h("button", { class: "botao amarelo peq", style: "justify-self:start", onclick: () => pedirCortes(e) }, "✂️ Gerar cortes") : null); };
+    // refeito do zero: sem pedido de ajuste, com a versão anterior guardada, voltando pela fila
+    const refazendo = (c) => ["na_fila", "produzindo"].includes(c.estado) && !c.ajuste && !!c.previa_anterior;
     const linhaCorte = (c) => { const [rot, tom] = ESTADO_CORTE[c.estado] || [c.estado, "tom-neutro"];
       const dur = c.iniciado && c.terminado ? Math.round((new Date(c.terminado) - new Date(c.iniciado)) / 1000) : null;
       return h("tr", {}, td(c.ordem, 1), h("td", { style: "min-width:200px" }, h("b", {}, c.titulo), h("div", { class: "nota" }, `${mmss(c.inicio)}–${mmss(c.fim)} · ${Math.round(c.fim - c.inicio)} s`),
           c.ajuste ? h("div", { class: "nota" }, "Ajuste: " + c.ajuste) : null,
-          c.prioridade > 0 && ["na_fila", "produzindo"].includes(c.estado) ? h("span", { class: "chip tom-aviso", style: "justify-self:start" }, "⚡ ajuste com prioridade") : null,
+          refazendo(c) ? h("span", { class: "chip tom-aviso", style: "justify-self:start", title: "Volta do bruto: transcrição, plano, b-roll e motion novos. A versão anterior fica guardada (dá para voltar na prévia)." }, "🔄 Refazendo do zero")
+            : c.prioridade > 0 && ["na_fila", "produzindo"].includes(c.estado) ? h("span", { class: "chip tom-aviso", style: "justify-self:start" }, "⚡ ajuste com prioridade") : null,
           c.ajuste_conferido ? h("span", { class: "chip " + (c.ajuste_conferido === "sim" ? "tom-ok" : "tom-critico"), style: "justify-self:start", title: c.ajuste_nota || "" },
             (c.ajuste_conferido === "sim" ? "✅ ajuste conferido" : "❌ ajuste não atendido") + (c.ajuste_nota ? ": " + c.ajuste_nota.slice(0, 90) : "")) : null,
           c.ajuste_mudancas && !["na_fila", "produzindo"].includes(c.estado) ? h("div", { class: "nota" }, "Mudou: " + c.ajuste_mudancas) : null),
-        td(h("span", { class: "chip " + tom }, rot)), td(c.estado === "produzindo" ? c.etapa || "" : c.erro || (dur ? `em ${duracao(dur)}` : "")),
+        td(h("span", { class: "chip " + tom }, rot)), td(["produzindo", "na_fila"].includes(c.estado) ? c.etapa || (c.estado === "na_fila" ? "esperando um operário livre" : "") : c.erro || (dur ? `em ${duracao(dur)}` : "")),
         h("td", {}, c.publicacao_id ? h("a", { href: "#publicacao", onclick: (ev) => { ev.preventDefault(); trocarAba("publicacao"); } }, "P-" + String(c.publicacao_id).padStart(4, "0")) : null,
           c.estado === "previa" ? h("button", { class: "botao amarelo peq", onclick: () => verPrevia(c) }, "▶ Ver prévia") : null,
           ["entregue", "reprovado", "erro"].includes(c.estado) ? h("button", { class: "botao leve peq", style: "margin-left:6px", onclick: () => ajustarCorte(c) }, "Pedir ajuste") : null)); };
     const blocoLote = (l) => { const [rot, tom] = ESTADO_LOTE[l.estado] || [l.estado, "tom-neutro"], cs = C.filter((c) => c.lote_id === l.id);
       const ent = cs.filter((c) => c.estado === "entregue").length, ativos = cs.filter((c) => !["proposto", "descartado"].includes(c.estado)).length;
-      const prevs = cs.filter((c) => c.estado === "previa").length, est = EST.estilos.find((x) => x.id === l.estilo_id);
+      const prevs = cs.filter((c) => c.estado === "previa").length, est = EST.estilos.find((x) => x.id === l.estilo_id), refaz = cs.filter(refazendo).length;
       const cab = h("div", { style: "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap" },
         h("div", {}, h("b", {}, `${epDe(l.episodio_id).nome} · ${l.quantidade} cortes`), h("div", { class: "nota" }, `pedido por ${l.pedido_por.split("@")[0]} ${ha(l.criado)}${l.instrucoes ? " · “" + l.instrucoes.slice(0, 80) + "”" : ""}`)),
         h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), est ? h("span", { class: "chip tom-neutro" }, "🎨 " + est.nome) : null,
           h("span", { class: "chip tom-neutro", title: "Desde 28/10/2026 a esteira gera b-roll no Higgsfield sem limite por lote" }, "Higgsfield liberado"),
           prevs ? h("span", { class: "chip tom-aviso" }, `👀 ${prevs} prévia${prevs > 1 ? "s" : ""} para aprovar`) : null,
+          refaz ? h("span", { class: "chip tom-aviso" }, `🔄 ${refaz} sendo refeito${refaz > 1 ? "s" : ""} do zero`) : null,
           ["selecionando", "conferir", "produzindo"].includes(l.estado) ? h("label", { class: "chip " + (l.auto_aprovar ? "tom-ok" : "tom-neutro"), style: "cursor:pointer;display:inline-flex;gap:6px;align-items:center", onclick: (ev) => ev.stopPropagation(),
             title: "Ligado: cada corte pronto vai direto para a Publicação; lá dá para pedir ajuste ao Titeu" },
             h("input", { type: "checkbox", checked: !!l.auto_aprovar, style: "width:auto;margin:0", onchange: async (ev) => { const { error } = await db.rpc("cw_esteira_auto", { p_lote: l.id, p_ligar: ev.target.checked }); if (error) alert(error.message); desenharEsteira(); } }),
