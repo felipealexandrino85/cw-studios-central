@@ -4567,6 +4567,63 @@
       return caminhos;
     }, soltar() { $("#detalhe").removeEventListener("paste", colar); } };
   }
+  // ficha do corte (28/10/2026): o que a esteira decidiu, editável por qualquer pessoa do time. O que é mecânico (headline,
+  // tirar momento, trilha, palavra da legenda) a esteira aplica sem IA; trocar/pôr imagem vai para a IA só naquele item.
+  function blocoFicha(c, msg) {
+    const f = c.ficha; if (!f) return null;
+    const ops = [];
+    const headline = h("input", { value: f.headline || "", "aria-label": "Headline" });
+    const fotoTrocar = h("input", { type: "checkbox", style: "width:auto;margin:0" }), fotoNota = h("input", { placeholder: "como deve ser a foto nova (opcional)", style: "min-width:0" });
+    const linhasMom = (f.momentos || []).map((m) => {
+      const acao = h("select", { "aria-label": "O que fazer" }, [["", "manter"], ["tirar", "tirar"], ["trocar", "trocar (IA)"]].map(([v, t]) => h("option", { value: v }, t)));
+      const nota = h("input", { placeholder: "o que mostrar no lugar (opcional)", style: "min-width:0" });
+      return { m, acao, nota, el: h("tr", {}, h("td", {}, mmss(m.t)), h("td", {}, m.tipo), h("td", { style: "min-width:140px" }, m.o_que || ""),
+        h("td", {}, acao), h("td", { style: "min-width:160px" }, nota)) };
+    });
+    const novos = h("div", { style: "display:grid;gap:6px" });
+    const novoMomento = () => { const t = h("input", { placeholder: "0:30", style: "max-width:90px" }), n = h("input", { placeholder: "o que mostrar", style: "min-width:0" });
+      novos.append(h("div", { style: "display:grid;grid-template-columns:90px minmax(0,1fr);gap:6px" }, t, n)); novos._itens = (novos._itens || []).concat([{ t, n }]); };
+    const trilha = h("select", { "aria-label": "Trilha" }, [["", "manter"], ["baixa", "mais baixa"], ["alta", "mais alta"], ["trocar", "trocar por outra"]].map(([v, t]) => h("option", { value: v }, t)));
+    const palavras = h("div", { style: "display:grid;gap:6px" });
+    const novaPalavra = () => { const de = h("input", { placeholder: "como saiu", style: "min-width:0" }), para = h("input", { placeholder: "como deve ser", style: "min-width:0" });
+      palavras.append(h("div", { style: "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px" }, de, para)); palavras._itens = (palavras._itens || []).concat([{ de, para }]); };
+    novaPalavra();
+    const seg = (txt) => { const m = String(txt || "").trim().match(/^(\d+):(\d{1,2})$/) || String(txt || "").trim().match(/^()(\d+(?:[.,]\d+)?)\s*s?$/);
+      return m ? (+(m[1] || 0)) * 60 + parseFloat(String(m[2]).replace(",", ".")) : null; };
+    const aplicar = h("button", { class: "botao amarelo", onclick: umaVez(async () => {
+      ops.length = 0;
+      if (headline.value.trim() && headline.value.trim() !== (f.headline || "").trim()) ops.push({ tipo: "headline", texto: headline.value.trim() });
+      if (fotoTrocar.checked) ops.push({ tipo: "foto_gancho", nota: fotoNota.value.trim() });
+      for (const l of linhasMom) {
+        if (l.acao.value === "tirar") ops.push({ tipo: l.m.tipo === "P&B" ? "pb_remover" : "momento_remover", t: l.m.t });
+        if (l.acao.value === "trocar") ops.push({ tipo: "momento_trocar", t: l.m.t, nota: l.nota.value.trim() });
+      }
+      for (const { t, n } of novos._itens || []) { const s = seg(t.value); if (s !== null) ops.push({ tipo: "momento_adicionar", t: s, nota: n.value.trim() }); }
+      if (trilha.value === "baixa" || trilha.value === "alta") ops.push({ tipo: "trilha_volume", delta: trilha.value === "baixa" ? -4 : 4 });
+      if (trilha.value === "trocar") ops.push({ tipo: "trilha_trocar" });
+      for (const { de, para } of palavras._itens || []) if (de.value.trim() && para.value.trim()) ops.push({ tipo: "palavra", de: de.value.trim(), para: para.value.trim() });
+      if (!ops.length) { msg.hidden = false; msg.textContent = "Nenhuma edição: mude algo na ficha antes de aplicar."; return; }
+      const texto = "Edição direta: " + ops.map((o) => ({ headline: `headline "${o.texto}"`, foto_gancho: "trocar a foto do gancho", momento_remover: `tirar momento em ${mmss(o.t)}`,
+        pb_remover: `tirar P&B em ${mmss(o.t)}`, momento_trocar: `trocar momento em ${mmss(o.t)}`, momento_adicionar: `pôr momento em ${mmss(o.t)}`,
+        trilha_volume: o.delta < 0 ? "trilha mais baixa" : "trilha mais alta", trilha_trocar: "trocar a trilha", palavra: `legenda "${o.de}" → "${o.para}"` }[o.tipo] || o.tipo)).join("; ");
+      const { error } = await db.rpc("cw_esteira_editar", { p_corte: c.id, p_edicoes: ops, p_texto: texto });
+      if (error) { msg.hidden = false; msg.textContent = error.message; return; }
+      $("#detalhe").close(); desenharEsteira(); }) }, "✂️ Aplicar edições");
+    return h("details", { class: "card", open: true, style: "display:grid;gap:10px" },
+      h("summary", { style: "cursor:pointer" }, h("b", {}, "🧾 Ficha do corte"), h("span", { class: "nota" }, ` · ${mmss(f.duracao)} · ${(f.momentos || []).length} momentos visuais · edite e aplique: o que é mecânico sai na hora, sem IA`)),
+      h("label", {}, "Headline (use / para quebrar a linha)", headline),
+      h("div", { style: "display:grid;gap:4px" }, h("span", { class: "nota" }, "Foto do gancho: " + (f.foto_gancho || "—")),
+        h("label", { class: "check", style: "display:flex;gap:8px;align-items:center" }, fotoTrocar, "Trocar a foto do gancho (IA busca outra)"), fotoNota),
+      h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Tempo", "Tipo", "O que mostra", "Ação", "Observação"].map((t) => h("th", {}, t)))),
+        h("tbody", {}, linhasMom.length ? linhasMom.map((l) => l.el) : h("tr", {}, h("td", { colspan: 5 }, "Nenhum momento visual."))))),
+      h("div", { style: "display:grid;gap:6px" }, h("span", { class: "nota" }, "Pôr momento visual novo (tempo do vídeo e o que mostrar):"), novos,
+        h("button", { type: "button", class: "botao leve peq", style: "justify-self:start", onclick: novoMomento }, "+ momento")),
+      h("label", {}, `Trilha: ${f.trilha && f.trilha.arquivo ? f.trilha.arquivo : "—"}${f.trilha && f.trilha.db ? ` (${f.trilha.db} dB)` : ""}`, trilha),
+      (f.legenda_corrigida || []).length ? h("span", { class: "nota" }, "Legenda já corrigida pela revisão: " + f.legenda_corrigida.map((x) => `${x.de} → ${x.para}`).join(", ")) : null,
+      h("div", { style: "display:grid;gap:6px" }, h("span", { class: "nota" }, "Corrigir palavra da legenda (vale para o corte todo e entra no dicionário):"), palavras,
+        h("button", { type: "button", class: "botao leve peq", style: "justify-self:start", onclick: novaPalavra }, "+ palavra")),
+      h("div", { class: "acoes" }, aplicar));
+  }
   async function verPrevia(c) {
     const { data } = await db.storage.from("previas").createSignedUrl(c.previa, 3600);
     const nota = campoAjuste();
@@ -4577,6 +4634,7 @@
       data && data.signedUrl ? h("video", { src: data.signedUrl, controls: true, playsinline: true, preload: "metadata", style: "width:100%;max-width:340px;max-height:60vh;border-radius:12px;background:#000;justify-self:center" })
         : h("div", { class: "aviso" }, "Não consegui abrir a prévia."),
       c.ajuste_mudancas ? h("div", { class: "aviso" }, h("b", {}, "O que mudou nesta versão: "), c.ajuste_mudancas) : null,
+      blocoFicha(c, msg),
       c.previa_anterior ? h("div", { class: "acoes" }, h("button", { class: "botao leve", onclick: umaVez(async () => {
         const { error } = await db.rpc("cw_esteira_voltar", { p_corte: c.id }); if (error) { msg.hidden = false; msg.textContent = error.message; return; }
         prints.soltar(); $("#detalhe").close(); desenharEsteira(); }) }, "↩ Voltar à versão anterior")) : null,
