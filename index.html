@@ -637,7 +637,9 @@
       <p class="sub">Cortes prontos esperando aprovação. Aprovado, o robô posta no Instagram, TikTok e YouTube Shorts (confere a fila a cada 30 min, das 7h às 22h) e traz os links de volta.</p></header>
     <div class="acoes" id="pub-acoes"></div>
     <div class="pub-conexoes" id="pub-conexoes"></div>
+    <div class="segmentos" role="tablist" id="pub-prog" aria-label="Programa"></div>
     <div class="segmentos" role="tablist" id="pub-seg"></div>
+    <div class="aviso" id="pub-canal2" hidden>Os cortes do Zeca ficam separados do CW Cast. Aprovados, eles <b>não</b> vão para as contas do CW Cast: ficam guardados na fila até o Canal 2 ter as contas dele conectadas. No Drive, eles caem em “CW Cast - Cortes › 2. PARA APROVAR - Canal 2”.</div>
     <div class="pub-lote" id="pub-lote" hidden></div>
     <div class="pub-grade" id="pub-lista"></div>
   </section>
@@ -3484,7 +3486,10 @@
   }
 
   // ---------------------------------------------------------------- publicação (cortes → redes)
-  const PUB = { lista: [], situacao: {}, seg: "aguardando", timer: null, carregado: 0, sel: new Set() };
+  const PUB = { lista: [], situacao: {}, seg: "aguardando", prog: "cwcast", timer: null, carregado: 0, sel: new Set() };
+  // abas por programa: o Canal 2 (Zeca) não é do CW Cast e o robô não posta nas contas do CW Cast (fica guardado até ter as contas dele)
+  const PROG_PUB = [["cwcast", "CW Cast"], ["canal2", "Zeca · Canal 2"]];
+  const progPub = (x) => x.programa === "canal2" ? "canal2" : "cwcast";
   const REDES = [["instagram", "Instagram"], ["tiktok", "TikTok"], ["youtube", "YouTube Shorts"]];
   const SEG_PUB = [["aguardando", "Para aprovar", ["aguardando"]], ["fila", "Na fila", ["aprovado", "postando", "erro"]],
                    ["postado", "Postados", ["postado"]], ["recusado", "Recusados", ["recusado", "cancelado"]]];
@@ -3656,10 +3661,14 @@
       st.instagram_dias != null && st.instagram_dias < 15 && h("span", { class: "chip tom-aviso" },
         st.instagram_dias <= 0 ? "Acesso do Instagram venceu: renove" : `Acesso do Instagram vence em ${st.instagram_dias} dias`),
       !st.drive && h("span", { class: "nota" }, "Enquanto as redes não estiverem conectadas, os aprovados ficam na fila e saem assim que conectar."));
+    encher($("#pub-prog"), PROG_PUB.map(([id, nome]) => h("button", { role: "tab", "aria-selected": String(PUB.prog === id), onclick: () => { PUB.prog = id; PUB.sel.clear(); desenharPublicacao(); } },
+      nome, h("em", { title: "esperando aprovação" }, PUB.lista.filter((x) => progPub(x) === id && x.estado === "aguardando").length))));
+    $("#pub-canal2").hidden = PUB.prog !== "canal2";
+    const doProg = PUB.lista.filter((x) => progPub(x) === PUB.prog);
     encher($("#pub-seg"), SEG_PUB.map(([id, nome, est]) => h("button", { role: "tab", "aria-selected": String(PUB.seg === id), onclick: () => { PUB.seg = id; desenharPublicacao(); } },
-      nome, h("em", {}, PUB.lista.filter((x) => est.includes(x.estado)).length))));
+      nome, h("em", {}, doProg.filter((x) => est.includes(x.estado)).length))));
     const est = SEG_PUB.find(([id]) => id === PUB.seg)[2];
-    const itens = PUB.lista.filter((x) => est.includes(x.estado));
+    const itens = doProg.filter((x) => est.includes(x.estado));
     const selecionavel = podeAprovar() && ["aguardando", "fila"].includes(PUB.seg);
     for (const id of [...PUB.sel]) if (!itens.some((x) => x.id === id)) PUB.sel.delete(id);   // só vale o que está na aba
     const barra = $("#pub-lote");
