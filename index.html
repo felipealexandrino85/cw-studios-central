@@ -448,6 +448,73 @@
     main { padding-block: 22px 48px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  /* compositor de publicação (aprovar um corte), no jeito da MLabs: passos numerados à esquerda, prévia à direita, barra de ações fixa */
+  dialog.compositor { width: min(1240px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: hidden; }
+  dialog.compositor .modal { padding: 0; gap: 0; max-height: calc(100vh - 32px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+  .cmp-topo { display: flex; gap: 14px 22px; align-items: center; flex-wrap: wrap; padding: 16px 22px; border-bottom: 1px solid var(--line); }
+  .cmp-perfil { flex: 1 1 420px; min-width: 0; display: grid; gap: 6px; border: 1px solid var(--line); background: var(--surface-2); border-radius: 16px; padding: 12px 16px; }
+  .cmp-perfil .linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+  .cmp-perfil h2 { font-size: 19px; font-weight: 900; overflow-wrap: anywhere; }
+  .cmp-cota { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13.5px; color: var(--text-dim); }
+  .cmp-cota b { font-family: var(--font-display); font-size: 18px; color: var(--text); }
+  .cmp-fechar { border: 1px solid var(--line); background: #fff; border-radius: 99px; width: 38px; height: 38px; cursor: pointer; font-size: 18px; color: var(--text-dim); flex: none; }
+  .cmp-corpo { overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-height: 0; }
+  .cmp-main { padding: 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 30px; align-content: start; }
+  .cmp-col { display: grid; gap: 26px; align-content: start; min-width: 0; }
+  .cmp-sec { display: grid; gap: 10px; min-width: 0; }
+  .cmp-sec > .cab { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .cmp-sec h3 { font-size: 16px; font-weight: 800; }
+  .cmp-sec .info { font-size: 13px; color: var(--text-faint); }
+  .cmp-canais { display: flex; gap: 10px; flex-wrap: wrap; }
+  .cmp-canal { position: relative; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--line); background: #fff; color: #9b8fb5; cursor: pointer; transition: transform .12s; }
+  .cmp-canal:hover { transform: translateY(-1px); }
+  .cmp-canal input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
+  .cmp-canal svg { width: 22px; height: 22px; pointer-events: none; }
+  .cmp-canal:has(input:focus-visible) { outline: 3px solid var(--brand); outline-offset: 2px; }
+  .cmp-canal.instagram:has(input:checked) { background: linear-gradient(45deg, #f9a825, #e1306c 55%, #833ab4); border-color: transparent; color: #fff; }
+  .cmp-canal.tiktok:has(input:checked) { background: #111; border-color: transparent; color: #fff; }
+  .cmp-canal.youtube:has(input:checked) { background: #ff0033; border-color: transparent; color: #fff; }
+  .cmp-canal:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+  .cmp-alerta { position: absolute; right: -3px; bottom: -3px; width: 17px; height: 17px; border-radius: 50%; background: #f26b1d; color: #fff; font: 900 11px/17px var(--font-body); text-align: center; font-style: normal; border: 2px solid #fff; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .cmp-abas { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+  .cmp-abas button { border: 0; background: none; padding: 6px 10px 8px; font-weight: 700; color: var(--text-faint); cursor: pointer; border-bottom: 2.5px solid transparent; margin-bottom: -1px; }
+  .cmp-abas button[aria-selected="true"] { color: var(--text); border-bottom-color: #f26b1d; }
+  .cmp-texto { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; }
+  .cmp-texto textarea { border: 0; border-radius: 0; background: #fff; min-height: 230px; resize: vertical; padding: 14px 16px; }
+  .cmp-texto .rodape { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--surface-2); }
+  .cmp-midia { display: flex; gap: 12px; align-items: center; border: 1.5px dashed var(--line); border-radius: 14px; padding: 12px; background: var(--surface-2); min-width: 0; }
+  .cmp-midia img { width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; flex: none; background: #1d1630; }
+  .cmp-midia .txt { display: grid; gap: 4px; min-width: 0; font-size: 13.5px; }
+  .cmp-quando { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .cmp-quando input { width: auto; flex: 1 1 140px; background: #fff; }
+  .cmp-atalhos { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cmp-atalhos button { border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 4px 12px; font-size: 12.5px; font-weight: 700; color: var(--text-dim); cursor: pointer; }
+  .cmp-atalhos button:hover { border-color: var(--brand); color: var(--brand-ink); }
+  .cmp-lado { background: var(--surface-2); border-left: 1px solid var(--line); padding: 22px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+  .cmp-avancado { border: 1.5px solid #f26b1d; border-radius: 12px; background: #fff; }
+  .cmp-avancado > summary { cursor: pointer; padding: 10px 14px; font-weight: 800; color: #d4560f; list-style: none; }
+  .cmp-avancado > summary::-webkit-details-marker { display: none; }
+  .cmp-avancado > div { padding: 0 14px 14px; display: grid; gap: 10px; }
+  .cmp-celular { justify-self: center; width: min(100%, 250px); aspect-ratio: 9 / 16; border-radius: 26px; background: #111; border: 6px solid #1c1726; overflow: hidden; display: grid; }
+  .cmp-celular iframe, .cmp-celular img { width: 100%; height: 100%; border: 0; object-fit: contain; }
+  .cmp-post { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; font-size: 13.5px; min-width: 0; }
+  .cmp-post .quem { display: flex; gap: 8px; align-items: center; font-weight: 800; }
+  .cmp-post .av { width: 28px; height: 28px; border-radius: 50%; background: var(--grad-brand); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 900; flex: none; }
+  .cmp-post .leg { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-dim); }
+  .cmp-post .leg.curta { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .cmp-vazio { text-align: center; color: var(--text-faint); padding: 30px 10px; display: grid; gap: 8px; justify-items: center; }
+  .cmp-pe { border-top: 2px solid var(--blue); background: #fff; padding: 12px 22px; display: grid; gap: 10px; max-height: 45vh; overflow: auto; }
+  .cmp-pe .barra { display: flex; gap: 10px 18px; align-items: center; flex-wrap: wrap; }
+  .cmp-nav { display: flex; gap: 6px; align-items: center; font-weight: 700; color: var(--text-dim); }
+  .cmp-nav button { border: 0; background: none; color: var(--blue); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 6px; }
+  .cmp-nav button:disabled { color: var(--line); cursor: default; }
+  .cmp-link { border: 0; background: none; font-weight: 700; color: var(--text-dim); cursor: pointer; padding: 8px 4px; display: inline-flex; gap: 6px; align-items: center; }
+  .cmp-link:hover { color: var(--blue); }
+  .cmp-link.perigo:hover { color: var(--red); }
+  .cmp-agendar { background: var(--blue); color: #fff; border: 0; border-radius: 10px; padding: 12px 22px; font-weight: 800; letter-spacing: .02em; cursor: pointer; box-shadow: var(--glow-cta); }
+  @media (max-width: 1000px) { .cmp-corpo { grid-template-columns: minmax(0, 1fr); } .cmp-lado { border-left: 0; border-top: 1px solid var(--line); } }
+  @media (max-width: 680px) { .cmp-main { grid-template-columns: minmax(0, 1fr); padding: 16px; } .cmp-topo, .cmp-pe { padding-left: 16px; padding-right: 16px; } .cmp-lado { padding: 16px; } }
   .pub-capas { display: grid; gap: 6px; }
   .pub-capas .grade { display: flex; gap: 10px; flex-wrap: wrap; }
   .capa-op { width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 3px solid transparent; padding: 0; overflow: hidden; background: var(--surface-2); cursor: pointer; display: grid; place-items: center; align-content: center; gap: 4px; font: inherit; color: inherit; }
@@ -3491,6 +3558,10 @@
   const PROG_PUB = [["cwcast", "CW Cast"], ["canal2", "Zeca · Canal 2"]];
   const progPub = (x) => x.programa === "canal2" ? "canal2" : "cwcast";
   const REDES = [["instagram", "Instagram"], ["tiktok", "TikTok"], ["youtube", "YouTube Shorts"]];
+  const ICONES_REDE = {
+    instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
+    tiktok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5"/><path d="M14 3c.6 2.7 2.4 4.4 5 4.6"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="M10 9.3v5.4l4.6-2.7z" fill="currentColor" stroke="none"/></svg>' };
   const SEG_PUB = [["aguardando", "Para aprovar", ["aguardando"]], ["fila", "Na fila", ["aprovado", "postando", "erro"]],
                    ["postado", "Postados", ["postado"]], ["recusado", "Recusados", ["recusado", "cancelado"]]];
   const ESTADO_PUB = { aguardando: ["Aguardando aprovação", "tom-aviso"], aprovado: ["Aprovado", "tom-ok"], postando: ["Postando", "tom-ok"],
@@ -3669,6 +3740,7 @@
       nome, h("em", {}, doProg.filter((x) => est.includes(x.estado)).length))));
     const est = SEG_PUB.find(([id]) => id === PUB.seg)[2];
     const itens = doProg.filter((x) => est.includes(x.estado));
+    PUB.vistos = itens;   // o compositor anda por esta lista (‹ 2/14 ›)
     const selecionavel = podeAprovar() && ["aguardando", "fila"].includes(PUB.seg);
     for (const id of [...PUB.sel]) if (!itens.some((x) => x.id === id)) PUB.sel.delete(id);   // só vale o que está na aba
     const barra = $("#pub-lote");
@@ -3811,6 +3883,11 @@
   }
   function abrirPub(x) {
     const pode = podeAprovar(), aguardando = x.estado === "aguardando" || x.estado === "recusado";
+    const compor = pode && aguardando;   // aprovar = compositor largo (estilo MLabs); só ver = janela simples
+    PUB.aberto = x.id;
+    $("#detalhe").classList.toggle("compositor", compor);
+    $("#detalhe").addEventListener("close", () => { $("#detalhe").classList.remove("compositor"); PUB.aberto = null; }, { once: true });
+    let irAba = () => {};   // o compositor troca a aba do texto (ex.: erro do TikTok abre a aba TikTok)
     const agenteIA = x.destino === "Instagram Cardapio Web" ? "FabI.Ano" : "Titeu";   // reels da Cardápio Web: FabI.Ano; cortes: Titeu
     const legenda = h("textarea", { id: "pub-legenda", style: "min-height:140px" }); legenda.value = x.legenda || "";
     const contLeg = h("span", { class: "nota" });
@@ -3819,8 +3896,11 @@
       contLeg.style.color = n > 2200 || ht > 30 ? "var(--critico-tx)" : ""; };
     legenda.addEventListener("input", contar); contar();
     const tyt = h("input", { id: "pub-tyt", maxlength: 100, value: x.titulo_youtube || x.titulo });
-    const quando = h("input", { id: "pub-quando", type: "datetime-local" });
-    if (x.agendado_para) { const d = new Date(x.agendado_para); quando.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+    const dia = h("input", { id: "pub-dia", type: "date", "aria-label": "Dia da publicação" }), hora = h("input", { id: "pub-hora", type: "time", "aria-label": "Horário da publicação" });
+    const doisD = (n) => String(n).padStart(2, "0");
+    const marcar = (d) => { dia.value = d ? `${d.getFullYear()}-${doisD(d.getMonth() + 1)}-${doisD(d.getDate())}` : ""; hora.value = d ? `${doisD(d.getHours())}:${doisD(d.getMinutes())}` : ""; };
+    if (x.agendado_para) marcar(new Date(x.agendado_para));
+    const quando = () => dia.value ? new Date(`${dia.value}T${hora.value || "12:00"}`) : null;   // sem dia = publicar agora
     // capa: pedida aqui na Publicação (botão "Gerar capa"); a Capitu faz e as opções aparecem; quem aprova escolhe uma
     let capas = x.capas || [];
     let capaEscolhida = (x.opcoes || {}).capa !== undefined ? (x.opcoes || {}).capa : ((capas[0] || {}).caminho || "");
@@ -3845,7 +3925,7 @@
       if (!t) { statusCapa.textContent = capas.length ? "" : "Ainda sem capa para este corte."; return; }
       if (["na_fila", "rodando"].includes(t.estado)) {
         statusCapa.textContent = t.estado === "na_fila" ? "⏳ Na fila da Capitu…" : "🎨 A Capitu está fazendo a capa" + (t.etapa ? ": " + t.etapa : "…");
-        botaoCapa.disabled = true; clearTimeout(vigiaCapa); vigiaCapa = setTimeout(() => { if ($("#detalhe").open) acompanharCapa(); }, 8000); return;
+        botaoCapa.disabled = true; clearTimeout(vigiaCapa); vigiaCapa = setTimeout(() => { if ($("#detalhe").open && PUB.aberto === x.id) acompanharCapa(); }, 8000); return;
       }
       botaoCapa.disabled = false;
       if (t.estado === "erro") { statusCapa.textContent = "✗ A Capitu não conseguiu: " + (t.erro || "erro"); return; }
@@ -3866,7 +3946,6 @@
     const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" });
       c.checked = (x.redes || []).includes(k) && !(k === "tiktok" && ttTravado); if (k === "tiktok" && ttTravado) c.disabled = true;
       return [c, k === "tiktok" && ttTravado ? nome + " (aguardando aprovação do app: poste pelo celular)" : nome]; });
-    setTimeout(() => { const c = caixas.find(([cc]) => cc.value === "tiktok"); if (c) { const mostra = () => { ttBox.hidden = !c[0].checked; }; c[0].addEventListener("change", mostra); mostra(); } }, 0);
     // TikTok (Direct Post): conta, privacidade sem padrão, interações, conteúdo comercial e confirmação de música
     const cr = (PUB.situacao || {}).tiktok_criador || {}, aprovadoTT = !!(PUB.situacao || {}).tiktok_publico;
     const PRIV = { PUBLIC_TO_EVERYONE: "Todo mundo", MUTUAL_FOLLOW_FRIENDS: "Amigos", FOLLOWER_OF_CREATOR: "Seguidores", SELF_ONLY: "Só eu" };
@@ -3903,23 +3982,34 @@
     const caixaMotivo = h("label", { for: "pub-motivo", hidden: true }, "Motivo da recusa", motivo);
     const msg = h("div", { class: "aviso erro", hidden: true });
     const erro = (e) => { msg.hidden = false; msg.textContent = e.message || e; };
-    async function decidir(aprovar) {
+    async function decidir(aprovar, agora) {
       if (!aprovar && caixaMotivo.hidden) { caixaMotivo.hidden = false; motivo.focus(); return; }
       const redes = caixas.filter(([c]) => c.checked).map(([c]) => c.value);
+      if (aprovar && !redes.length) return erro("Escolha pelo menos um canal.");
+      if (aprovar && agora) marcar(null);
+      if (aprovar && !agora && !quando()) return erro("Escolha o dia e o horário para agendar, ou use \"Publicar agora\".");
+      if (aprovar && quando() && quando() < Date.now() - 60000) return erro("Esse horário já passou.");
       if (aprovar && redes.includes("tiktok")) {
-        if (!ttPriv.value) return erro("No TikTok, escolha quem pode ver o vídeo.");
-        if (!ttAce.checked) return erro("No TikTok, marque a concordância com a Confirmação de Uso de Música.");
-        if (ttCom1.checked && !ttSua.checked && !ttParc.checked) return erro("Conteúdo comercial: marque \"Sua marca\" e/ou \"Conteúdo de marca\".");
-        if (longoDemais) return erro("O vídeo é longo demais para o TikTok desta conta: desmarque o TikTok.");
+        const tt = (t) => { irAba("tiktok"); return erro(t); };
+        if (!ttPriv.value) return tt("No TikTok, escolha quem pode ver o vídeo.");
+        if (!ttAce.checked) return tt("No TikTok, marque a concordância com a Confirmação de Uso de Música.");
+        if (ttCom1.checked && !ttSua.checked && !ttParc.checked) return tt("Conteúdo comercial: marque \"Sua marca\" e/ou \"Conteúdo de marca\".");
+        if (longoDemais) return tt("O vídeo é longo demais para o TikTok desta conta: desmarque o TikTok.");
       }
       if (aprovar && destino.value !== x.destino) { const r = await db.rpc("cw_pub_destino", { p_pub: x.id, p_destino: destino.value }); if (r.error) return erro(r.error); }
       const capa = aprovar && capaEscolhida ? await linkCapa(capaEscolhida) : {};
       const { error } = await db.rpc("cw_pub_decidir", { p_id: x.id, p_aprovar: aprovar, p_motivo: motivo.value, p_legenda: legenda.value,
-        p_titulo_youtube: tyt.value, p_redes: redes, p_agendado_para: quando.value ? new Date(quando.value).toISOString() : null,
+        p_titulo_youtube: tyt.value, p_redes: redes, p_agendado_para: quando() ? quando().toISOString() : null,
         p_opcoes: Object.assign({ tiktok: { privacidade: ttPriv.value, comentarios: ttCom.checked, dueto: ttDue.checked, stitch: ttSti.checked,
           sua_marca: ttSua.checked, conteudo_marca: ttParc.checked, aceite: ttAce.checked } }, capa) });
       if (error) return erro(error);
-      if (aprovar && !quando.value) dispararRobo("publicar");   // o Chico posta agora, sem esperar a próxima passada
+      if (aprovar && !quando()) dispararRobo("publicar");   // o Chico posta agora, sem esperar a próxima passada
+      if (compor) {   // como na MLabs: decidido um, já abre o próximo que espera aprovação
+        const ids = (PUB.vistos || []).map((y) => y.id), i = ids.indexOf(x.id), ordem = ids.slice(i + 1).concat(ids.slice(0, Math.max(0, i)).reverse());
+        await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
+        const prox = ordem.map((id) => PUB.lista.find((y) => y.id === id && y.estado === "aguardando")).find(Boolean);
+        return prox ? abrirPub(prox) : $("#detalhe").close();
+      }
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao(); montarNav(aba);
     }
     let printsTiteu = null;
@@ -3937,8 +4027,146 @@
       if (error) return erro(error);
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao();
     }
+    function montarCompositor() {
+      const st = PUB.situacao || {}, prog = progPub(x), canal2 = prog === "canal2", pv = x.prevoo || {};
+      const nomeProg = (PROG_PUB.find(([k]) => k === prog) || [0, "CW Cast"])[1];
+      const vistos = PUB.vistos || [], pos = vistos.findIndex((y) => y.id === x.id);
+      const hoje = new Date(), doProg = PUB.lista.filter((y) => progPub(y) === prog);
+      const noMes = doProg.filter((y) => y.agendado_para && ["aprovado", "postando", "postado"].includes(y.estado)
+        && new Date(y.agendado_para).getMonth() === hoje.getMonth() && new Date(y.agendado_para).getFullYear() === hoje.getFullYear()).length;
+      const naFila = doProg.filter((y) => y.estado === "aprovado").length;
+      const futuros = doProg.filter((y) => y.id !== x.id && y.estado === "aprovado" && y.agendado_para && new Date(y.agendado_para) > hoje)
+        .sort((a, b) => new Date(a.agendado_para) - new Date(b.agendado_para));
+      const NOME = { instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube Shorts" };
+      const CONTA = { instagram: st.instagram_conta ? "@" + st.instagram_conta : "", tiktok: st.tiktok_conta ? "@" + st.tiktok_conta : "", youtube: st.youtube_canal || "" };
+      const conectada = (k) => !canal2 && !!st[k];
+      const marcados = () => caixas.filter(([c]) => c.checked).map(([c]) => c.value);
+      const icone = (k) => { const s = h("span", { "aria-hidden": "true", style: "display:grid" }); s.innerHTML = ICONES_REDE[k]; return s; };
+      const secao = (titulo, extra, ...filhos) => h("section", { class: "cmp-sec" }, h("div", { class: "cab" }, h("h3", {}, titulo), extra), filhos);
+
+      // topo: perfil e quanto já está agendado
+      const topo = h("div", { class: "cmp-topo" },
+        h("div", { class: "cmp-perfil" },
+          h("div", { class: "linha" }, "Perfil:", h("b", {}, nomeProg), h("span", { class: "chip " + tom }, rot), x.episodio && h("span", { class: "chip" }, x.episodio),
+            x.jira && h("a", { class: "chip", href: urlJira(x.jira), target: "_blank", rel: "noopener" }, x.jira)),
+          h("h2", {}, x.titulo),
+          h("span", { class: "nota" }, `P-${String(x.id).padStart(4, "0")} · ${quemMandou(x)} · enviado ${ha(x.criado)}`)),
+        h("div", { class: "cmp-cota" }, h("span", {}, h("b", {}, noMes), ` agendados em ${hoje.toLocaleDateString("pt-BR", { month: "long" })}`),
+          h("span", {}, h("b", {}, naFila), " aprovados na fila")),
+        h("button", { type: "button", class: "cmp-fechar", "aria-label": "Fechar", onclick: () => $("#detalhe").close() }, "✕"));
+
+      // 1. canais
+      const resumoCanais = h("span", { class: "info" });
+      const sec1 = secao("1. Selecione canais", resumoCanais,
+        h("div", { class: "cmp-canais", role: "group", "aria-label": "Canais" }, caixas.map(([c, nome]) => { const k = c.value;
+          return h("label", { class: "cmp-canal " + k, title: NOME[k] + (CONTA[k] && !canal2 ? " · " + CONTA[k] : "") + (c.disabled ? " · bloqueado até o TikTok aprovar o app" : conectada(k) ? "" : " · conta não conectada") },
+            c, icone(k), h("span", { class: "sr" }, nome), !conectada(k) || c.disabled ? h("i", { class: "cmp-alerta", "aria-hidden": "true" }, "!") : null); })),
+        canal2 ? h("span", { class: "nota" }, "O Canal 2 ainda não tem contas conectadas: aprovado, o corte fica guardado na fila.") : null,
+        ttTravado ? h("span", { class: "nota" }, "TikTok bloqueado até o TikTok aprovar o app: poste pelo celular.") : null);
+
+      // 2. texto, com aba por rede (Todos · YouTube · TikTok)
+      legenda.removeAttribute("style"); legenda.placeholder = "Digite o texto do post…";
+      const usarChico = pv.legenda && legenda.value.trim() !== pv.legenda.trim() ? h("button", { type: "button", class: "chip", style: "border:0;cursor:pointer",
+        onclick: () => { legenda.value = pv.legenda; if (pv.titulo_youtube) tyt.value = pv.titulo_youtube; legenda.dispatchEvent(new Event("input")); usarChico.remove(); } }, "✍️ Usar a legenda do Chico") : null;
+      const PAINEIS = {
+        todos: h("div", { class: "cmp-texto" }, legenda, h("div", { class: "rodape" }, contLeg, usarChico,
+          pv.legenda && !usarChico ? h("span", { class: "nota" }, "✍️ escrita pelo Chico") : null)),
+        youtube: h("div", { style: "display:grid;gap:8px" }, h("label", { for: "pub-tyt" }, "Título no YouTube (até 100 caracteres)", tyt),
+          h("span", { class: "nota" }, "A descrição do Short é a legenda da aba Todos.")),
+        tiktok: ttBox };
+      const abas = h("div", { class: "cmp-abas", role: "tablist", "aria-label": "Texto por rede" }), painel = h("div", {});
+      let abaAtual = "todos";
+      function desenharAbas() {
+        const ks = ["todos"].concat(["youtube", "tiktok"].filter((k) => marcados().includes(k)));
+        if (!ks.includes(abaAtual)) abaAtual = "todos";
+        encher(abas, ks.map((k) => h("button", { type: "button", role: "tab", "aria-selected": String(k === abaAtual), onclick: () => irAba(k) }, k === "todos" ? "Todos" : NOME[k])));
+        encher(painel, PAINEIS[abaAtual]);
+      }
+      irAba = (k) => { abaAtual = k; desenharAbas(); };
+      const sec2 = secao("2. Texto do post", null, abas, painel);
+
+      // 3. mídia, checagem e capa
+      const avisos = avisosPub(x).concat((pv.avisos || []).map((t) => [t + " (Chico)", "tom-aviso"]));
+      const sec3 = secao("3. Mídia", h("span", { class: "info" }, ["1 vídeo", x.duracao_s && Math.round(x.duracao_s) + " s", mb(x.tamanho)].filter(Boolean).join(" · ")),
+        h("div", { class: "cmp-midia" }, x.previa ? h("img", { src: x.previa, alt: "Quadros do corte" }) : null,
+          h("div", { class: "txt" }, h("b", { style: "overflow-wrap:anywhere" }, x.arquivo || x.titulo),
+            h("a", { href: linkVideo(x), target: "_blank", rel: "noopener" }, x.drive_id ? "▶ Abrir no Drive" : "▶ Achar no Drive"))),
+        x.estado === "recusado" && x.motivo ? h("div", { class: "aviso" }, "Recusado antes: " + x.motivo) : null,
+        pv.erro ? h("div", { class: "aviso" }, "O Chico não conseguiu checar este corte: " + pv.erro)
+          : x.drive_id && !x.prevoo ? h("span", { class: "nota" }, "O Chico ainda está checando o vídeo e escrevendo a legenda…")
+          : pv.resumo ? h("span", { class: "nota" }, "✍️ Chico: " + pv.resumo) : null,
+        avisos.length ? h("div", { class: "pub-avisos" }, avisos.map(([t, tm]) => h("span", { class: "chip " + tm }, "⚠ " + t)))
+          : x.prevoo && !pv.erro ? h("span", { class: "chip tom-ok", style: "justify-self:start" }, "✓ Checagem técnica sem problemas") : null,
+        capaBox);
+
+      // 4. data e horário
+      const em = (dias, hh) => { const d = new Date(); d.setDate(d.getDate() + dias); d.setHours(hh, 0, 0, 0); return d; };
+      const atalho = (rotulo, f) => h("button", { type: "button", onclick: () => { marcar(f()); atualizar(); } }, rotulo);
+      const sec4 = secao("4. Data e horário", null,
+        h("div", { class: "cmp-quando" }, dia, hora),
+        h("div", { class: "cmp-atalhos" }, hoje.getHours() < 17 ? atalho("Hoje 18h", () => em(0, 18)) : null,
+          atalho("Amanhã 12h", () => em(1, 12)), atalho("Amanhã 18h", () => em(1, 18)), dia.value ? atalho("Limpar", () => null) : null),
+        h("span", { class: "nota" }, "Sem data, use “Publicar agora”: o Chico posta na hora."),
+        futuros.length ? h("div", { style: "display:grid;gap:6px" }, h("span", { class: "nota" }, "Já agendados neste perfil:"),
+          h("div", { class: "pub-avisos" }, futuros.slice(0, 6).map((y) => h("span", { class: "chip tom-neutro", title: y.titulo }, "🗓 " + horaBR(y.agendado_para))))) : null);
+
+      // lado direito: configurações avançadas e prévia por rede
+      const avancado = h("details", { class: "cmp-avancado" }, h("summary", {}, "⚙ 5. Configurações avançadas"),
+        h("div", {}, h("label", { for: "pub-destino" }, "Pasta da sprint (contagem dos vídeos feitos com IA)", destino),
+          pv.transcricao ? h("details", {}, h("summary", { class: "nota", style: "cursor:pointer" }, "O que é falado no corte"), h("p", { class: "nota", style: "margin:4px 0 0" }, pv.transcricao)) : null,
+          h("span", { class: "nota" }, `Arquivo: ${[x.arquivo, mb(x.tamanho)].filter(Boolean).join(" · ")}`)));
+      const celular = h("div", { class: "cmp-celular" }, x.drive_id ? h("iframe", { src: `https://drive.google.com/file/d/${x.drive_id}/preview`, allow: "autoplay", title: "Corte " + x.titulo })
+        : x.previa ? h("img", { src: x.previa, alt: "Quadros do corte" }) : h("div", { class: "cmp-vazio" }, "Vídeo sem prévia"));
+      const abasPrev = h("div", { class: "cmp-abas", role: "tablist", "aria-label": "Prévia por rede" }), prevCorpo = h("div", { style: "display:grid;gap:12px" }), post = h("div", { class: "cmp-post" });
+      let redePrev = null;
+      function desenharPrevia() {
+        const ms = marcados();
+        if (!ms.includes(redePrev)) redePrev = ms[0] || null;
+        encher(abasPrev, ms.map((k) => h("button", { type: "button", role: "tab", "aria-selected": String(k === redePrev), onclick: () => { redePrev = k; desenharPrevia(); } }, NOME[k])));
+        if (!redePrev) return encher(prevCorpo, h("div", { class: "cmp-vazio" }, h("span", { style: "font-size:28px" }, "🖼"), "Aguardando conteúdo. Escolha os canais para ver a prévia."));
+        if (!prevCorpo.contains(celular)) encher(prevCorpo, celular, post);
+        const leg = legenda.value.trim(), legEl = h("div", { class: "leg curta" }, leg || h("i", {}, "Sem legenda"));
+        encher(post, h("div", { class: "quem" }, h("span", { class: "av" }, "CW"), canal2 ? nomeProg : CONTA[redePrev] || nomeProg,
+            h("span", { class: "nota", style: "font-weight:600" }, { instagram: "· Reels", tiktok: "· TikTok", youtube: "· Shorts" }[redePrev])),
+          redePrev === "youtube" ? h("b", {}, tyt.value || x.titulo) : null, legEl,
+          leg.length > 160 ? h("button", { type: "button", class: "cmp-link", style: "padding:0;justify-self:start",
+            onclick: (ev) => { ev.target.textContent = legEl.classList.toggle("curta") ? "mais" : "menos"; } }, "mais") : null,
+          h("span", { class: "nota" }, quando() ? "🗓 Agendado para " + horaBR(quando()) : "Publica assim que aprovar"));
+      }
+
+      // barra de baixo: andar entre os cortes, recusar/ajuste, publicar agora, agendar
+      const botaoAgendar = h("button", { type: "button", class: "cmp-agendar", onclick: () => decidir(true, false) });
+      const pe = h("div", { class: "cmp-pe" }, caixaMotivo, msg,
+        h("div", { class: "barra" },
+          pos >= 0 ? h("div", { class: "cmp-nav" },
+            h("button", { type: "button", "aria-label": "Corte anterior", disabled: pos <= 0 || null, onclick: () => abrirPub(vistos[pos - 1]) }, "‹"),
+            `${pos + 1}/${vistos.length}`,
+            h("button", { type: "button", "aria-label": "Próximo corte", disabled: pos >= vistos.length - 1 || null, onclick: () => abrirPub(vistos[pos + 1]) }, "›")) : null,
+          x.editor_slug === "esteira" ? h("button", { type: "button", class: "cmp-link", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao " + agenteIA) : null,
+          h("button", { type: "button", class: "cmp-link perigo", onclick: () => decidir(false) }, "✕ Recusar"),
+          h("span", { style: "flex:1" }),
+          h("button", { type: "button", class: "cmp-link", onclick: () => decidir(true, true) }, "➤ Publicar agora"),
+          botaoAgendar));
+
+      function atualizar() {
+        const ms = marcados();
+        resumoCanais.textContent = ms.length ? ms.map((k) => NOME[k]).join(", ") : "Nenhum canal selecionado";
+        botaoAgendar.textContent = quando() ? "🗓 Agendar · " + horaBR(quando()) : "🗓 Agendar";
+        desenharAbas(); desenharPrevia();
+      }
+      caixas.forEach(([c]) => c.addEventListener("change", atualizar));
+      [dia, hora].forEach((el) => el.addEventListener("input", atualizar));
+      [legenda, tyt].forEach((el) => el.addEventListener("input", desenharPrevia));
+      encher($("#detalhe-corpo"), topo,
+        h("div", { class: "cmp-corpo" },
+          h("div", { class: "cmp-main" }, h("div", { class: "cmp-col" }, sec1, sec2), h("div", { class: "cmp-col" }, sec3, sec4)),
+          h("aside", { class: "cmp-lado" }, avancado, h("h3", { style: "font-size:16px" }, "Prévia"), abasPrev, prevCorpo)),
+        pe);
+      atualizar();
+    }
     const [rot, tom] = ESTADO_PUB[x.estado] || [x.estado, "tom-neutro"];
-    encher($("#detalhe-corpo"),
+    if (compor) montarCompositor();
+    else encher($("#detalhe-corpo"),
       h("div", { class: "chips" }, h("span", { class: "chip " + tom }, rot), x.episodio && h("span", { class: "chip" }, x.episodio), x.jira && h("span", { class: "chip" }, x.jira)),
       h("h2", {}, x.titulo),
       h("p", { class: "nota", style: "margin:0" }, `P-${String(x.id).padStart(4, "0")} · ${quemMandou(x)}${x.duracao_s ? " · " + Math.round(x.duracao_s) + " s" : ""}`),
@@ -3959,29 +4187,7 @@
       x.motivo && h("div", { class: "aviso" }, "Motivo da recusa: " + x.motivo),
       x.erro && x.estado !== "postado" && h("div", { class: x.estado === "erro" ? "aviso erro" : "aviso" }, x.erro),
       x.estado === "postado" || Object.keys(x.resultados || {}).length ? chipsRedes(x) : null,
-      pode && aguardando ? [
-        (x.prevoo || {}).erro ? h("div", { class: "aviso" }, "O Chico não conseguiu checar este corte: " + x.prevoo.erro) : null,
-        (x.prevoo || {}).legenda ? h("div", { class: "subir-item", style: "background:var(--surface-2)" },
-          h("b", {}, "✍️ Pré-voo do Chico"), x.prevoo.resumo ? h("span", { class: "nota" }, x.prevoo.resumo) : null,
-          (x.prevoo.avisos || []).length ? h("div", { class: "pub-avisos" }, x.prevoo.avisos.map((t) => h("span", { class: "chip tom-aviso" }, "⚠ " + t))) : h("span", { class: "nota" }, "Checagem técnica sem problemas."),
-          legenda.value.trim() === x.prevoo.legenda.trim() ? h("span", { class: "nota" }, "A legenda abaixo foi escrita por ele. Ajuste o que quiser antes de aprovar.")
-            : h("div", { class: "acoes" }, h("span", { class: "nota" }, "Ele sugeriu outra legenda:"), h("button", { class: "botao leve peq", onclick: () => { legenda.value = x.prevoo.legenda; legenda.dispatchEvent(new Event("input")); if (x.prevoo.titulo_youtube) tyt.value = x.prevoo.titulo_youtube; } }, "Usar a do Chico")),
-          x.prevoo.transcricao ? h("details", {}, h("summary", { class: "nota", style: "cursor:pointer" }, "O que é falado no corte"), h("p", { class: "nota", style: "margin:4px 0 0" }, x.prevoo.transcricao)) : null) : null,
-        h("label", { for: "pub-legenda" }, "Legenda (Instagram e TikTok; vai na descrição do YouTube)", legenda, contLeg),
-        h("label", { for: "pub-tyt" }, "Título no YouTube", tyt),
-        h("fieldset", { style: "border:0;padding:0;margin:0;display:flex;gap:14px;flex-wrap:wrap" }, h("legend", { class: "nota" }, "Postar em"),
-          caixas.map(([c, nome]) => h("label", { class: "check", style: "display:inline-flex;flex-direction:row;gap:6px;align-items:center;white-space:nowrap" }, c, nome))),
-        ttBox,
-        capaBox,
-        h("label", { for: "pub-quando" }, "Quando postar (vazio = na próxima passada do robô)", quando),
-        h("label", { for: "pub-destino" }, "Pasta da sprint (contagem dos vídeos feitos com IA)", destino),
-        caixaMotivo, msg,
-        h("div", { class: "acoes" },
-          h("button", { class: "botao amarelo", onclick: () => decidir(true) }, "Aprovar"),
-          h("button", { class: "botao perigo", onclick: () => decidir(false) }, "Recusar"),
-          x.editor_slug === "esteira" && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao " + agenteIA),
-          h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar"))]
-      : [!aguardando && x.legenda && h("div", { class: "campos" }, h("dl", {}, h("dt", {}, "Legenda"), h("dd", {}, x.legenda))),
+      [!aguardando && x.legenda && h("div", { class: "campos" }, h("dl", {}, h("dt", {}, "Legenda"), h("dd", {}, x.legenda))),
          pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) ? caixaMotivo : null, msg,
          h("div", { class: "acoes" },
            pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao " + agenteIA),
@@ -3989,7 +4195,7 @@
            pode && x.estado === "erro" && h("button", { class: "botao amarelo", onclick: () => mudar("tentar") }, "Tentar de novo"),
            pode && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao perigo peq", onclick: () => mudar("cancelar") }, "Cancelar"),
            h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar"))]);
-    $("#detalhe").showModal();
+    if (!$("#detalhe").open) $("#detalhe").showModal();
   }
 
   // ---------------------------------------------------------------- escritório virtual
