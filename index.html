@@ -3961,9 +3961,16 @@
     };
     inicio.onchange = intervalo.onchange = distribuir; distribuir();
     const gradeL = gradeDe(progPub(itens[0]));   // canal com grade: os horários saem da grade, um depois do outro
-    if (gradeL) {
-      linhas.forEach((l) => { l.quando.value = ""; l.quando.disabled = true; l.quando.title = "a grade do canal escolhe o horário"; });
-      inicio.disabled = intervalo.disabled = true;
+    if (gradeL) {   // previsão na tela (quem decide é a central, na mesma regra): um depois do outro, dentro da janela do dia
+      let t = new Date(gradeL.proximo_livre || Date.now());
+      linhas.forEach((l) => {
+        l.quando.value = ""; l.quando.hidden = true;
+        const hh = t.getHours() + t.getMinutes() / 60;
+        if (hh < gradeL.inicio_h) t.setHours(gradeL.inicio_h, 0, 0, 0);
+        else if (hh > gradeL.fim_h || (hh === gradeL.fim_h && t.getMinutes() > 0)) { t.setDate(t.getDate() + 1); t.setHours(gradeL.inicio_h, 0, 0, 0); }
+        l.st.textContent = "🗓 previsto: " + diaHora(t.toISOString());
+        t = new Date(t.getTime() + gradeL.intervalo_min * 60000);
+      });
     }
     const msg = h("div", { class: "aviso erro", hidden: true }), botao = h("button", { class: "botao amarelo" },
       gradeL ? `✅ Aprovar e pôr na grade (${itens.length}) · um a cada ${gradeL.intervalo_min / 60} h a partir de ${gradeL.proximo_livre ? diaHora(gradeL.proximo_livre) : "agora"}` : `✅ Aprovar e programar ${itens.length}`);
@@ -3987,7 +3994,10 @@
       h("div", { class: "card", style: "display:grid;gap:10px;background:var(--surface-2)" },
         h("b", {}, "Para todos"),
         h("div", { style: "display:flex;gap:14px;flex-wrap:wrap" }, redesLote.map(([, l]) => l), !ttOk ? h("span", { class: "nota" }, "TikTok: poste pelo celular até o app ser aprovado") : null),
-        h("div", { style: "display:flex;gap:12px;flex-wrap:wrap;align-items:end" }, h("label", {}, "Primeiro post", inicio), h("label", {}, "Ritmo", intervalo),
+        gradeL ? h("div", { class: "aviso", style: "margin:0" }, `Grade do canal ligada: os cortes entram um a cada ${gradeL.intervalo_min / 60} h, das ${gradeL.inicio_h}h às ${gradeL.fim_h}h, `
+            + `sempre depois do último programado (o primeiro sai ${gradeL.proximo_livre ? diaHora(gradeL.proximo_livre) : "assim que possível"}). Para mudar o ritmo ou a janela, use o painel “Programação do canal”. `
+            + "Abra a setinha ▸ de cada corte para mudar a legenda ou o título.")
+          : h("div", { style: "display:flex;gap:12px;flex-wrap:wrap;align-items:end" }, h("label", {}, "Primeiro post", inicio), h("label", {}, "Ritmo", intervalo),
           h("span", { class: "nota" }, "Os horários são preenchidos na ordem abaixo; abra a setinha ▸ de cada um para mudar o horário, a legenda ou o título."))),
       h("div", { style: "display:grid;gap:8px;max-height:52vh;overflow:auto" }, linhas.map((l) => l.det)), msg,
       h("div", { class: "acoes" }, botao, h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Cancelar")));
