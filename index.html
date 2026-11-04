@@ -715,6 +715,7 @@
     <div class="aviso" id="pub-canal2" hidden>Os cortes do Zeca ficam separados do CW Cast. Aprovados, eles <b>não</b> vão para as contas do CW Cast: ficam guardados na fila até a conta do Instagram do Canal 2 ser ligada aqui embaixo. No Drive, eles caem em “CW Cast - Cortes › 2. PARA APROVAR - Canal 2”.</div>
     <div class="aviso" id="pub-dark" hidden>Os cortes do Breu (canal dark, @corte_sdelivery) ficam separados do CW Cast. Aprovados, eles <b>não</b> vão para as contas do CW Cast: só saem no Instagram do canal (@corte_sdelivery), depois que a conta for ligada aqui embaixo. No Drive, eles caem em “CW Cast - Cortes › 2. PARA APROVAR - Canal Dark”.</div>
     <div class="pub-conta" id="pub-conta" hidden></div>
+    <div class="pub-conta" id="pub-grade" hidden></div>
     <div class="pub-lote" id="pub-lote" hidden></div>
     <div class="pub-grade" id="pub-lista"></div>
   </section>
@@ -3621,6 +3622,7 @@
     }
     PUB.lista = lista.map((x) => ({ ...x, previa: (MINI_PUB[x.id] || {}).previa || null })); PUB.situacao = st.data || {}; PUB.carregado = Date.now();
     if (podeAprovar() || tenho("contas")) { const c = await db.rpc("cw_contas_lista"); PUB.contas = c.data || []; }
+    { const gr = await db.rpc("cw_pub_grade"); PUB.grade = gr.data || []; }
     if (tenho("contas") && !PUB.cofre) {   // uma vez por sessão: a central já consegue gravar no cofre do robô?
       try { const { data } = await db.functions.invoke("contas", { body: { acao: "checar" } }); PUB.cofre = data || { ok: false, erro: "sem resposta" }; } catch { PUB.cofre = null; }
     }
@@ -3827,6 +3829,49 @@
       tenho("contas") ? h("form", { onsubmit: enviar }, campo, botao) : h("span", { class: "nota" }, "Só a gestão (ou quem tem a permissão de contas) liga ou troca a conta."),
       msg), linhaYt);
   }
+  // grade de postagem do canal: um corte a cada N horas, na janela do dia; aprovar encaixa depois do último programado
+  const gradeDe = (prog) => (PUB.grade || []).find((g) => g.programa === prog && g.ligado);
+  const diaHora = (iso) => new Date(iso).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  function desenharGradePub() {
+    const caixa = $("#pub-grade"), prog = PUB.prog, g = (PUB.grade || []).find((x) => x.programa === prog);
+    caixa.hidden = !g;
+    if (!g) return;
+    const fila = PUB.lista.filter((x) => progPub(x) === prog && ["aprovado", "postando", "erro"].includes(x.estado))
+      .sort((a, b) => new Date(a.agendado_para || 0) - new Date(b.agendado_para || 0));
+    const postados = PUB.lista.filter((x) => progPub(x) === prog && x.estado === "postado")
+      .sort((a, b) => new Date(b.atualizado) - new Date(a.atualizado)).slice(0, 3);
+    const ate = fila.filter((x) => x.agendado_para).map((x) => x.agendado_para).sort().pop();
+    const pode = podeAprovar(), msg = h("span", { class: "nota", role: "status" });
+    const ligado = h("input", { type: "checkbox", checked: g.ligado, disabled: !pode, style: "width:16px;height:16px;margin:0" });
+    const sel = (opcoes, v) => h("select", { disabled: !pode, style: "width:auto;padding:5px 10px;font-size:13px" }, opcoes.map(([k, t]) => h("option", { value: k, selected: +k === +v }, t)));
+    const intervalo = sel([[60, "1 h"], [90, "1 h 30"], [120, "2 h"], [180, "3 h"], [240, "4 h"], [360, "6 h"], [480, "8 h"], [720, "12 h"], [1440, "24 h"]], g.intervalo_min);
+    const horas = (de, ate_) => Array.from({ length: ate_ - de + 1 }, (_, i) => [de + i, (de + i) + "h"]);
+    const ini = sel(horas(0, 23), g.inicio_h), fim = sel(horas(1, 24), g.fim_h);
+    const salvar = h("button", { class: "botao peq", type: "button", hidden: !pode, onclick: async () => {
+      salvar.disabled = true; msg.textContent = "Salvando…";
+      const { data, error } = await db.rpc("cw_pub_grade_salvar", { p_programa: prog, p_ligado: ligado.checked, p_intervalo_min: +intervalo.value, p_inicio_h: +ini.value, p_fim_h: +fim.value });
+      salvar.disabled = false;
+      if (error) { msg.textContent = error.message; return; }
+      msg.textContent = ligado.checked ? `Grade salva. ${data || 0} corte(s) aprovado(s) reorganizado(s) na sequência.` : "Grade desligada: os horários escolhidos à mão valem como estão.";
+      PUB.carregado = 0; setTimeout(desenharPublicacao, 600);
+    } }, ligado.checked ? "Salvar e reorganizar" : "Salvar");
+    ligado.onchange = () => { salvar.textContent = ligado.checked ? "Salvar e reorganizar" : "Salvar"; };
+    const linha = (x, quando, tom) => h("div", { style: "display:flex;gap:10px;align-items:baseline;min-width:0" },
+      h("span", { class: "chip " + tom, style: "flex:none" }, quando), h("span", { style: "min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, x.titulo),
+      x.estado === "erro" ? h("span", { class: "chip tom-critico", style: "flex:none" }, "erro") : null);
+    encher(caixa,
+      h("div", { class: "pub-conta-linha" }, h("b", {}, "Programação do canal"),
+        h("label", { class: "check", style: "display:inline-flex;gap:6px;align-items:center;white-space:nowrap" }, ligado, "grade ligada"),
+        h("span", { class: "nota" }, "um corte a cada"), intervalo, h("span", { class: "nota" }, "das"), ini, h("span", { class: "nota" }, "às"), fim, salvar, msg),
+      g.ligado ? h("div", { class: "pub-conta-linha" },
+        h("span", { class: "chip tom-ok" }, "próximo horário livre: " + (g.proximo_livre ? diaHora(g.proximo_livre) : "—")),
+        h("span", { class: "chip tom-neutro" }, ate ? "programado até " + diaHora(ate) : "nada programado"),
+        g.ultimo_postado && h("span", { class: "chip tom-neutro" }, "último postado " + diaHora(g.ultimo_postado)),
+        h("span", { class: "nota" }, "Aprovou, vai para depois do último programado. Nunca dois no mesmo horário.")) : null,
+      fila.length || postados.length ? h("div", { style: "display:grid;gap:6px;min-width:0" },
+        fila.map((x) => linha(x, x.agendado_para ? "🗓 " + diaHora(x.agendado_para) : "assim que possível", "tom-aviso")),
+        postados.map((x) => linha(x, "✓ " + diaHora(x.atualizado), "tom-ok"))) : h("span", { class: "nota" }, "Nenhum corte aprovado na fila deste canal."));
+  }
   async function chamarRoboPub() { try { await db.functions.invoke("robo", { body: { acao: "publicar" } }); } catch { /* fica para a agenda */ } }
   async function desenharPublicacao() {
     if (Date.now() - PUB.carregado > 5000) await carregarPublicacao();
@@ -3850,6 +3895,7 @@
     $("#pub-canal2").hidden = PUB.prog !== "canal2";
     $("#pub-dark").hidden = PUB.prog !== "dark";
     desenharContaPub(st);
+    desenharGradePub();
     const doProg = PUB.lista.filter((x) => progPub(x) === PUB.prog);
     encher($("#pub-seg"), SEG_PUB.map(([id, nome, est]) => h("button", { role: "tab", "aria-selected": String(PUB.seg === id), onclick: () => { PUB.seg = id; desenharPublicacao(); } },
       nome, h("em", {}, doProg.filter((x) => est.includes(x.estado)).length))));
@@ -3914,7 +3960,13 @@
         const d = new Date(base.getTime() + i * min * 60000); l.quando.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; });
     };
     inicio.onchange = intervalo.onchange = distribuir; distribuir();
-    const msg = h("div", { class: "aviso erro", hidden: true }), botao = h("button", { class: "botao amarelo" }, `✅ Aprovar e programar ${itens.length}`);
+    const gradeL = gradeDe(progPub(itens[0]));   // canal com grade: os horários saem da grade, um depois do outro
+    if (gradeL) {
+      linhas.forEach((l) => { l.quando.value = ""; l.quando.disabled = true; l.quando.title = "a grade do canal escolhe o horário"; });
+      inicio.disabled = intervalo.disabled = true;
+    }
+    const msg = h("div", { class: "aviso erro", hidden: true }), botao = h("button", { class: "botao amarelo" },
+      gradeL ? `✅ Aprovar e pôr na grade (${itens.length}) · um a cada ${gradeL.intervalo_min / 60} h a partir de ${gradeL.proximo_livre ? diaHora(gradeL.proximo_livre) : "agora"}` : `✅ Aprovar e programar ${itens.length}`);
     botao.onclick = async () => {
       const redes = redesLote.filter(([c]) => c.checked).map(([c]) => c.value);
       if (!redes.length) { msg.hidden = false; msg.textContent = "Escolha pelo menos uma rede."; return; }
@@ -3923,7 +3975,7 @@
         l.st.textContent = "programando…";
         const capa = (l.x.capas || [])[0] ? await linkCapa(l.x.capas[0].caminho) : {};   // em lote: a primeira capa da Capitu
         const { error } = await db.rpc("cw_pub_decidir", { p_id: l.x.id, p_aprovar: true, p_motivo: null, p_legenda: l.leg.value, p_titulo_youtube: l.tyt.value,
-          p_redes: redes, p_agendado_para: l.quando.value ? new Date(l.quando.value).toISOString() : null, p_opcoes: capa });
+          p_redes: redes, p_agendado_para: !gradeL && l.quando.value ? new Date(l.quando.value).toISOString() : null, p_opcoes: capa });
         if (error) { l.st.textContent = "✗ " + error.message; l.st.style.color = "var(--critico-tx)"; l.det.open = true; } else { l.st.textContent = "✓ programado"; ok++; }
       }
       if (linhas.some((l) => !l.quando.value)) dispararRobo("publicar");
@@ -4229,7 +4281,8 @@
         h("div", { class: "cmp-quando" }, dia, hora),
         h("div", { class: "cmp-atalhos" }, hoje.getHours() < 17 ? atalho("Hoje 18h", () => em(0, 18)) : null,
           atalho("Amanhã 12h", () => em(1, 12)), atalho("Amanhã 18h", () => em(1, 18)), dia.value ? atalho("Limpar", () => null) : null),
-        h("span", { class: "nota" }, "Sem data, use “Publicar agora”: o Chico posta na hora."),
+        gradeDe(prog) ? h("span", { class: "nota" }, `Grade do canal ligada (um a cada ${gradeDe(prog).intervalo_min / 60} h): sem data, ou num horário ocupado, o corte vai para depois do último programado${gradeDe(prog).proximo_livre ? " — próximo livre: " + diaHora(gradeDe(prog).proximo_livre) : ""}.`)
+          : h("span", { class: "nota" }, "Sem data, use “Publicar agora”: o Chico posta na hora."),
         futuros.length ? h("div", { style: "display:grid;gap:6px" }, h("span", { class: "nota" }, "Já agendados neste perfil:"),
           h("div", { class: "pub-avisos" }, futuros.slice(0, 6).map((y) => h("span", { class: "chip tom-neutro", title: y.titulo }, "🗓 " + horaBR(y.agendado_para))))) : null);
 
@@ -4268,7 +4321,7 @@
           x.editor_slug === "esteira" ? h("button", { type: "button", class: "cmp-link", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao " + agenteIA) : null,
           h("button", { type: "button", class: "cmp-link perigo", onclick: () => decidir(false) }, "✕ Recusar"),
           h("span", { style: "flex:1" }),
-          h("button", { type: "button", class: "cmp-link", onclick: () => decidir(true, true) }, "➤ Publicar agora"),
+          h("button", { type: "button", class: "cmp-link", onclick: () => decidir(true, true) }, gradeDe(prog) ? "➤ Programar na grade" : "➤ Publicar agora"),
           botaoAgendar));
 
       function atualizar() {
