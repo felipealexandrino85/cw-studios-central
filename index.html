@@ -5704,11 +5704,6 @@
         u && idade < 90 ? h("span", { class: "nota" }, `ligado há ${duracao(d.ligado_ha_s)} · carga ${(d.carga || []).join(" / ")} · ${d.nucleos || "?"} núcleos`) : null,
         h("span", { class: "chip " + (d.drive ? "tom-ok" : "tom-erro") }, d.drive ? "Drive conectado" : "Drive sem acesso"),
         h("span", { class: "nota" }, `Este mês: ${horasMes.toFixed(0)} h ligado · ~US$ ${custo.toFixed(2)} até agora`)),
-      h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" },
-        medidor("Processador", u && idade < 90 ? u.cpu : null), medidor("Memória", u && idade < 90 ? u.ram : null, d.ram_gb ? `de ${d.ram_gb} GB` : null),
-        medidor("Disco", u ? u.disco : null, d.disco_gb ? `${d.disco_livre_gb} GB livres de ${d.disco_gb} GB` : null)),
-      grafico,
-      blocoRoteamento(rot.data || [], onde.data || "servidor", usos.data || []),
       eu.papel === "gestor" && h("h3", { class: "grupo" }, "Contas Claude no servidor"),
       eu.papel === "gestor" && h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px" }, ["esteira", "robos"].map((a) => {
         const c = contaDe[a], ok = c && c.estado === "ok", lim = a === "esteira" ? SRV.limite : null;
@@ -5718,6 +5713,11 @@
           lim ? h("span", { class: "nota" }, "Os cortes param com erro" + (lim.volta ? " (a conta volta " + lim.volta + ")" : "") + ". Troque a conta para seguir agora.") : c ? h("span", { class: "nota" }, "desde " + ha(c.atualizado)) : null,
           h("div", {}, h("button", { class: "botao " + (lim || !ok ? "amarelo" : "leve") + " peq", onclick: () => abrirContaServidor(a) }, ok ? "Trocar a conta" : "Ligar a conta")));
       })),
+      h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" },
+        medidor("Processador", u && idade < 90 ? u.cpu : null), medidor("Memória", u && idade < 90 ? u.ram : null, d.ram_gb ? `de ${d.ram_gb} GB` : null),
+        medidor("Disco", u ? u.disco : null, d.disco_gb ? `${d.disco_livre_gb} GB livres de ${d.disco_gb} GB` : null)),
+      grafico,
+      blocoRoteamento(rot.data || [], onde.data || "servidor", usos.data || []),
       h("h3", { class: "grupo" }, "Editores no servidor"),
       h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Editor", "Estação", "Conta Claude", "Agora", "Plugin", ""].map((t) => h("th", {}, t)))),
         h("tbody", {}, eds.length ? eds.map((e) => h("tr", {}, td(h("b", {}, nomeEditor(e.slug) || e.slug)),
