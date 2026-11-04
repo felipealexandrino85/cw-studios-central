@@ -833,6 +833,11 @@
     </details>
   </section>
 
+  <section id="aba-permissoes" hidden>
+    <header class="cabeca"><p class="kicker">Gestão</p><h1>Permissões</h1><p class="sub">Quem entra na central, com que papel, e o que cada pessoa pode fazer além do papel dela.</p></header>
+    <div id="perm-corpo" style="display:grid;gap:14px;min-width:0"></div>
+  </section>
+
   <section id="aba-gestao" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Pessoas</h1><p class="sub">Editores, tokens de conexão e quem é gestão.</p></header>
     <div class="tabela"><table><thead><tr><th>Editor</th><th>E-mail (entra na central com ele)</th><th>Conta no Jira</th><th>Situação</th><th>Plugin</th><th></th></tr></thead><tbody id="lista-editores"></tbody></table></div>
@@ -957,19 +962,32 @@
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
     gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]],
-             ["Gestão", [["relatorio", "Relatório"], ["agentes", "Oficina"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"]]]],
+             ["Gestão", [["relatorio", "Relatório"], ["agentes", "Oficina"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"], ["permissoes", "Permissões"]]]],
     producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Oficina"]]]],
     editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Oficina"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
   };
   const EXTRAS = { gestor: ["pedir", "escritorio", "padrao", "kit"], producao: ["pedir"], editor: [], solicitante: [] };   // abas sem item no menu
-  const abasDe = (papel) => (MENU[papel] || []).flatMap(([, itens]) => itens.map(([id]) => id)).concat(EXTRAS[papel] || []);
+  // permissões extras (aba Permissões): o que a gestão liberou para esta pessoa além do papel dela
+  const tenho = (x) => eu.papel === "gestor" || (eu.extras || []).includes(x);
+  const ABAS_ESTEIRA = [["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["reels", "FabI.Ano · reels"]];
+  const ABAS_EXTRA = { operacao: ABAS_ESTEIRA, estilos: ABAS_ESTEIRA, publicacao: [["publicacao", "Publicação"]], contas: [["publicacao", "Publicação"]],
+                       servidor: [["servidor", "Servidor"]], conta_claude: [["servidor", "Servidor"]] };
+  function menuDe(papel) {
+    const base = MENU[papel] || [];
+    if (papel !== eu.papel || papel === "gestor" || !(eu.extras || []).length) return base;   // prévia de outro papel: sem as extras
+    const tem = new Set(base.flatMap(([, itens]) => itens.map(([id]) => id))), mais = [];
+    for (const x of eu.extras) for (const [id, nome] of ABAS_EXTRA[x] || []) if (!tem.has(id)) { tem.add(id); mais.push([id, nome]); }
+    return mais.length ? [...base, ["Liberado para você", mais]] : base;
+  }
+  const abasDe = (papel) => menuDe(papel).flatMap(([, itens]) => itens.map(([id]) => id)).concat(EXTRAS[papel] || []);
   const ICONES = {
     inicio: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
     aovivo: "M3 12h4l3 8 4-16 3 8h4",
     demandas: "M4 4h4v16H4zM10 4h4v10h-4zM16 4h4v13h-4z",
     relatorio: "M4 20V10M10 20V4M16 20v-7M22 20H2",
     padrao: "M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z",
+    permissoes: "M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5zM9 12l2 2 4-4",
     gestao: "M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-2a4 4 0 0 0-3-3.87M16 2.13a4 4 0 0 1 0 7.75",
     meudia: "M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4",
     entregas: "M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4 12 14l-3-3",
@@ -1149,7 +1167,7 @@
     const caret = document.querySelector('.sb-item[data-aba="cast"] .sb-caret'); if (caret) caret.classList.toggle("aberto", castMenuAberto);
   }
   function montarNav(pedida) {
-    encher($("#nav"), (MENU[visao.papel] || []).map(([secao, itens]) => [h("p", { class: "sb-section" }, secao),
+    encher($("#nav"), menuDe(visao.papel).map(([secao, itens]) => [h("p", { class: "sb-section" }, secao),
       itens.map(([id, nome]) => [h("button", { class: "sb-item", "data-aba": id, "aria-expanded": id === "cast" ? String(castMenuAberto) : null,
         onclick: () => { if (id === "cast") { castMenuAberto = aba === "cast" ? !castMenuAberto : true; atualizarSubCast(); if (aba === "cast") return; } trocarAba(id); } },
         h("span", { class: "sb-ico" }, icone(ICONES[id])), h("span", { class: "sb-label" }, nome), contador(id), icone("M9 18l6-6-6-6", "sb-caret")),
@@ -1256,7 +1274,7 @@
   }
 
   function desenhar() {
-    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, canal2: desenharEsteira, dark: desenharEsteira, reels: desenharEsteira, inicio: desenharInicio, aovivo: () => { desenharAoVivo(); carregarTiteu().then(() => { if (aba === "aovivo") desenharAoVivo(); }); }, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, cast: abrirCast,
+    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, canal2: desenharEsteira, dark: desenharEsteira, reels: desenharEsteira, inicio: desenharInicio, aovivo: () => { desenharAoVivo(); carregarTiteu().then(() => { if (aba === "aovivo") desenharAoVivo(); }); }, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, permissoes: desenharPermissoes, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -3578,7 +3596,7 @@
                    ["postado", "Postados", ["postado"]], ["recusado", "Recusados", ["recusado", "cancelado"]]];
   const ESTADO_PUB = { aguardando: ["Aguardando aprovação", "tom-aviso"], aprovado: ["Aprovado", "tom-ok"], postando: ["Postando", "tom-ok"],
     postado: ["Postado", "tom-ok"], recusado: ["Recusado", "tom-critico"], erro: ["Erro ao postar", "tom-critico"], cancelado: ["Cancelado", "tom-neutro"] };
-  const podeAprovar = () => ["gestor", "producao"].includes(eu.papel);
+  const podeAprovar = () => ["gestor", "producao"].includes(eu.papel) || tenho("publicacao");
   const COLS_PUB = "id,programa,editor_slug,titulo,episodio,jira,legenda,titulo_youtube,redes,arquivo,pasta,drive_id,tamanho,duracao_s,agendado_para,estado,motivo,decidido_por,decidido_em,resultados,tentativas,erro,criado,atualizado,opcoes,enviado_por,prevoo,destino,sprint,sprint_copiado_em,sprint_caminho,capas";
   const MINI_PUB = {};
   async function carregarPublicacao() {
@@ -3591,8 +3609,8 @@
       for (const x of data || []) MINI_PUB[x.id] = { atualizado: x.atualizado, previa: x.previa };
     }
     PUB.lista = lista.map((x) => ({ ...x, previa: (MINI_PUB[x.id] || {}).previa || null })); PUB.situacao = st.data || {}; PUB.carregado = Date.now();
-    if (podeAprovar()) { const c = await db.rpc("cw_contas_lista"); PUB.contas = c.data || []; }
-    if (eu.papel === "gestor" && !PUB.cofre) {   // uma vez por sessão: a central já consegue gravar no cofre do robô?
+    if (podeAprovar() || tenho("contas")) { const c = await db.rpc("cw_contas_lista"); PUB.contas = c.data || []; }
+    if (tenho("contas") && !PUB.cofre) {   // uma vez por sessão: a central já consegue gravar no cofre do robô?
       try { const { data } = await db.functions.invoke("contas", { body: { acao: "checar" } }); PUB.cofre = data || { ok: false, erro: "sem resposta" }; } catch { PUB.cofre = null; }
     }
   }
@@ -3735,7 +3753,7 @@
   // nos segredos do robô (GitHub). O token não fica no banco nem na página; o robô renova sozinho antes de vencer.
   function desenharContaPub(st) {
     const caixa = $("#pub-conta"), prog = PUB.prog, c = (PUB.contas || []).find((x) => x.programa === prog && x.rede === "instagram");
-    caixa.hidden = !podeAprovar() || !c;
+    caixa.hidden = !(podeAprovar() || tenho("contas")) || !c;
     if (caixa.hidden) return;
     const r = prog === "cwcast" ? { instagram: st.instagram, conta: st.instagram_conta, dias: st.instagram_dias, erro: st.erro_instagram } : ((st.contas || {})[prog] || {});
     const ligada = !!(c.usuario && (prog === "cwcast" || c.user_id || r.instagram));
@@ -3764,10 +3782,10 @@
       h("span", { class: "chip " + (ligada && !r.erro ? "tom-ok" : r.erro ? "tom-critico" : "tom-neutro") },
         ligada ? `${r.erro ? "✗" : "✓"} @${c.usuario}` : c.esperado ? `✗ @${c.esperado} não ligada` : "✗ nenhuma conta ligada"),
       r.erro && h("span", { class: "chip tom-critico", title: r.erro }, "O Instagram recusou o acesso: cole um token novo"),
-      eu.papel === "gestor" && PUB.cofre && !PUB.cofre.ok && h("span", { class: "chip tom-aviso", title: PUB.cofre.erro }, "Falta liberar a chave do GitHub para gravar o token (veja o detalhe)"),
+      tenho("contas") && PUB.cofre && !PUB.cofre.ok && h("span", { class: "chip tom-aviso", title: PUB.cofre.erro }, "Falta liberar a chave do GitHub para gravar o token (veja o detalhe)"),
       ligada && dias != null && h("span", { class: "chip " + (dias < 15 ? "tom-aviso" : "tom-neutro") }, dias <= 0 ? "acesso venceu" : `vence em ${dias} dias`),
       c.renovado && h("span", { class: "nota" }, "renovado sozinho " + ha(c.renovado)),
-      eu.papel === "gestor" ? h("form", { onsubmit: enviar }, campo, botao) : h("span", { class: "nota" }, "Só a gestão liga ou troca a conta."),
+      tenho("contas") ? h("form", { onsubmit: enviar }, campo, botao) : h("span", { class: "nota" }, "Só a gestão (ou quem tem a permissão de contas) liga ou troca a conta."),
       msg);
   }
   async function chamarRoboPub() { try { await db.functions.invoke("robo", { body: { acao: "publicar" } }); } catch { /* fica para a agenda */ } }
@@ -4394,7 +4412,7 @@
   }
   const NOME_CONTA_SRV = { esteira: "da esteira (Titeu, Zeca e Breu)", robos: "dos robôs" };
   function avisoContaClaude(alvo, conta, limite) {   // gestão: ligar, trocar ou avisar que bateu o limite
-    if (eu.papel !== "gestor") return null;
+    if (!tenho("conta_claude")) return null;
     const ok = conta && conta.estado === "ok", nome = NOME_CONTA_SRV[alvo];
     if (ok && !limite) return h("div", { style: "display:flex;justify-content:flex-end" },
       h("button", { class: "botao leve peq", title: "Troca a conta Claude que roda no servidor (ex.: quando bater o limite do plano)", onclick: () => abrirContaServidor(alvo) }, `☁️ Trocar a conta Claude ${nome}`));
@@ -4715,7 +4733,7 @@
       db.from("esteira_episodios").select("*").eq("linha", ["canal2", "dark"].includes(linha) ? "cortes" : linha).neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
       db.from("esteira_lotes").select("*").eq("linha", linha).order("id", { ascending: false }).limit(15),
       db.from("esteira_cortes").select("*").order("id", { ascending: false }).limit(600),   // os mais novos (por ordem, os lotes novos sumiam depois de 600)
-      eu.papel === "gestor" ? db.from("servidor_conta").select("estado").eq("editor_slug", "esteira").maybeSingle() : Promise.resolve({ data: { estado: "ok" } }),
+      tenho("conta_claude") ? db.from("servidor_conta").select("estado").eq("editor_slug", "esteira").maybeSingle() : Promise.resolve({ data: { estado: "ok" } }),
       db.from("estilos").select("id,slug,nome,descricao,kit,item_id,ativo,padrao,linha,versao,base_id").eq("linha", linha).order("id")]);
     const E = eps.data || [], L = (lotes.data || []).filter((l) => !l.teste_versao_id), C = (cortes.data || []).sort((a, b) => a.ordem - b.ordem);   // testes de estilo aparecem em Estilos
     EST.estilos = ests.data || [];
@@ -5135,7 +5153,7 @@
     if (AGT.vista === "skills") return desenharSkillsOficina();
     const g = eu.papel === "gestor";
     let contaRobos = null;
-    if (g) { const r = await db.from("servidor_conta").select("estado").eq("editor_slug", "robos").maybeSingle(); contaRobos = r.data; }
+    if (tenho("conta_claude")) { const r = await db.from("servidor_conta").select("estado").eq("editor_slug", "robos").maybeSingle(); contaRobos = r.data; }
     const cartaoFixo = (r) => r.estilos ? h("div", { class: "card", style: "display:flex;gap:12px;align-items:center;border:1px solid var(--line)" },
       retratoDe(r.cores()), h("div", { style: "display:grid;gap:6px;min-width:0" }, h("b", {}, r.nome), h("span", { class: "nota" }, r.missao),
         h("div", { class: "acoes", style: "margin:0" }, h("button", { class: "botao amarelo peq", onclick: r.abrir }, "Abrir"),
@@ -5168,7 +5186,7 @@
     const fixos = ROBOS_FIXOS.filter((r) => r.papeis.includes(eu.papel));
     const pedidos = g ? AGT.lista.filter((a) => a.compartilhar === "pedido") : [];
     encher($("#ag-corpo"),
-      g ? avisoContaClaude("robos", contaRobos, null) : null,
+      avisoContaClaude("robos", contaRobos, null),
       pedidos.length ? h("div", { class: "aviso" }, `${pedidos.length} agente(s) pedindo para virar do time: ${pedidos.map((a) => a.nome).join(", ")}.`) : null,
       h("h3", { class: "grupo" }, "Personalizados"),
       h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px" },
@@ -5674,7 +5692,7 @@
       db.from("servidor_metricas").select("ts", { count: "exact", head: true }).gte("ts", mes.toISOString()),
       db.from("esc_conversas").select("id,editor_slug,titulo,estado,atualizada,trabalho").eq("maquina", "servidor").order("atualizada", { ascending: false }).limit(15),
       db.from("servidor_conta").select("editor_slug,estado,atualizado"),
-      eu.papel === "gestor" ? db.from("esteira_cortes").select("estado,erro,atualizado").eq("estado", "erro").order("atualizado", { ascending: false }).limit(30).then((r) => { SRV.limite = limiteClaude(r.data); return r; }) : null,
+      tenho("conta_claude") ? db.from("esteira_cortes").select("estado,erro,atualizado").eq("estado", "erro").order("atualizado", { ascending: false }).limit(30).then((r) => { SRV.limite = limiteClaude(r.data); return r; }) : null,
       db.from("roteamento").select("*").order("ordem"), db.rpc("cw_roteamento_onde"),
       db.from("ferramenta_usos").select("etapa,estado,custo_estimado,resultado,editor_slug").eq("ferramenta", "openrouter").gte("criado", mes.toISOString()).limit(5000)]);
     const u = ult.data, d = (u && u.dados) || {}, idade = u ? (Date.now() - new Date(u.ts)) / 1000 : Infinity;
@@ -5704,8 +5722,8 @@
         u && idade < 90 ? h("span", { class: "nota" }, `ligado há ${duracao(d.ligado_ha_s)} · carga ${(d.carga || []).join(" / ")} · ${d.nucleos || "?"} núcleos`) : null,
         h("span", { class: "chip " + (d.drive ? "tom-ok" : "tom-erro") }, d.drive ? "Drive conectado" : "Drive sem acesso"),
         h("span", { class: "nota" }, `Este mês: ${horasMes.toFixed(0)} h ligado · ~US$ ${custo.toFixed(2)} até agora`)),
-      eu.papel === "gestor" && h("h3", { class: "grupo" }, "Contas Claude no servidor"),
-      eu.papel === "gestor" && h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px" }, ["esteira", "robos"].map((a) => {
+      tenho("conta_claude") && h("h3", { class: "grupo" }, "Contas Claude no servidor"),
+      tenho("conta_claude") && h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px" }, ["esteira", "robos"].map((a) => {
         const c = contaDe[a], ok = c && c.estado === "ok", lim = a === "esteira" ? SRV.limite : null;
         return h("div", { class: "card", style: "display:grid;gap:8px;min-width:0" },
           h("div", { style: "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap" }, h("b", {}, a === "esteira" ? "Esteira · Titeu, Zeca e Breu" : "Robôs (agentes)"),
@@ -5765,6 +5783,85 @@
         h("div", { class: "chips" }, h("span", { class: "chip" }, `${u.n} vídeo(s)`), u.tempo != null && h("span", { class: "chip tom-neutro" }, `tempo médio ${duracao(u.tempo)}`),
           u.primeira !== "–" && h("span", { class: "chip tom-ok" }, `1ª aprovação ${u.primeira}`)));
     }) : h("div", { class: "vazio" }, "Nada recebido ainda. Peça aos editores para compartilhar os agentes."));
+  }
+
+  // ---------------------------------------------------------------- permissões (gestão): papel por pessoa + extras
+  const PAPEIS = [["gestor", "Gestão"], ["producao", "Produção"], ["editor", "Editor"], ["solicitante", "Só pede"], ["sem_acesso", "Sem acesso"]];
+  const PERMS = [
+    ["operacao", "Esteira e operação", "Ver a operação e usar a esteira: pedir cortes, aprovar prévias, pedir ajustes"],
+    ["publicacao", "Publicação", "Aprovar, subir e agendar cortes na Publicação"],
+    ["estilos", "Estilos de edição", "Criar e mudar os estilos (receitas) dos agentes"],
+    ["contas", "Contas de postagem", "Ligar e trocar o Instagram de cada canal"],
+    ["conta_claude", "Conta Claude do servidor", "Trocar a conta Claude da esteira e dos robôs"],
+    ["servidor", "Servidor", "Ver a aba Servidor: máquina, custos e roteamento"]];
+  // o que cada papel já pode sem extra (✓ pode · – não pode · texto = parcial)
+  const PODE_PAPEL = [
+    ["Pedir edição", "✓", "✓", "–", "✓"],
+    ["Esteira e operação", "✓", "✓", "✓", "–"],
+    ["Publicação (aprovar e postar)", "✓", "✓", "–", "–"],
+    ["Estilos de edição", "✓", "–", "pede melhoria", "–"],
+    ["Contas de postagem", "✓", "–", "–", "–"],
+    ["Conta Claude do servidor", "✓", "–", "só a dele", "–"],
+    ["Servidor", "✓", "–", "–", "–"],
+    ["Relatório, Pessoas e Permissões", "✓", "–", "–", "–"]];
+  const INCLUSO = { producao: ["operacao", "publicacao"], editor: ["operacao"] };   // o papel já dá: aparece marcado e travado
+  const PERM = { lista: [], msg: "" };
+  async function desenharPermissoes() {
+    const corpo = $("#perm-corpo");
+    if (eu.papel !== "gestor") { encher(corpo, h("div", { class: "vazio" }, "Só a gestão vê as permissões.")); return; }
+    const { data, error } = await db.rpc("cw_pessoas");
+    if (error) { encher(corpo, h("div", { class: "aviso erro" }, error.message)); return; }
+    PERM.lista = data || [];
+    const aviso = h("div", { class: "aviso erro", role: "alert", hidden: true });
+    const falhou = (e) => { aviso.hidden = !e; aviso.textContent = e ? e.message : ""; return !!e; };
+    const mudarPapel = async (email, papel) => { if (!falhou((await db.rpc("cw_pessoa_papel", { p_email: email, p_papel: papel })).error)) desenharPermissoes(); };
+    const linha = (p) => {
+      const conf = h("span", { class: "nota", hidden: true });
+      const sel = h("select", { "aria-label": "Papel de " + p.email, disabled: p.eu, style: "width:auto;padding:5px 10px;font-size:13px" },
+        PAPEIS.map(([v, t]) => h("option", { value: v, selected: v === p.papel, disabled: v === "editor" && !(p.editor && p.editor.ativo) && p.papel !== "editor" }, t)));
+      sel.onchange = () => {
+        const novo = sel.value;
+        if (p.papel === "editor" && ["solicitante", "sem_acesso"].includes(novo)) {   // desativa o editor: o token do Claude dele para de valer
+          encher(conf, " O Claude desta pessoa desconecta da central. ", h("button", { class: "botao perigo peq", onclick: () => mudarPapel(p.email, novo) }, "Confirmar"),
+            " ", h("button", { class: "botao leve peq", onclick: () => { sel.value = p.papel; conf.hidden = true; } }, "Cancelar"));
+          conf.hidden = false; return;
+        }
+        mudarPapel(p.email, novo);
+      };
+      const travado = p.papel === "gestor" || p.papel === "sem_acesso";
+      const extras = h("div", { class: "chips", style: "gap:6px" }, PERMS.map(([k, nome, desc]) => {
+        const doPapel = (INCLUSO[p.papel] || []).includes(k), ligado = doPapel || (p.extras || []).includes(k);
+        const cb = h("input", { type: "checkbox", checked: ligado || p.papel === "gestor", disabled: travado || doPapel, style: "width:16px;height:16px;margin:0" });
+        cb.onchange = async () => {
+          const pedidos = [[k, cb.checked]];
+          if (k === "contas" && cb.checked && !["producao"].includes(p.papel) && !(p.extras || []).includes("publicacao")) pedidos.push(["publicacao", true]);   // o cartão da conta fica na Publicação
+          for (const [perm, ligar] of pedidos) if (falhou((await db.rpc("cw_pessoa_extra", { p_email: p.email, p_permissao: perm, p_ligar: ligar })).error)) return;
+          desenharPermissoes();
+        };
+        return h("label", { class: "chip " + (ligado ? "tom-ok" : "tom-neutro"), title: doPapel ? desc + " (já vem com o papel)" : desc, style: "display:inline-flex;gap:6px;align-items:center;cursor:" + (travado ? "default" : "pointer") }, cb, nome);
+      }));
+      return h("tr", {},
+        h("td", { style: "min-width:0" }, h("b", {}, p.nome || p.email.split("@")[0]), p.eu ? h("span", { class: "chip tom-ok", style: "margin-left:6px" }, "você") : null,
+          h("div", { class: "nota" }, p.email)),
+        h("td", {}, sel, conf),
+        h("td", {}, p.papel === "gestor" ? h("span", { class: "nota" }, "Gestão já pode tudo.") : p.papel === "sem_acesso" ? h("span", { class: "nota" }, "Sem acesso: nada liberado.") : extras),
+        h("td", { class: "n" }, p.ultimo_acesso ? ha(p.ultimo_acesso) : h("span", { class: "nota" }, "nunca entrou")));
+    };
+    const novoEmail = h("input", { type: "email", required: true, placeholder: "pessoa@cardapioweb.com", style: "flex:1 1 220px;width:auto", "aria-label": "E-mail da pessoa" });
+    const novoPapel = h("select", { "aria-label": "Papel", style: "width:auto" }, PAPEIS.filter(([v]) => v !== "editor").map(([v, t]) => h("option", { value: v, selected: v === "solicitante" }, t)));
+    encher(corpo,
+      h("p", { class: "nota", style: "margin:0" }, "O papel define o básico de cada pessoa. Marque permissões extras para liberar algo a mais só para ela. Para alguém virar editor, cadastre em Pessoas (gera o token do Claude dela)."),
+      aviso,
+      h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Pessoa", "Papel", "Permissões extras", "Último acesso"].map((t) => h("th", {}, t)))),
+        h("tbody", {}, PERM.lista.length ? PERM.lista.map(linha) : [vazioLinha(4, "Ninguém ainda.")]))),
+      h("form", { class: "acoes", onsubmit: async (ev) => { ev.preventDefault(); const e = novoEmail.value.trim();
+          if (!falhou((await db.rpc("cw_pessoa_papel", { p_email: e, p_papel: novoPapel.value })).error)) { novoEmail.value = ""; desenharPermissoes(); } } },
+        novoEmail, novoPapel, h("button", { class: "botao peq" }, "Adicionar pessoa")),
+      h("p", { class: "nota", style: "margin:0" }, "Quem tem e-mail @cardapioweb.com já entra como “Só pede”. Adicione aqui para dar outro papel antes de a pessoa entrar, ou para bloquear (Sem acesso)."),
+      h("h3", { class: "grupo" }, "O que cada papel pode"),
+      h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["", "Gestão", "Produção", "Editor", "Só pede"].map((t) => h("th", {}, t)))),
+        h("tbody", {}, PODE_PAPEL.map(([nome, ...v]) => h("tr", {}, h("td", {}, nome), v.map((x) => h("td", { style: "text-align:center" }, x))))))),
+      h("p", { class: "nota", style: "margin:0" }, "“Sem acesso” não entra em nada. As permissões extras somam ao papel e valem na hora (a pessoa só precisa recarregar a página)."));
   }
 
   // ---------------------------------------------------------------- pessoas (gestão)
