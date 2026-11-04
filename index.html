@@ -374,6 +374,7 @@
   .botao.perigo:hover { background: rgba(225, 29, 72, .07); transform: none; }
   .botao.peq { padding: 6px 14px; font-size: 13px; }
   .botao:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  .pub-barra { position: sticky; bottom: -26px; z-index: 2; background: var(--surface); padding-block: 12px 26px; margin-bottom: -26px; border-top: 1px solid var(--line); }
   .pub-conta { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
   .pub-conta form { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 320px; min-width: 0; }
   .pub-conta input { flex: 1 1 220px; min-width: 0; }
@@ -4272,7 +4273,7 @@
       x.estado === "postado" || Object.keys(x.resultados || {}).length ? chipsRedes(x) : null,
       [!aguardando && x.legenda && h("div", { class: "campos" }, h("dl", {}, h("dt", {}, "Legenda"), h("dd", {}, x.legenda))),
          pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) ? caixaMotivo : null, msg,
-         h("div", { class: "acoes" },
+         h("div", { class: "acoes pub-barra" },   // fixa no rodapé da janela: com legenda longa os botões ficavam escondidos lá embaixo
            pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao " + agenteIA),
            pode && ["aprovado", "cancelado", "recusado", "erro"].includes(x.estado) && h("button", { class: "botao " + (x.estado === "aprovado" ? "leve" : "amarelo"), onclick: () => mudar("voltar") }, "Voltar para aprovação"),
            pode && x.estado === "erro" && h("button", { class: "botao amarelo", onclick: () => mudar("tentar") }, "Tentar de novo"),
