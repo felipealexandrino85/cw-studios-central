@@ -3964,7 +3964,7 @@
     $("#detalhe").classList.toggle("compositor", compor);
     $("#detalhe").addEventListener("close", () => { $("#detalhe").classList.remove("compositor"); PUB.aberto = null; }, { once: true });
     let irAba = () => {};   // o compositor troca a aba do texto (ex.: erro do TikTok abre a aba TikTok)
-    const agenteIA = x.destino === "Instagram Cardapio Web" ? "FabI.Ano" : "Titeu";   // reels da Cardápio Web: FabI.Ano; cortes: Titeu
+    const agenteIA = x.destino === "Instagram Cardapio Web" ? "FabI.Ano" : { canal2: "Zeca", dark: "Breu" }[progPub(x)] || "Titeu";   // reels da Cardápio Web: FabI.Ano; cortes: Titeu, Zeca ou Breu
     const legenda = h("textarea", { id: "pub-legenda", style: "min-height:140px" }); legenda.value = x.legenda || "";
     const contLeg = h("span", { class: "nota" });
     const contar = () => { const n = legenda.value.length, ht = hashtags(legenda.value);
@@ -4019,9 +4019,11 @@
       gradeCapas, statusCapa) : null;
     desenharCapas(); if (capaBox) acompanharCapa();
     const ttTravado = !(PUB.situacao || {}).tiktok_publico;   // até o TikTok aprovar o app, ele só posta em conta privada
+    const soInstagram = ["canal2", "dark"].includes(progPub(x));   // Zeca e Breu: só o Instagram do canal tem conta própria por enquanto
     const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" });
-      c.checked = (x.redes || []).includes(k) && !(k === "tiktok" && ttTravado); if (k === "tiktok" && ttTravado) c.disabled = true;
-      return [c, k === "tiktok" && ttTravado ? nome + " (aguardando aprovação do app: poste pelo celular)" : nome]; });
+      const fora = soInstagram && k !== "instagram";
+      c.checked = (soInstagram ? k === "instagram" : (x.redes || []).includes(k)) && !(k === "tiktok" && ttTravado); if ((k === "tiktok" && ttTravado) || fora) c.disabled = true;
+      return [c, fora ? nome + " (este canal ainda não tem conta)" : k === "tiktok" && ttTravado ? nome + " (aguardando aprovação do app: poste pelo celular)" : nome]; });
     // TikTok (Direct Post): conta, privacidade sem padrão, interações, conteúdo comercial e confirmação de música
     const cr = (PUB.situacao || {}).tiktok_criador || {}, aprovadoTT = !!(PUB.situacao || {}).tiktok_publico;
     const PRIV = { PUBLIC_TO_EVERYONE: "Todo mundo", MUTUAL_FOLLOW_FRIENDS: "Amigos", FOLLOWER_OF_CREATOR: "Seguidores", SELF_ONLY: "Só eu" };
@@ -4114,8 +4116,11 @@
       const futuros = doProg.filter((y) => y.id !== x.id && y.estado === "aprovado" && y.agendado_para && new Date(y.agendado_para) > hoje)
         .sort((a, b) => new Date(a.agendado_para) - new Date(b.agendado_para));
       const NOME = { instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube Shorts" };
-      const CONTA = { instagram: st.instagram_conta ? "@" + st.instagram_conta : "", tiktok: st.tiktok_conta ? "@" + st.tiktok_conta : "", youtube: st.youtube_canal || "" };
-      const conectada = (k) => !canal2 && !!st[k];
+      // Zeca e Breu têm Instagram próprio (ligado na Publicação › Instagram do canal); TikTok e YouTube só o CW Cast por enquanto
+      const contaProg = canal2 ? ((st.contas || {})[prog] || {}) : null;
+      const CONTA = canal2 ? { instagram: contaProg.conta ? "@" + contaProg.conta : "", tiktok: "", youtube: "" }
+        : { instagram: st.instagram_conta ? "@" + st.instagram_conta : "", tiktok: st.tiktok_conta ? "@" + st.tiktok_conta : "", youtube: st.youtube_canal || "" };
+      const conectada = (k) => canal2 ? k === "instagram" && !!contaProg.instagram : !!st[k];
       const marcados = () => caixas.filter(([c]) => c.checked).map(([c]) => c.value);
       const icone = (k) => { const s = h("span", { "aria-hidden": "true", style: "display:grid" }); s.innerHTML = ICONES_REDE[k]; return s; };
       const secao = (titulo, extra, ...filhos) => h("section", { class: "cmp-sec" }, h("div", { class: "cab" }, h("h3", {}, titulo), extra), filhos);
@@ -4135,10 +4140,12 @@
       const resumoCanais = h("span", { class: "info" });
       const sec1 = secao("1. Selecione canais", resumoCanais,
         h("div", { class: "cmp-canais", role: "group", "aria-label": "Canais" }, caixas.map(([c, nome]) => { const k = c.value;
-          return h("label", { class: "cmp-canal " + k, title: NOME[k] + (CONTA[k] && !canal2 ? " · " + CONTA[k] : "") + (c.disabled ? " · bloqueado até o TikTok aprovar o app" : conectada(k) ? "" : " · conta não conectada") },
+          return h("label", { class: "cmp-canal " + k, title: NOME[k] + (CONTA[k] ? " · " + CONTA[k] : "") + (c.disabled ? " · bloqueado até o TikTok aprovar o app" : conectada(k) ? "" : " · conta não conectada") },
             c, icone(k), h("span", { class: "sr" }, nome), !conectada(k) || c.disabled ? h("i", { class: "cmp-alerta", "aria-hidden": "true" }, "!") : null); })),
-        canal2 ? h("span", { class: "nota" }, (prog === "dark" ? "O canal dark" : "O Canal 2") + " ainda não tem contas conectadas: aprovado, o corte fica guardado na fila.") : null,
-        ttTravado ? h("span", { class: "nota" }, "TikTok bloqueado até o TikTok aprovar o app: poste pelo celular.") : null);
+        canal2 ? h("span", { class: "nota" }, contaProg.instagram
+          ? `${nomeProg} posta no Instagram ${CONTA.instagram}. TikTok e YouTube ainda não têm conta deste canal: deixe só o Instagram marcado.`
+          : `${nomeProg} ainda não tem o Instagram ligado (Publicação › Instagram do canal): aprovado, o corte fica guardado na fila.`) : null,
+        ttTravado && !canal2 ? h("span", { class: "nota" }, "TikTok bloqueado até o TikTok aprovar o app: poste pelo celular.") : null);
 
       // 2. texto, com aba por rede (Todos · YouTube · TikTok)
       legenda.removeAttribute("style"); legenda.placeholder = "Digite o texto do post…";
@@ -4202,7 +4209,7 @@
         if (!redePrev) return encher(prevCorpo, h("div", { class: "cmp-vazio" }, h("span", { style: "font-size:28px" }, "🖼"), "Aguardando conteúdo. Escolha os canais para ver a prévia."));
         if (!prevCorpo.contains(celular)) encher(prevCorpo, celular, post);
         const leg = legenda.value.trim(), legEl = h("div", { class: "leg curta" }, leg || h("i", {}, "Sem legenda"));
-        encher(post, h("div", { class: "quem" }, h("span", { class: "av" }, "CW"), canal2 ? nomeProg : CONTA[redePrev] || nomeProg,
+        encher(post, h("div", { class: "quem" }, h("span", { class: "av" }, "CW"), CONTA[redePrev] || nomeProg,
             h("span", { class: "nota", style: "font-weight:600" }, { instagram: "· Reels", tiktok: "· TikTok", youtube: "· Shorts" }[redePrev])),
           redePrev === "youtube" ? h("b", {}, tyt.value || x.titulo) : null, legEl,
           leg.length > 160 ? h("button", { type: "button", class: "cmp-link", style: "padding:0;justify-self:start",
