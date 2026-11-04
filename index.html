@@ -4377,6 +4377,32 @@
       escPodeMandar() && ESC.estacoes.some((e) => e.maquina === "servidor")
         ? h("button", { class: "botao leve peq", title: "O servidor roda o Claude com a sua conta: ligue uma vez", onclick: abrirContaServidor }, "☁️ Minha conta Claude no servidor") : null);
   }
+  // ---- a conta Claude bateu o limite? (o erro do corte traz "hit your session/usage/weekly limit · resets ...")
+  function limiteClaude(cortes) {
+    const re = /hit your (session|usage|weekly|5-hour)? ?limit[^·]*(·\s*resets ([^)\n]+))?/i, desde = Date.now() - 6 * 3600e3;
+    for (const c of cortes || []) {
+      const m = c.estado === "erro" && c.erro && new Date(c.atualizado) > desde && re.exec(c.erro);
+      if (m) {   // "6:10pm (UTC" → "às 15h10" no horário de quem olha
+        const t = /(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*\(UTC/i.exec(m[3] || "");
+        let volta = m[3] ? m[3].trim() : null;
+        if (t) { const d = new Date(); d.setUTCHours((+t[1] % 12) + (t[3].toLowerCase() === "pm" ? 12 : 0), +(t[2] || 0), 0, 0);
+          volta = "às " + d.getHours() + "h" + String(d.getMinutes()).padStart(2, "0"); }
+        return { volta, quando: c.atualizado };
+      }
+    }
+    return null;
+  }
+  const NOME_CONTA_SRV = { esteira: "da esteira (Titeu, Zeca e Breu)", robos: "dos robôs" };
+  function avisoContaClaude(alvo, conta, limite) {   // gestão: ligar, trocar ou avisar que bateu o limite
+    if (eu.papel !== "gestor") return null;
+    const ok = conta && conta.estado === "ok", nome = NOME_CONTA_SRV[alvo];
+    if (ok && !limite) return h("div", { style: "display:flex;justify-content:flex-end" },
+      h("button", { class: "botao leve peq", title: "Troca a conta Claude que roda no servidor (ex.: quando bater o limite do plano)", onclick: () => abrirContaServidor(alvo) }, `☁️ Trocar a conta Claude ${nome}`));
+    return h("div", { class: "aviso" + (limite ? " erro" : "") },
+      limite ? `A conta Claude ${nome} bateu o limite do plano${limite.volta ? " (volta " + limite.volta + ")" : ""}: os cortes param com erro até lá. Troque a conta para seguir agora. `
+             : `A esteira roda com a conta Claude do CW Studios no servidor. `,
+      h("button", { class: "botao amarelo peq", onclick: () => abrirContaServidor(alvo) }, limite || ok ? `☁️ Trocar a conta Claude ${nome}` : `☁️ Ligar a conta Claude ${nome}`));
+  }
   // ---- conta Claude do editor no servidor: link do login do Claude → o editor cola o código → o token fica só no servidor
   async function abrirContaServidor(slugAlvo) {
     const alvo = typeof slugAlvo === "string" ? slugAlvo : meuSlug(), extra = alvo !== meuSlug() ? { p_editor: alvo } : {};
@@ -4384,8 +4410,11 @@
     const ler = async () => (await db.from("servidor_conta").select("estado,link,mensagem,atualizado").eq("editor_slug", alvo).maybeSingle()).data;
     const desenhar = (r) => {
       const est = r ? r.estado : "nada", codigo = h("input", { type: "text", placeholder: "Cole aqui o código", autocomplete: "off", style: "flex:1;min-width:0" });
-      encher(corpo, h("h2", {}, alvo === "robos" ? "☁️ Conta Claude dos robôs no servidor" : "☁️ Sua conta Claude no servidor"),
-        h("p", { class: "nota", style: "margin:0" }, "No servidor, o Claude roda com a sua conta, como no seu computador: gasta o seu plano e carrega os agentes do Kit. O acesso fica guardado só no servidor; ninguém da gestão vê."),
+      const daGestao = alvo in NOME_CONTA_SRV;
+      encher(corpo, h("h2", {}, daGestao ? `☁️ Conta Claude ${NOME_CONTA_SRV[alvo]} no servidor` : "☁️ Sua conta Claude no servidor"),
+        h("p", { class: "nota", style: "margin:0" }, daGestao
+          ? "Entre com a conta Claude que vai rodar no servidor (pode ser outra, se esta bateu o limite). A troca vale para os próximos cortes; o acesso fica guardado só no servidor."
+          : "No servidor, o Claude roda com a sua conta, como no seu computador: gasta o seu plano e carrega os agentes do Kit. O acesso fica guardado só no servidor; ninguém da gestão vê."),
         est === "ok" ? h("div", { class: "aviso", style: "background:var(--surface-2);color:inherit" }, "✓ " + (r.mensagem || "Conta ligada.")) : null,
         est === "erro" ? h("div", { class: "aviso erro" }, r.mensagem || "Não deu certo.") : null,
         est === "pedido" || (r && r.mensagem === "conferindo o código…" && est === "codigo") || est === "codigo"
@@ -4398,7 +4427,7 @@
         h("div", { class: "acoes" },
           ["nada", "ok", "erro"].includes(est) || (est === "link" && Date.now() - new Date(r.atualizado) > 600000)
             ? h("button", { class: "botao " + (est === "ok" ? "leve" : "amarelo"), onclick: async () => {
-                const { error } = await db.rpc("cw_srv_conta_pedir", extra); if (error) return alert(error.message); acompanhar(); } }, est === "ok" ? "Ligar outra conta" : "Ligar minha conta") : null,
+                const { error } = await db.rpc("cw_srv_conta_pedir", extra); if (error) return alert(error.message); acompanhar(); } }, est === "ok" ? "Trocar de conta" : daGestao ? "Ligar a conta" : "Ligar minha conta") : null,
           h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar")));
     };
     const acompanhar = () => { clearInterval(timer); timer = setInterval(async () => {
@@ -4760,8 +4789,7 @@
           h("tbody", {}, visiveis.map(linhaCorte)))));
     };
     encher(corpoEst(), navEst,
-      eu.papel === "gestor" && (!conta.data || conta.data.estado !== "ok") ? h("div", { class: "aviso" }, "A esteira roda com a conta Claude do CW Studios no servidor. ",
-        h("button", { class: "botao amarelo peq", onclick: () => abrirContaServidor("esteira") }, "☁️ Ligar a conta Claude da esteira")) : null,
+      avisoContaClaude("esteira", conta.data, limiteClaude(cortes.data)),
       h("h3", { class: "grupo" }, linha === "reels" ? "Reels" : "Lotes"),
       L.length ? h("div", { style: "display:grid;gap:12px" }, L.map(blocoLote)) : h("div", { class: "vazio" }, linha === "reels" ? "Nenhum reel ainda. Suba a pasta do reel (câmera e tela) em “1. ENVIE AQUI › Reels (câmera + tela)”." : "Nenhum lote ainda. Quando um episódio estiver pronto, clique em ✂️ Gerar cortes."),
       h("h3", { class: "grupo" }, linha === "reels" ? "Pastas que chegaram" : "Episódios"),
@@ -5140,8 +5168,7 @@
     const fixos = ROBOS_FIXOS.filter((r) => r.papeis.includes(eu.papel));
     const pedidos = g ? AGT.lista.filter((a) => a.compartilhar === "pedido") : [];
     encher($("#ag-corpo"),
-      g && (!contaRobos || contaRobos.estado !== "ok") ? h("div", { class: "aviso" }, "Os robôs rodam no servidor com uma conta Claude da gestão. ",
-        h("button", { class: "botao amarelo peq", onclick: () => abrirContaServidor("robos") }, "☁️ Ligar a conta Claude dos robôs")) : null,
+      g ? avisoContaClaude("robos", contaRobos, null) : null,
       pedidos.length ? h("div", { class: "aviso" }, `${pedidos.length} agente(s) pedindo para virar do time: ${pedidos.map((a) => a.nome).join(", ")}.`) : null,
       h("h3", { class: "grupo" }, "Personalizados"),
       h("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px" },
@@ -5641,12 +5668,13 @@
     clearInterval(SRV.timer);
     SRV.timer = setInterval(() => { if (aba === "servidor" && !document.hidden && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#srv-corpo select, #srv-corpo input"))) desenharServidor(); else if (aba !== "servidor") clearInterval(SRV.timer); }, 15000);
     const desde12 = new Date(Date.now() - 12 * 3600e3).toISOString(), mes = new Date(); mes.setDate(1); mes.setHours(0, 0, 0, 0);
-    const [ult, serie, nMes, convs, contas, rot, onde, usos] = await Promise.all([
+    const [ult, serie, nMes, convs, contas, , rot, onde, usos] = await Promise.all([
       db.from("servidor_metricas").select("*").order("ts", { ascending: false }).limit(1).maybeSingle(),
       db.from("servidor_metricas").select("ts,cpu,ram").gte("ts", desde12).order("ts").limit(2000),
       db.from("servidor_metricas").select("ts", { count: "exact", head: true }).gte("ts", mes.toISOString()),
       db.from("esc_conversas").select("id,editor_slug,titulo,estado,atualizada,trabalho").eq("maquina", "servidor").order("atualizada", { ascending: false }).limit(15),
       db.from("servidor_conta").select("editor_slug,estado,atualizado"),
+      eu.papel === "gestor" ? db.from("esteira_cortes").select("estado,erro,atualizado").eq("estado", "erro").order("atualizado", { ascending: false }).limit(30).then((r) => { SRV.limite = limiteClaude(r.data); return r; }) : null,
       db.from("roteamento").select("*").order("ordem"), db.rpc("cw_roteamento_onde"),
       db.from("ferramenta_usos").select("etapa,estado,custo_estimado,resultado,editor_slug").eq("ferramenta", "openrouter").gte("criado", mes.toISOString()).limit(5000)]);
     const u = ult.data, d = (u && u.dados) || {}, idade = u ? (Date.now() - new Date(u.ts)) / 1000 : Infinity;
@@ -5681,6 +5709,15 @@
         medidor("Disco", u ? u.disco : null, d.disco_gb ? `${d.disco_livre_gb} GB livres de ${d.disco_gb} GB` : null)),
       grafico,
       blocoRoteamento(rot.data || [], onde.data || "servidor", usos.data || []),
+      eu.papel === "gestor" && h("h3", { class: "grupo" }, "Contas Claude no servidor"),
+      eu.papel === "gestor" && h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px" }, ["esteira", "robos"].map((a) => {
+        const c = contaDe[a], ok = c && c.estado === "ok", lim = a === "esteira" ? SRV.limite : null;
+        return h("div", { class: "card", style: "display:grid;gap:8px;min-width:0" },
+          h("div", { style: "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap" }, h("b", {}, a === "esteira" ? "Esteira · Titeu, Zeca e Breu" : "Robôs (agentes)"),
+            h("span", { class: "chip " + (lim ? "tom-erro" : ok ? "tom-ok" : "tom-aviso") }, lim ? "bateu o limite" : ok ? "ligada" : c && c.estado === "link" ? "esperando o código" : "falta ligar")),
+          lim ? h("span", { class: "nota" }, "Os cortes param com erro" + (lim.volta ? " (a conta volta " + lim.volta + ")" : "") + ". Troque a conta para seguir agora.") : c ? h("span", { class: "nota" }, "desde " + ha(c.atualizado)) : null,
+          h("div", {}, h("button", { class: "botao " + (lim || !ok ? "amarelo" : "leve") + " peq", onclick: () => abrirContaServidor(a) }, ok ? "Trocar a conta" : "Ligar a conta")));
+      })),
       h("h3", { class: "grupo" }, "Editores no servidor"),
       h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Editor", "Estação", "Conta Claude", "Agora", "Plugin", ""].map((t) => h("th", {}, t)))),
         h("tbody", {}, eds.length ? eds.map((e) => h("tr", {}, td(h("b", {}, nomeEditor(e.slug) || e.slug)),
