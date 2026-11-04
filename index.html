@@ -4274,7 +4274,7 @@
          pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) ? caixaMotivo : null, msg,
          h("div", { class: "acoes" },
            pode && x.editor_slug === "esteira" && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao leve", onclick: ajusteTiteu }, "✏️ Pedir ajuste ao " + agenteIA),
-           pode && x.estado === "aprovado" && h("button", { class: "botao leve", onclick: () => mudar("voltar") }, "Voltar para aprovação"),
+           pode && ["aprovado", "cancelado", "recusado", "erro"].includes(x.estado) && h("button", { class: "botao " + (x.estado === "aprovado" ? "leve" : "amarelo"), onclick: () => mudar("voltar") }, "Voltar para aprovação"),
            pode && x.estado === "erro" && h("button", { class: "botao amarelo", onclick: () => mudar("tentar") }, "Tentar de novo"),
            pode && ["aprovado", "erro"].includes(x.estado) && h("button", { class: "botao perigo peq", onclick: () => mudar("cancelar") }, "Cancelar"),
            h("button", { class: "botao leve", onclick: () => $("#detalhe").close() }, "Fechar"))]);
