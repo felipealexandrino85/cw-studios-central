@@ -375,7 +375,9 @@
   .botao.peq { padding: 6px 14px; font-size: 13px; }
   .botao:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
   .pub-barra { position: sticky; bottom: -26px; z-index: 2; background: var(--surface); padding-block: 12px 26px; margin-bottom: -26px; border-top: 1px solid var(--line); }
-  .pub-conta { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+  .pub-conta-linha { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; min-width: 0; }
+  .pub-conta + .pub-conta, .pub-conta-linha + .pub-conta-linha { border-top: 1px solid var(--line); padding-top: 10px; }
+  .pub-conta { display: grid; gap: 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
   .pub-conta form { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 320px; min-width: 0; }
   .pub-conta input { flex: 1 1 220px; min-width: 0; }
   .aviso { padding: 12px 16px; border-radius: 14px; background: #f0e5fd; color: var(--brand-deep); }
@@ -1099,6 +1101,14 @@
     const nomeSalvo = localGet("cw-nome"); if (nomeSalvo) $("#p-nome").value = nomeSalvo;
     await carregar();
     montarVerComo();
+    const volta = new URLSearchParams(location.search);   // volta do login do Google (Ligar YouTube)
+    if (volta.get("yt")) {
+      const prog = volta.get("prog") || PUB.prog;
+      if (["cwcast", "canal2", "dark"].includes(prog)) PUB.prog = prog;
+      PUB.ytMsg = { prog: PUB.prog, texto: volta.get("yt") === "ok" ? `Pronto: canal ${volta.get("canal")} ligado. O robô confere e passa a postar nele na próxima passada.` : "Não ligou: " + (volta.get("msg") || "erro") };
+      if (volta.get("yt") !== "ok") { const p = volta.get("msg") || ""; const m = /o (Zeca|Breu)/.exec(p); if (m) PUB.prog = m[1] === "Zeca" ? "canal2" : "dark"; PUB.ytMsg.prog = PUB.prog; }
+      history.replaceState(null, "", location.pathname + "#publicacao");
+    }
     montarNav(location.hash.slice(1));
     setInterval(() => { if (!document.hidden) carregar(); }, 20000);   // aba esquecida em segundo plano não gasta tráfego
     document.addEventListener("visibilitychange", () => { if (!document.hidden) carregar(); });
@@ -3778,7 +3788,35 @@
       chamarRoboPub();
       PUB.carregado = 0; setTimeout(desenharPublicacao, 1500);
     };
-    encher(caixa,
+    // YouTube do Zeca e do Breu: login do Google pela central (botão abre o Google e volta para esta página)
+    const yt = prog === "cwcast" ? null : (PUB.contas || []).find((x) => x.programa === prog && x.rede === "youtube");
+    let linhaYt = null;
+    if (yt) {
+      const ry = (st.contas || {})[prog] || {}, ytOk = !!(yt.usuario && ry.youtube), msgYt = h("span", { class: "nota", role: "status" });
+      if (PUB.ytMsg && PUB.ytMsg.prog === prog) { msgYt.textContent = PUB.ytMsg.texto; PUB.ytMsg = null; }
+      const botaoYt = h("button", { class: "botao" + (yt.usuario ? " leve" : ""), type: "button", onclick: async () => {
+        botaoYt.disabled = true; msgYt.textContent = "Abrindo o login do Google…";
+        let d = null;
+        try {
+          const res = await db.functions.invoke("contas", { body: { acao: "youtube_link", programa: prog } });
+          d = res.data || (res.error && res.error.context && await res.error.context.json().catch(() => null)) || { erro: res.error ? res.error.message : "sem resposta" };
+        } catch (e) { d = { erro: e.message }; }
+        if (d && d.link) { location.href = d.link; return; }   // o Google volta para a central, que volta para esta página
+        botaoYt.disabled = false; msgYt.textContent = (d && d.erro) || "não deu certo";
+      } }, yt.usuario ? "Trocar canal" : "Ligar YouTube");
+      linhaYt = h("div", { class: "pub-conta-linha" },
+        h("b", {}, "YouTube do canal"),
+        h("span", { class: "chip " + (ytOk ? "tom-ok" : ry.erro_youtube || ry.aviso_youtube ? "tom-critico" : "tom-neutro") },
+          yt.usuario ? `${ytOk ? "✓" : ry.youtube === undefined ? "…" : "✗"} ${yt.usuario}` : "✗ nenhum canal ligado"),
+        yt.usuario && ry.youtube === undefined && h("span", { class: "nota" }, "o robô confere na próxima passada"),
+        ry.erro_youtube && h("span", { class: "chip tom-critico", title: ry.erro_youtube }, "O Google recusou o acesso: ligue de novo"),
+        ry.aviso_youtube && h("span", { class: "chip tom-critico" }, ry.aviso_youtube),
+        tenho("contas") && PUB.cofre && PUB.cofre.google === false && h("span", { class: "chip tom-aviso", title: "Rode ferramentas/conectar-google-web.py no Mac" }, "Falta guardar a chave do Google na central"),
+        tenho("contas") ? botaoYt : null,
+        h("span", { class: "nota" }, "Entre com a conta Google do canal e escolha o canal (conta de marca)."),
+        msgYt);
+    }
+    encher(caixa, h("div", { class: "pub-conta-linha" },
       h("b", {}, "Instagram do canal"),
       h("span", { class: "chip " + (ligada && !r.erro ? "tom-ok" : r.erro ? "tom-critico" : "tom-neutro") },
         ligada ? `${r.erro ? "✗" : "✓"} @${c.usuario}` : c.esperado ? `✗ @${c.esperado} não ligada` : "✗ nenhuma conta ligada"),
@@ -3787,7 +3825,7 @@
       ligada && dias != null && h("span", { class: "chip " + (dias < 15 ? "tom-aviso" : "tom-neutro") }, dias <= 0 ? "acesso venceu" : `vence em ${dias} dias`),
       c.renovado && h("span", { class: "nota" }, "renovado sozinho " + ha(c.renovado)),
       tenho("contas") ? h("form", { onsubmit: enviar }, campo, botao) : h("span", { class: "nota" }, "Só a gestão (ou quem tem a permissão de contas) liga ou troca a conta."),
-      msg);
+      msg), linhaYt);
   }
   async function chamarRoboPub() { try { await db.functions.invoke("robo", { body: { acao: "publicar" } }); } catch { /* fica para a agenda */ } }
   async function desenharPublicacao() {
@@ -4020,10 +4058,11 @@
       gradeCapas, statusCapa) : null;
     desenharCapas(); if (capaBox) acompanharCapa();
     const ttTravado = !(PUB.situacao || {}).tiktok_publico;   // até o TikTok aprovar o app, ele só posta em conta privada
-    const soInstagram = ["canal2", "dark"].includes(progPub(x));   // Zeca e Breu: só o Instagram do canal tem conta própria por enquanto
+    const soInstagram = ["canal2", "dark"].includes(progPub(x));   // Zeca e Breu: Instagram e, se ligado, o YouTube do canal (TikTok ainda não)
+    const ytCanal = soInstagram && !!(((PUB.situacao || {}).contas || {})[progPub(x)] || {}).youtube;
     const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" });
-      const fora = soInstagram && k !== "instagram";
-      c.checked = (soInstagram ? k === "instagram" : (x.redes || []).includes(k)) && !(k === "tiktok" && ttTravado); if ((k === "tiktok" && ttTravado) || fora) c.disabled = true;
+      const fora = soInstagram && k !== "instagram" && !(k === "youtube" && ytCanal);
+      c.checked = (soInstagram ? k === "instagram" || (k === "youtube" && ytCanal) : (x.redes || []).includes(k)) && !(k === "tiktok" && ttTravado); if ((k === "tiktok" && ttTravado) || fora) c.disabled = true;
       return [c, fora ? nome + " (este canal ainda não tem conta)" : k === "tiktok" && ttTravado ? nome + " (aguardando aprovação do app: poste pelo celular)" : nome]; });
     // TikTok (Direct Post): conta, privacidade sem padrão, interações, conteúdo comercial e confirmação de música
     const cr = (PUB.situacao || {}).tiktok_criador || {}, aprovadoTT = !!(PUB.situacao || {}).tiktok_publico;
@@ -4119,9 +4158,9 @@
       const NOME = { instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube Shorts" };
       // Zeca e Breu têm Instagram próprio (ligado na Publicação › Instagram do canal); TikTok e YouTube só o CW Cast por enquanto
       const contaProg = canal2 ? ((st.contas || {})[prog] || {}) : null;
-      const CONTA = canal2 ? { instagram: contaProg.conta ? "@" + contaProg.conta : "", tiktok: "", youtube: "" }
+      const CONTA = canal2 ? { instagram: contaProg.conta ? "@" + contaProg.conta : "", tiktok: "", youtube: contaProg.youtube ? contaProg.youtube_canal || "" : "" }
         : { instagram: st.instagram_conta ? "@" + st.instagram_conta : "", tiktok: st.tiktok_conta ? "@" + st.tiktok_conta : "", youtube: st.youtube_canal || "" };
-      const conectada = (k) => canal2 ? k === "instagram" && !!contaProg.instagram : !!st[k];
+      const conectada = (k) => canal2 ? (k === "instagram" ? !!contaProg.instagram : k === "youtube" && !!contaProg.youtube) : !!st[k];
       const marcados = () => caixas.filter(([c]) => c.checked).map(([c]) => c.value);
       const icone = (k) => { const s = h("span", { "aria-hidden": "true", style: "display:grid" }); s.innerHTML = ICONES_REDE[k]; return s; };
       const secao = (titulo, extra, ...filhos) => h("section", { class: "cmp-sec" }, h("div", { class: "cab" }, h("h3", {}, titulo), extra), filhos);
@@ -4144,7 +4183,7 @@
           return h("label", { class: "cmp-canal " + k, title: NOME[k] + (CONTA[k] ? " · " + CONTA[k] : "") + (c.disabled ? " · bloqueado até o TikTok aprovar o app" : conectada(k) ? "" : " · conta não conectada") },
             c, icone(k), h("span", { class: "sr" }, nome), !conectada(k) || c.disabled ? h("i", { class: "cmp-alerta", "aria-hidden": "true" }, "!") : null); })),
         canal2 ? h("span", { class: "nota" }, contaProg.instagram
-          ? `${nomeProg} posta no Instagram ${CONTA.instagram}. TikTok e YouTube ainda não têm conta deste canal: deixe só o Instagram marcado.`
+          ? `${nomeProg} posta no Instagram ${CONTA.instagram}${CONTA.youtube ? " e no YouTube " + CONTA.youtube : ""}. ${CONTA.youtube ? "O TikTok ainda não tem conta deste canal." : "TikTok e YouTube ainda não têm conta deste canal (ligue o YouTube no cartão do canal)."}`
           : `${nomeProg} ainda não tem o Instagram ligado (Publicação › Instagram do canal): aprovado, o corte fica guardado na fila.`) : null,
         ttTravado && !canal2 ? h("span", { class: "nota" }, "TikTok bloqueado até o TikTok aprovar o app: poste pelo celular.") : null);
 
