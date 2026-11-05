@@ -694,7 +694,7 @@
     <details class="pub-config" id="pub-config"><summary id="pub-config-resumo"></summary><div>
     <div class="pub-conexoes" id="pub-conexoes"></div>
     <div class="aviso" id="pub-canal2" hidden>Os cortes do Zeca saem nas contas do Canal 2 (cartão abaixo), nunca nas do CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Canal 2”; na sprint: “Editados IA › Canal 2 - Zeca”.</div>
-    <div class="aviso" id="pub-nanquim" hidden>O Nanquim ainda não tem canal: os cortes dele ficam guardados aqui e o robô NÃO posta (nem nas contas do CW Cast). No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Nanquim”.</div>
+    <div class="aviso" id="pub-nanquim" hidden>Os cortes do Nanquim saem nas contas do canal @mentalidaderestaurante (cartão abaixo: Instagram e YouTube), sem citar a Cardápio Web nem o CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Nanquim”.</div>
     <div class="aviso" id="pub-dark" hidden>Os cortes do Breu saem nas contas do canal dark (cartão abaixo), sem citar a Cardápio Web nem o CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Canal Dark”; na sprint: “Editados IA › Canal Dark - Breu”.</div>
     <div class="pub-conta" id="pub-conta" hidden></div>
     <div class="pub-conta" id="pub-grade" hidden></div>
@@ -1132,7 +1132,7 @@
       const prog = volta.get("prog") || PUB.prog;
       if (["cwcast", "canal2", "dark", "nanquim"].includes(prog)) PUB.prog = prog;
       PUB.ytMsg = { prog: PUB.prog, texto: volta.get("yt") === "ok" ? `Pronto: canal ${volta.get("canal")} ligado. O robô confere e passa a postar nele na próxima passada.` : "Não ligou: " + (volta.get("msg") || "erro") };
-      if (volta.get("yt") !== "ok") { const p = volta.get("msg") || ""; const m = /o (Zeca|Breu)/.exec(p); if (m) PUB.prog = m[1] === "Zeca" ? "canal2" : "dark"; PUB.ytMsg.prog = PUB.prog; }
+      if (volta.get("yt") !== "ok") { const p = volta.get("msg") || ""; const m = /o (Zeca|Breu|Nanquim)/.exec(p); if (m) PUB.prog = { Zeca: "canal2", Breu: "dark", Nanquim: "nanquim" }[m[1]]; PUB.ytMsg.prog = PUB.prog; }
       PUB.abrirCfg = true;   // volta do Google: mostra o cartão do canal aberto
       history.replaceState(null, "", location.pathname + "#publicacao");
     }
