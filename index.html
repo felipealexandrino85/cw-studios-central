@@ -5024,6 +5024,8 @@
       h("label", { class: "check", style: "display:flex;gap:8px;align-items:center" }, auto, "Aprovar as prévias sozinho (cada corte pronto vai direto para a Publicação; lá dá para pedir ajuste)"), msg,
       h("p", { class: "nota", style: "margin:0" }, "O Claude escolhe os momentos e a lista volta aqui para você conferir antes de produzir."),
       h("div", { class: "acoes" }, h("button", { class: "botao amarelo", onclick: umaVez(async () => {
+        // sem estilo ativo na linha da aba, o banco cairia no estilo padrão do Titeu (lotes 25-28 do Nanquim, 05/11): bloqueia aqui
+        if (!estilo.value && linhaEst() !== "cortes") { msg.hidden = false; msg.textContent = `O ${nomeLinha()} ainda não tem estilo de edição ativo: o pedido iria para o Titeu. Ative um estilo em Estilos antes de pedir.`; return; }
         const { data: novo, error } = await db.rpc("cw_esteira_pedir", { p_episodio: e.id, p_quantidade: +qtd.value || 15, p_instrucoes: instr.value, p_kit: "cw-cast",
           p_estilo: estilo.value ? +estilo.value : null, p_higgs: +higgs.value || 0 });
         if (error) { msg.hidden = false; msg.textContent = error.message; return; }
