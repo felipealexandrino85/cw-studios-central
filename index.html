@@ -712,8 +712,8 @@
     <div class="pub-conexoes" id="pub-conexoes"></div>
     <div class="segmentos" role="tablist" id="pub-prog" aria-label="Programa"></div>
     <div class="segmentos" role="tablist" id="pub-seg"></div>
-    <div class="aviso" id="pub-canal2" hidden>Os cortes do Zeca ficam separados do CW Cast. Aprovados, eles <b>não</b> vão para as contas do CW Cast: ficam guardados na fila até a conta do Instagram do Canal 2 ser ligada aqui embaixo. No Drive, eles caem em “CW Cast - Cortes › 2. PARA APROVAR - Canal 2”.</div>
-    <div class="aviso" id="pub-dark" hidden>Os cortes do Breu (canal dark, @corte_sdelivery) ficam separados do CW Cast. Aprovados, eles <b>não</b> vão para as contas do CW Cast: só saem no Instagram do canal (@corte_sdelivery), depois que a conta for ligada aqui embaixo. No Drive, eles caem em “CW Cast - Cortes › 2. PARA APROVAR - Canal Dark”.</div>
+    <div class="aviso" id="pub-canal2" hidden>Os cortes do Zeca saem nas contas do Canal 2 (cartão abaixo), nunca nas do CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Canal 2”; na sprint: “Editados IA › Canal 2 - Zeca”.</div>
+    <div class="aviso" id="pub-dark" hidden>Os cortes do Breu saem nas contas do canal dark (cartão abaixo), sem citar a Cardápio Web nem o CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Canal Dark”; na sprint: “Editados IA › Canal Dark - Breu”.</div>
     <div class="pub-conta" id="pub-conta" hidden></div>
     <div class="pub-conta" id="pub-grade" hidden></div>
     <div class="pub-lote" id="pub-lote" hidden></div>
@@ -773,7 +773,7 @@
 
   <section id="aba-conhecimento" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Conhecimento</h1>
-      <p class="sub">O que o Claude do time aprende com as correções. Todo dia às 20h a Lia lê o que foi corrigido (pedidos de ajuste, recusas na Publicação e o que os editores corrigem nas conversas com o Claude) e transforma em lições. Lição ativa chega sozinha ao Claude de cada editor do kit, no computador e no servidor.</p></header>
+      <p class="sub">O que as IAs do sistema aprendem sozinhas. Todo dia às 20h a Lia lê o trabalho dos agentes que editam (Titeu, Zeca e Breu: ajustes pedidos nos cortes, avisos da conferência automática, recusas na Publicação) e as regras que a Doti tira dos números do Instagram, e transforma os padrões em lições. As conversas do time com o Claude deles não entram.</p></header>
     <div id="con-corpo" style="display:grid;gap:16px"></div>
   </section>
 
@@ -3054,7 +3054,7 @@
     dinha: { nome: "Dinha", cores: () => DINHA, sub: "Recepção · operação do CW Studios", campo: "resumo", agora: "dinha", rotuloRel: "Resumo do dia",
       oi: "Oi! Sou a Dinha. Todo dia às 8h eu monto o resumo da operação: o que está atrasado, o que espera decisão e como está a meta.",
       atalhos: ["O que está atrasado?", "O que vence essa semana?", "Quem está travado?", "Como está a meta de seguidores?"] },
-    lia: { nome: "Lia", cores: () => LIA, sub: "Aprende com as correções do time", campo: "relatorio", agora: "lia", rotuloRel: "Última leitura",
+    lia: { nome: "Lia", cores: () => LIA, sub: "Aprende com o trabalho das IAs do sistema", campo: "relatorio", agora: "lia", rotuloRel: "Última leitura",
       oi: "Oi! Sou a Lia. Todo dia às 20h eu leio o que o time corrigiu e transformo em lições para o Claude de todo mundo não repetir o erro. Me pergunta o que eu aprendi.",
       atalhos: ["O que você aprendeu essa semana?", "Qual erro mais se repete?", "Quais lições ativaram sozinhas?", "Tem alguma contradição entre lições?"] },
     chico: { nome: "Chico Moelas", cores: () => CHICO, sub: "Publicação nas redes", campo: "", agora: null,
@@ -5251,7 +5251,7 @@
     { id: "bia", nome: "Doti", missao: "Desempenho dos cortes no Instagram (segunda, 9h)", cores: () => BIA, abrir: () => abrirChatAgente("bia"), papeis: ["gestor", "producao", "editor"] },
     { id: "dinha", nome: "Dinha", missao: "Resumo da operação (todo dia, 8h)", cores: () => DINHA, abrir: () => abrirChatAgente("dinha"), papeis: ["gestor", "producao", "editor"] },
     { id: "chico", nome: "Chico Moelas", missao: "Confere e posta os cortes nas redes", cores: () => CHICO, abrir: () => abrirChatAgente("chico"), papeis: ["gestor", "producao", "editor"] },
-    { id: "lia", nome: "Lia", missao: "Aprende com as correções do time (todo dia, 20h)", cores: () => LIA, abrir: () => abrirChatAgente("lia"), papeis: ["gestor"] }];
+    { id: "lia", nome: "Lia", missao: "Aprende com o trabalho das IAs do sistema (todo dia, 20h)", cores: () => LIA, abrir: () => abrirChatAgente("lia"), papeis: ["gestor"] }];
   const retratoDe = (cores, tam = 66) => { const c = h("canvas", { width: 22, height: 35, style: `width:${tam}px;height:${Math.round(tam * 35 / 22)}px;image-rendering:pixelated;flex:none`, "aria-hidden": "true" });
     c.getContext("2d").drawImage(bonecoFrente(cores, 0), 0, 0); return c; };
   const visualRobo = (a) => ({ cabelo: "#1c1c28", pele: "#f2c9a5", camisa: "#a543fa", calca: "#2a2a33", estilo: 0, acessorio: "", ...(a.visual || {}) });
