@@ -627,42 +627,17 @@
   </section>
 
   <section id="aba-relatorio" hidden>
-    <header class="cabeca"><p class="kicker">Gestão</p><h1>Relatório</h1><p class="sub">Volume, tempo e qualidade de cada editor. Só a gestão vê esta página.</p></header>
-    <div class="controles">
-      <label for="rel-periodo">Período
-        <select id="rel-periodo">
-          <option value="7">Últimos 7 dias</option>
-          <option value="30" selected>Últimos 30 dias</option>
-          <option value="mes">Este mês</option>
-          <option value="mes-passado">Mês passado</option>
-          <option value="90">Últimos 90 dias</option>
-        </select></label>
-      <label for="rel-editor">Editor <select id="rel-editor"></select></label>
-      <button class="botao leve" id="rel-csv" type="button">Baixar CSV</button>
-    </div>
-    <div class="numeros" id="rel-numeros"></div>
-    <h3 class="grupo">Por editor</h3>
-    <div class="tabela"><table><thead><tr><th>Editor</th><th class="n">Finalizados</th><th class="n">Peças</th>
-      <th class="n">Tempo ativo médio</th><th class="n">Mediana</th><th class="n">Atenção humana média</th><th class="n">Acabamento no Premiere</th><th class="n">Vídeos por semana</th>
-      <th class="n">Aprovação de 1ª</th><th class="n">Em andamento</th></tr></thead><tbody id="rel-editores"></tbody></table></div>
-    <div class="duas-col">
-      <div><h3 class="grupo">Onde o tempo vai (por etapa)</h3>
-        <div class="tabela"><table><thead><tr><th>Etapa</th><th class="n">Média por vídeo</th><th class="n">% do tempo</th></tr></thead><tbody id="rel-etapas"></tbody></table></div></div>
-      <div><h3 class="grupo">Por semana</h3>
-        <div class="tabela"><table><thead><tr><th>Semana de</th><th class="n">Finalizados</th><th class="n">Tempo ativo médio</th><th class="n">Ajustes</th></tr></thead><tbody id="rel-semanas"></tbody></table></div></div>
-      <div><h3 class="grupo">Por tipo de vídeo</h3>
-        <div class="tabela"><table><thead><tr><th>Tipo</th><th class="n">Finalizados</th><th class="n">Média</th><th class="n">Mediana</th><th class="n">Atenção humana</th></tr></thead><tbody id="rel-tipos"></tbody></table></div></div>
-      <div><h3 class="grupo">Motivos de ajuste (demandas da central)</h3>
-        <div class="tabela"><table><thead><tr><th>Motivo</th><th class="n">Vezes</th></tr></thead><tbody id="rel-motivos"></tbody></table></div></div>
-    </div>
-    <h3 class="grupo">Vídeos finalizados</h3>
-    <div class="tabela"><table><thead><tr><th>Entregue</th><th>Editor</th><th>Vídeo</th><th>Origem</th><th>Tipo</th>
-      <th class="n">Tempo ativo</th><th class="n">Peças</th><th class="n">Ajustes</th></tr></thead><tbody id="rel-videos"></tbody></table></div>
-    <p class="nota">Tempo ativo = minutos com o Claude trabalhando no vídeo, somando todas as sessões e rodadas de ajuste; pausa de mais de 5 min não conta.
-      Acabamento no Premiere = minutos com o Premiere em primeiro plano depois que o vídeo saiu do Claude (média entre os vídeos que passaram pelo Premiere; entre parênteses, quantos).
-      Atenção humana = tempo do editor lendo e decidindo (da resposta do Claude até a próxima mensagem dele, até 5 min cada); o resto é máquina.
-      Rendimento = minutos de máquina para cada minuto de atenção: quanto maior, mais escala.
-      Só entram vídeos editados com o plugin. "Por etapa" só existe para vídeos editados a partir da versão 0.12 do plugin.</p>
+    <header class="cabeca"><p class="kicker">Gestão</p><h1>Relatório</h1><p class="sub">Produção dos agentes que editam: Titeu, Zeca e Breu. Quantos cortes cada um fez, quanto tempo leva cada corte e quanto consome. Só a gestão vê esta página.</p></header>
+    <div class="segmentos" role="tablist" id="rel-filtros" aria-label="Período"></div>
+    <div class="acoes" id="rel-personalizado" hidden></div>
+    <p class="nota" id="rel-periodo-txt" style="margin:0"></p>
+    <div id="rel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px"></div>
+    <h3 class="grupo">Lado a lado</h3>
+    <div class="tabela"><table><thead><tr><th>Agente</th><th class="n">Feitos</th><th class="n">Aprovados</th><th class="n">Postados</th><th class="n">Reprovados / erro</th>
+      <th class="n">Tempo médio</th><th class="n">Claude (US$ equiv.)</th><th class="n">Tokens</th><th class="n">Higgsfield</th></tr></thead><tbody id="rel-tabela"></tbody></table></div>
+    <p class="nota">Feitos = cortes que chegaram à prévia no período. Aprovados = foram para a Publicação. Postados = saíram nas redes.
+      Tempo médio = tempo de produção do corte (da hora que o agente pega até a prévia, somando as tentativas). Claude = custo que essas chamadas teriam
+      na API (a esteira roda na assinatura, então é uma medida de uso, não uma cobrança); medido a partir de 04/11/2026. Higgsfield = gerações de imagem/vídeo.</p>
   </section>
 
   <section id="aba-padrao" hidden>
@@ -1743,98 +1718,59 @@
   }
 
   // ---------------------------------------------------------------- relatório (gestão)
-  function intervalo(v) {
-    const agora = new Date();
-    if (v === "mes") return [new Date(agora.getFullYear(), agora.getMonth(), 1), agora];
-    if (v === "mes-passado") return [new Date(agora.getFullYear(), agora.getMonth() - 1, 1), new Date(agora.getFullYear(), agora.getMonth(), 1)];
-    return [new Date(Date.now() - Number(v) * 864e5), agora];
-  }
-  function relatorioFiltrado() {
-    const [ini, fim] = intervalo($("#rel-periodo").value), ed = $("#rel-editor").value;
-    const doEditor = D.edicoes.filter((x) => !ed || x.editor_slug === ed);
-    const finalizados = doEditor.filter((x) => x.status === "entregue" && x.fechado_em && new Date(x.fechado_em) >= ini && new Date(x.fechado_em) < fim)
-      .sort((a, b) => b.fechado_em.localeCompare(a.fechado_em));
-    return { ini, fim, ed, finalizados, andamento: doEditor.filter((x) => !x.status || x.status === "refazer") };
-  }
   const td = (v, n) => h("td", { class: n ? "n" : null }, v);
   const vazioLinha = (cols, txt) => h("tr", {}, h("td", { colspan: cols, class: "vazio" }, txt || "Nada no período."));
   const comAtencao = (xs) => xs.filter((x) => x.interacoes > 0);
   const primeira = (xs) => xs.length ? Math.round(100 * xs.filter((x) => !x.voltas).length / xs.length) + "%" : "–";
-  function linhaGrupo(nome, fin, and, semanas) {
-    const t = fin.map((x) => x.segundos_ativos);
-    return [td(nome), td(fin.length, 1), td(fin.reduce((a, x) => a + (x.pecas || 0), 0), 1), td(duracao(media(t)), 1), td(duracao(mediana(t)), 1),
-      td(duracao(media(comAtencao(fin).map((x) => x.segundos_humanos))), 1),
-      td((() => { const c = fin.filter((x) => x.segundos_premiere > 0); return c.length ? `${duracao(media(c.map((x) => x.segundos_premiere)))} (${c.length})` : "–"; })(), 1),
-      td((fin.length / semanas).toFixed(1).replace(".", ","), 1),
-      td(primeira(fin), 1), td(and.length, 1)];
+  // relatório dos agentes (04/11/2026): Titeu, Zeca e Breu; períodos rápidos ou personalizado
+  const REL = { periodo: "30", de: "", ate: "" };
+  const PERIODOS_REL = [["hoje", "Hoje"], ["2", "2 dias"], ["3", "3 dias"], ["5", "5 dias"], ["7", "7 dias"], ["30", "1 mês"], ["60", "2 meses"], ["90", "3 meses"], ["tudo", "Tudo"], ["pers", "Personalizado"]];
+  const CORES_AGENTE = { titeu: "#7c3aed", zeca: "#0ea5e9", breu: "#111114" };
+  function periodoRel() {
+    const agora = new Date(), v = REL.periodo;
+    if (v === "hoje") { const d = new Date(); d.setHours(0, 0, 0, 0); return [d, agora]; }
+    if (v === "tudo") return [new Date("2026-01-01T00:00:00"), agora];
+    if (v === "pers") {
+      const de = REL.de ? new Date(REL.de + "T00:00:00") : new Date(Date.now() - 7 * 864e5), ate = REL.ate ? new Date(REL.ate + "T23:59:59") : agora;
+      return [de, ate];
+    }
+    return [new Date(Date.now() - Number(v) * 864e5), agora];
   }
-  const origemTexto = (x) => x.jira ? "Jira " + x.jira : x.demanda ? "Central " + x.demanda : "sem card";
-  function inicioSemana(t) { const x = new Date(t); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
-  function desenharRelatorio() {
-    const sel = $("#rel-editor"), atual = sel.value;
-    encher(sel, h("option", { value: "" }, "Todo o time"), D.editores.map((e) => h("option", { value: e.slug }, e.nome))); sel.value = atual;
-    const { ini, fim, ed, finalizados, andamento } = relatorioFiltrado(), tempos = finalizados.map((x) => x.segundos_ativos);
-    const semanas = Math.max((fim - ini) / (7 * 864e5), 1 / 7);
-    const nEditores = new Set(finalizados.map((x) => x.editor_slug)).size || 1;
-    const medidos = comAtencao(finalizados), humano = medidos.reduce((a, x) => a + x.segundos_humanos, 0);
-    const maquina = medidos.reduce((a, x) => a + Math.max(x.segundos_ativos - x.segundos_humanos, 0), 0);
-    encher($("#rel-numeros"), [[finalizados.length, "vídeos finalizados"],
-      [(finalizados.length / semanas / nEditores).toFixed(1).replace(".", ","), "vídeos por editor por semana"],
-      [duracao(media(tempos)), "tempo ativo médio por vídeo"],
-      [duracao(medidos.length ? humano / medidos.length : null), "atenção humana média por vídeo"],
-      [humano ? (maquina / humano).toFixed(1).replace(".", ",") + "×" : "–", "rendimento (máquina por minuto humano)"],
-      [(() => { const ia = finalizados.reduce((a, x) => a + (x.segundos_ativos || 0), 0), pr = finalizados.reduce((a, x) => a + (x.segundos_premiere || 0), 0);
-          return ia + pr ? Math.round(100 * ia / (ia + pr)) + "%" : "–"; })(), "do tempo de edição feito com a IA (o resto é Premiere)"],
-      [primeira(finalizados), "aprovados de primeira"], [andamento.length, "em andamento agora"]].map(numero));
-
-    const slugs = [...new Set([...finalizados, ...andamento].map((x) => x.editor_slug))];
-    const linhas = slugs.map((sl) => ({ nome: nomeEditor(sl), fin: finalizados.filter((x) => x.editor_slug === sl), and: andamento.filter((x) => x.editor_slug === sl) }))
-      .sort((a, b) => b.fin.length - a.fin.length || a.nome.localeCompare(b.nome));
-    const corpo = linhas.map((l) => h("tr", {}, linhaGrupo(l.nome, l.fin, l.and, semanas)));
-    if (linhas.length > 1) corpo.push(h("tr", { class: "total" }, linhaGrupo("Time", finalizados, andamento, semanas)));
-    encher($("#rel-editores"), corpo.length ? corpo : vazioLinha(10));
-
-    const comEtapas = finalizados.filter((x) => x.etapas && Object.keys(x.etapas).length);
-    const totEtapa = Object.fromEntries(ETAPAS.map(([k]) => [k, comEtapas.reduce((a, x) => a + (x.etapas[k] || 0), 0)]));
-    const somaEtapas = Object.values(totEtapa).reduce((a, b) => a + b, 0);
-    encher($("#rel-etapas"), somaEtapas ? ETAPAS.filter(([k]) => totEtapa[k]).map(([k, nome]) => h("tr", {}, td(nome), td(duracao(totEtapa[k] / comEtapas.length), 1), td(Math.round(100 * totEtapa[k] / somaEtapas) + "%", 1)))
-      : vazioLinha(3, "Ainda sem vídeos medidos por etapa no período."));
-
-    const entregues = D.edicoes.filter((x) => (!ed || x.editor_slug === ed) && x.status === "entregue" && x.fechado_em);
-    const ultimas8 = Array.from({ length: 8 }, (_, i) => inicioSemana(Date.now() - i * 7 * 864e5));
-    encher($("#rel-semanas"), ultimas8.map((s) => {
-      const fimS = new Date(s.getTime() + 7 * 864e5), xs = entregues.filter((x) => new Date(x.fechado_em) >= s && new Date(x.fechado_em) < fimS);
-      return h("tr", {}, td(s.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })), td(xs.length, 1),
-        td(duracao(media(xs.map((x) => x.segundos_ativos))), 1), td(xs.filter((x) => x.voltas > 0).length, 1));
-    }));
-
-    const tipos = [...new Set(finalizados.map((x) => x.tipo || "outro"))].map((tp) => {
-      const xs = finalizados.filter((x) => (x.tipo || "outro") === tp), t = xs.map((x) => x.segundos_ativos);
-      return { tp, n: t.length, med: media(t), mdn: mediana(t), hum: media(comAtencao(xs).map((x) => x.segundos_humanos)) };
-    }).sort((a, b) => b.n - a.n);
-    encher($("#rel-tipos"), tipos.length ? tipos.map((x) => h("tr", {}, td(TIPOS[x.tp] || x.tp), td(x.n, 1), td(duracao(x.med), 1), td(duracao(x.mdn), 1), td(duracao(x.hum), 1))) : vazioLinha(5));
-
-    const motivos = {};
-    for (const e of D.ajustes.filter((e) => new Date(e.ts) >= ini && new Date(e.ts) < fim)) motivos[e.categoria || "sem"] = (motivos[e.categoria || "sem"] || 0) + 1;
-    const ms = Object.entries(motivos).sort((a, b) => b[1] - a[1]);
-    encher($("#rel-motivos"), ms.length ? ms.map(([k, n]) => h("tr", {}, td(MOTIVOS[k] || "Sem motivo informado"), td(n, 1))) : vazioLinha(2, "Nenhum ajuste pedido no período."));
-
-    encher($("#rel-videos"), finalizados.length ? finalizados.map((x) => h("tr", {}, td(dataBR(x.fechado_em)), td(nomeEditor(x.editor_slug)), td(x.titulo || x.id),
-      h("td", {}, origemChip({ jira: x.jira, demanda: x.demanda })), td(TIPOS[x.tipo] || x.tipo || ""), td(duracao(x.segundos_ativos), 1), td(x.pecas ?? "", 1), td(x.voltas || "", 1)))
-      : vazioLinha(8, "Nenhum vídeo finalizado no período."));
+  async function desenharRelatorio() {
+    encher($("#rel-filtros"), PERIODOS_REL.map(([v, t]) => h("button", { role: "tab", "aria-selected": String(REL.periodo === v), onclick: () => { REL.periodo = v; desenharRelatorio(); } }, t)));
+    const pers = $("#rel-personalizado");
+    pers.hidden = REL.periodo !== "pers";
+    if (!pers.hidden && !pers.childElementCount) {
+      const hoje = new Date().toISOString().slice(0, 10), semana = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+      const de = h("input", { type: "date", value: REL.de || semana, max: hoje, style: "width:auto" }), ate = h("input", { type: "date", value: REL.ate || hoje, max: hoje, style: "width:auto" });
+      encher(pers, h("label", {}, "De ", de), h("label", {}, "Até ", ate),
+        h("button", { class: "botao peq", type: "button", onclick: () => { REL.de = de.value; REL.ate = ate.value; desenharRelatorio(); } }, "Aplicar"));
+    }
+    const [ini, fim] = periodoRel();
+    $("#rel-periodo-txt").textContent = `De ${ini.toLocaleDateString("pt-BR")} até ${fim.toLocaleDateString("pt-BR")}.`;
+    const { data, error } = await db.rpc("cw_relatorio_agentes", { p_de: ini.toISOString(), p_ate: fim.toISOString() });
+    if (error) { encher($("#rel-cards"), h("div", { class: "aviso erro" }, error.message)); return; }
+    const ags = data || [];
+    const minutos = (m) => m == null ? "–" : m >= 60 ? `${Math.floor(m / 60)} h ${Math.round(m % 60)} min` : `${String(m).replace(".", ",")} min`;
+    const usd = (v) => "US$ " + Number(v || 0).toFixed(2).replace(".", ",");
+    const mil = (v) => { v = Number(v || 0); return v >= 1e6 ? (v / 1e6).toFixed(1).replace(".", ",") + " mi" : v >= 1e3 ? Math.round(v / 1e3) + " mil" : String(Math.round(v)); };
+    const linha = (rot, val, nota) => h("div", { style: "display:flex;justify-content:space-between;gap:10px;align-items:baseline" },
+      h("span", { class: "nota" }, rot), h("b", { style: "text-align:right" }, val, nota ? h("span", { class: "nota", style: "font-weight:400" }, " " + nota) : null));
+    encher($("#rel-cards"), ags.map((a) => h("div", { class: "card", style: `display:grid;gap:8px;min-width:0;border-top:4px solid ${CORES_AGENTE[a.agente] || "var(--brand)"}` },
+      h("div", { style: "display:flex;justify-content:space-between;align-items:baseline;gap:8px" }, h("b", { style: "font-size:18px" }, a.nome),
+        a.na_fila ? h("span", { class: "chip tom-neutro" }, `${a.na_fila} na fila agora`) : null),
+      h("div", { style: "display:flex;align-items:baseline;gap:8px" }, h("span", { style: "font-size:40px;font-weight:900;line-height:1" }, a.feitos), h("span", { class: "nota" }, "cortes feitos")),
+      linha("Aprovados (foram para a Publicação)", a.aprovados), linha("Postados nas redes", a.postados), linha("Reprovados / erro", a.reprovados),
+      linha("Tempo médio por corte", minutos(a.tempo_medio_min), a.tempo_amostra ? `(${a.tempo_amostra} medidos)` : ""),
+      linha("Claude (custo equivalente)", a.claude.cortes_medidos ? usd(a.claude.custo_usd) : "medindo", a.claude.cortes_medidos ? `(${a.claude.cortes_medidos} cortes)` : ""),
+      a.claude.cortes_medidos ? linha("Tokens do Claude", mil(a.claude.tokens)) : null,
+      linha("Gerações no Higgsfield", a.higgsfield))));
+    const tot = (k) => ags.reduce((t, a) => t + Number(a[k] || 0), 0);
+    encher($("#rel-tabela"), [...ags.map((a) => h("tr", {}, td(h("b", {}, a.nome)), td(a.feitos, 1), td(a.aprovados, 1), td(a.postados, 1), td(a.reprovados, 1),
+        td(minutos(a.tempo_medio_min), 1), td(a.claude.cortes_medidos ? usd(a.claude.custo_usd) : "–", 1), td(a.claude.cortes_medidos ? mil(a.claude.tokens) : "–", 1), td(a.higgsfield, 1))),
+      h("tr", { style: "font-weight:800" }, td("Total"), td(tot("feitos"), 1), td(tot("aprovados"), 1), td(tot("postados"), 1), td(tot("reprovados"), 1), td("", 1),
+        td(usd(ags.reduce((t, a) => t + Number(a.claude.custo_usd || 0), 0)), 1), td(mil(ags.reduce((t, a) => t + Number(a.claude.tokens || 0), 0)), 1), td(tot("higgsfield"), 1))]);
   }
-  $("#rel-periodo").addEventListener("change", desenharRelatorio);
-  $("#rel-editor").addEventListener("change", desenharRelatorio);
-  $("#rel-csv").addEventListener("click", () => {
-    const { finalizados } = relatorioFiltrado();
-    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const linhas = [["entregue_em", "editor", "video", "origem", "tipo", "tempo_ativo_min", "premiere_min", "atencao_humana_min", "mensagens_do_editor", "pecas", "ajustes", "custo_estimado_usd", ...ETAPAS.map(([k]) => "min_" + k)],
-      ...finalizados.map((x) => [x.fechado_em, nomeEditor(x.editor_slug), x.titulo, origemTexto(x), x.tipo, Math.round(x.segundos_ativos / 60), Math.round((x.segundos_premiere || 0) / 60), Math.round((x.segundos_humanos || 0) / 60), x.interacoes || 0, x.pecas, x.voltas, x.custo_usd,
-        ...ETAPAS.map(([k]) => Math.round(((x.etapas || {})[k] || 0) / 60))])];
-    const blob = new Blob(["﻿" + linhas.map((l) => l.map(esc).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
-    const a = h("a", { href: URL.createObjectURL(blob), download: `cw-studios-relatorio-${hojeISO()}.csv` });
-    document.body.append(a); a.click(); a.remove();
-  });
 
   // ---------------------------------------------------------------- padrão do time (gestão)
   function preencherRegra(r) {
