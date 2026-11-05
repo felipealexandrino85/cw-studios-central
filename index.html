@@ -1997,7 +1997,7 @@
             hoje: cs.filter((x) => x.estado === "entregue" && x.terminado && new Date(x.terminado) >= hoje0).length,
             conferir: (el.data || []).filter((x) => (x.linha || "cortes") === ln).length, preparando: (ee.data || []).filter((x) => (x.linha || "cortes") === ln).length,
             previas: cs.filter((x) => x.estado === "previa").length }; };
-        SALA.est = contar("cortes"); SALA.estR = contar("reels"); SALA.estZ = contar("canal2");
+        SALA.est = contar("cortes"); SALA.estR = contar("reels"); SALA.estZ = contar("canal2"); SALA.estD = contar("dark"); SALA.estN = contar("nanquim");
         // agente que trabalha quando um vídeo fica pronto (a Capitu, das capas): mesa própria na Edição
         const { data: capAg } = await db.from("agentes").select("id,nome,visual").eq("ativo", true).eq("trabalha", true).or("gatilho.eq.video,papel.eq.design").order("id").limit(1);
         SALA.capista = (capAg || [])[0] || null;
@@ -2329,8 +2329,12 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }, { slug: "__zeca", nome: "Zeca", npc: "zeca" }].concat(SALA.capista ? [{ slug: "__capista", nome: SALA.capista.nome, npc: "capista" }] : []))), cv = $("#sala-canvas"), T = TILE;
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }, { slug: "__zeca", nome: "Zeca", npc: "zeca" }, { slug: "__breu", nome: "Breu", npc: "breu" }, { slug: "__nanquim", nome: "Nanquim", npc: "nanquim" }].concat(SALA.capista ? [{ slug: "__capista", nome: SALA.capista.nome, npc: "capista" }] : []))), cv = $("#sala-canvas"), T = TILE;
     const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu"), mesaFabia = P.mesas.find((m) => m.ed.npc === "fabia"), mesaCapa = P.mesas.find((m) => m.ed.npc === "capista"), mesaZeca = P.mesas.find((m) => m.ed.npc === "zeca");
+    // Breu (canal dark) e Nanquim (reflexivo P&B): mesa, boneco, plaquinha e balão iguais aos do Zeca, cada um com o seu monitor
+    const CANAIS_SALA = [{ npc: "breu", nome: "Breu", aba: "dark", boneco: BREU, est: () => SALA.estD, luz: "#e5232b", ocioso: "🌑 canal dark no ar" },
+      { npc: "nanquim", nome: "Nanquim", aba: "nanquim", boneco: NANQUIM, est: () => SALA.estN, luz: "#ffd400", ocioso: "🖋️ cortes em P&B" }]
+      .map((x) => Object.assign(x, { mesa: P.mesas.find((m) => m.ed.npc === x.npc) })).filter((x) => x.mesa);
     P.mesas = P.mesas.filter((m) => !m.ed.npc);   // as mesas dos agentes (Zé Algoritmo e Doti) na Edição
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
@@ -2477,7 +2481,8 @@
     P.salas.forEach((s) => { c.font = `800 ${5.4 * SC}px Inter, system-ui, sans-serif`; const lw = c.measureText(s.nome).width / SC + 10;
       px(s.x + s.w / 2 - lw / 2, s.y - 12, lw, 11, "#2a2440"); txt(s.nome, s.x + s.w / 2, s.y - 4.2, 5.4, "#ffffff", 800); });
     // ---- mesas da edição (uma por editor) e os bonequinhos
-    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }, { agente: "bia", x: mesaBia.x - 22, y: mesaBia.y - 18, w: 44, h: 50 }, { titeu: true, x: mesaTiteu.x - 22, y: mesaTiteu.y - 18, w: 44, h: 50 }, { fabia: true, x: mesaFabia.x - 22, y: mesaFabia.y - 18, w: 44, h: 50 }].concat(mesaZeca ? [{ zeca: true, x: mesaZeca.x - 22, y: mesaZeca.y - 18, w: 44, h: 50 }] : []);
+    SALA.alvos = [{ dinha: true, x: dinha.x - 11, y: dinha.y - 22, w: 22, h: 30 }, { chico: true, x: chico.x - 11, y: chico.y - 33, w: 22, h: 35 }, { seo: true, x: mesaZe.x - 22, y: mesaZe.y - 18, w: 44, h: 50 }, { agente: "bia", x: mesaBia.x - 22, y: mesaBia.y - 18, w: 44, h: 50 }, { titeu: true, x: mesaTiteu.x - 22, y: mesaTiteu.y - 18, w: 44, h: 50 }, { fabia: true, x: mesaFabia.x - 22, y: mesaFabia.y - 18, w: 44, h: 50 }].concat(mesaZeca ? [{ zeca: true, x: mesaZeca.x - 22, y: mesaZeca.y - 18, w: 44, h: 50 }] : [])
+      .concat(CANAIS_SALA.map((x) => ({ aba: x.aba, x: x.mesa.x - 22, y: x.mesa.y - 18, w: 44, h: 50 })));
     const pessoas = [];
     // cada um que não está trabalhando ganha um lugar fixo (o mesmo enquanto ficar assim): quem está online vai jogar,
     // tomar café ou mexer no celular; quem está fora cochila nos sofás e poltronas
@@ -2528,6 +2533,19 @@
       c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
       px(mx - 9, my - 14, 18, 11, ativo ? "#101418" : "#24203a");
       px(mx - 7, my - 11, 10, 2, ativo && f % 6 < 4 ? "#3cff8c" : "#2c5a3e"); px(mx - 7, my - 8, 6, 1, "#e8e2d6"); px(mx - 7, my - 6, 12, 1, "#e8e2d6");
+    }
+    for (const ag of CANAIS_SALA) {   // Breu: monitor escuro com a barra vermelha; Nanquim: monitor P&B com a palavra amarela piscando
+      const mx = ag.mesa.x, my = ag.mesa.y, E = ag.est() || {}, ativo = (E.produzindo || 0) + (E.preparando || 0) > 0;
+      c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
+      if (ag.npc === "breu") {
+        px(mx - 9, my - 14, 18, 11, "#0b0b0c");
+        px(mx - 7, my - 12, 14, 3, "#1b1b20"); px(mx - 7, my - 12, ativo ? 4 + (f % 10) : 6, 3, ativo ? "#e5232b" : "#5a1a1d");
+        px(mx - 7, my - 7, 12, 1, "#e8e2d6"); px(mx - 7, my - 5, 8, 1, "#8a8a8e");
+      } else {
+        px(mx - 9, my - 14, 18, 11, "#000000");
+        px(mx - 9, my - 12, 18, 7, ativo ? "#6e6e72" : "#2a2a2e");
+        px(mx - 6, my - 10, 12, 1, "#f2f2f2"); px(mx - 5, my - 8, 10, 2, ativo && f % 6 < 4 ? "#ffd400" : "#8a7a20");
+      }
     }
     {   // FabI.Ano, os reels: monitor com um celular vertical e as pílulas da marca subindo quando trabalha
       const mx = mesaFabia.x, my = mesaFabia.y, E3 = SALA.estR || {}, ativo = (E3.produzindo || 0) + (E3.preparando || 0) > 0;
@@ -2620,6 +2638,12 @@
       c.drawImage(bonecoCostas(ZECA, zcAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (zc.x - 11) * SC, (zc.y - 24) * SC, 22 * SC, 27 * SC);
       c.drawImage(cadeiraCostas(), (zc.x - 10) * SC, (zc.y - 6) * SC, 20 * SC, 13 * SC);
     }
+    for (const ag of CANAIS_SALA) {
+      const pz = { x: ag.mesa.x, y: ag.mesa.y + 22 }, E = ag.est() || {}, ativo = (E.produzindo || 0) + (E.preparando || 0) > 0;
+      px(pz.x - 7, pz.y, 14, 2, "#00000026");
+      c.drawImage(bonecoCostas(ag.boneco, ativo ? (f % 4 < 2 ? 1 : 2) : 0), (pz.x - 11) * SC, (pz.y - 24) * SC, 22 * SC, 27 * SC);
+      c.drawImage(cadeiraCostas(), (pz.x - 10) * SC, (pz.y - 6) * SC, 20 * SC, 13 * SC);
+    }
     if (mesaCapa) {
       const cp = { x: mesaCapa.x, y: mesaCapa.y + 22 }, cpAtivo = ((SALA.capas || {}).rodando || 0) > 0;
       px(cp.x - 7, cp.y, 14, 2, "#00000026");
@@ -2708,6 +2732,20 @@
         c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
         const sE = P.salas[4], bw = c.measureText(falaZ).width / SC + 10, bx = Math.max(sE.x + 2, Math.min(t5.x - bw / 2, sE.x + sE.w - bw - 2)), by = t5.y - 50, cor = E5.previas || E5.conferir ? "#ffb800" : "#ffffff";
         px(bx, by, bw, 11, cor); px(t5.x - 1, by + 11, 3, 2, cor); txt(falaZ, bx + bw / 2, by + 8, 4.6, "#2a1b40", 600);
+      }
+    }
+    for (const ag of CANAIS_SALA) {   // Breu e Nanquim: plaquinha e balão
+      const t6 = { x: ag.mesa.x, y: ag.mesa.y + 22 }, E6 = ag.est() || {};
+      c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
+      const lw6 = c.measureText(ag.nome).width / SC + 12;
+      px(t6.x - lw6 / 2, t6.y + 6, lw6, 10, "#2a2440"); px(t6.x - lw6 / 2 + 3, t6.y + 9.5, 4, 4, E6.produzindo ? "#4cd07d" : ag.luz + "aa");
+      txt(ag.nome, t6.x + 2.5, t6.y + 13.6, 4.8, "#ffffff", 700);
+      const fala6 = E6.previas ? `👀 ${E6.previas} corte${E6.previas > 1 ? "s" : ""} p/ aprovar` : E6.conferir ? `👀 ${E6.conferir} lista p/ conferir` : E6.produzindo ? `✂️ cortando ${E6.produzindo}`
+        : E6.hoje ? `✅ ${E6.hoje} corte${E6.hoje > 1 ? "s" : ""} hoje` : (f % 320 < 80 ? ag.ocioso : null);
+      if (fala6 && ag.est()) {
+        c.font = `600 ${4.6 * SC}px Inter, system-ui, sans-serif`;
+        const sE = P.salas[4], bw = c.measureText(fala6).width / SC + 10, bx = Math.max(sE.x + 2, Math.min(t6.x - bw / 2, sE.x + sE.w - bw - 2)), by = t6.y - 50, cor = E6.previas || E6.conferir ? "#ffb800" : "#ffffff";
+        px(bx, by, bw, 11, cor); px(t6.x - 1, by + 11, 3, 2, cor); txt(fala6, bx + bw / 2, by + 8, 4.6, "#2a1b40", 600);
       }
     }
     if (mesaCapa) {   // agente das capas: plaquinha e balão
@@ -3336,6 +3374,7 @@
     if (alvo.titeu) return trocarAba("esteira");
     if (alvo.fabia) return trocarAba("reels");
     if (alvo.zeca) return trocarAba("canal2");
+    if (alvo.aba) return trocarAba(alvo.aba);   // Breu e Nanquim
     if (alvo.ed.slug === meuSlug()) return abrirChatSala();   // o editor clica no próprio bonequinho (ou mesa) e conversa com o Claude dele
     const st = estadoSala(alvo.ed);
     const blocos = linhasAoVivo().filter((l) => l.ed.slug === alvo.ed.slug);
