@@ -4833,7 +4833,7 @@
   const ESTADO_EP = { chegou: ["Chegou", "tom-neutro"], preparando: ["Preparando", "tom-aviso"], pronto: ["Pronto para cortar", "tom-ok"], erro: ["Erro", "tom-critico"] };
   const ESTADO_LOTE = { selecionando: ["Escolhendo os momentos", "tom-aviso"], conferir: ["Esperando conferência", "tom-aviso"], produzindo: ["Produzindo", "tom-ok"],
     concluido: ["Concluído", "tom-neutro"], erro: ["Erro", "tom-critico"], cancelado: ["Cancelado", "tom-neutro"] };
-  const ESTADO_CORTE = { proposto: ["Proposto", "tom-neutro"], descartado: ["Descartado", "tom-neutro"], na_fila: ["Na fila", "tom-neutro"], produzindo: ["Produzindo", "tom-aviso"],
+  const ESTADO_CORTE = { proposto: ["Proposto", "tom-neutro"], descartado: ["Excluído", "tom-neutro"], na_fila: ["Na fila", "tom-neutro"], produzindo: ["Produzindo", "tom-aviso"], pausado: ["⏸ Pausado", "tom-neutro"],
     previa: ["Prévia: aprovar", "tom-aviso"], aprovado: ["Indo para a Publicação", "tom-ok"],
     entregue: ["Na Publicação", "tom-ok"], reprovado: ["Reprovado no QC", "tom-critico"], erro: ["Erro", "tom-critico"] };
   const mmss = (x) => { x = Math.round(+x || 0); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`; };
@@ -4872,6 +4872,23 @@
         e.estado === "pronto" && linha !== "reels" ? h("button", { class: "botao amarelo peq", style: "justify-self:start", onclick: () => pedirCortes(e) }, "✂️ Gerar cortes") : null); };
     // refeito do zero: sem pedido de ajuste, com a versão anterior guardada, voltando pela fila
     const refazendo = (c) => ["na_fila", "produzindo"].includes(c.estado) && !c.ajuste && !!c.previa_anterior;
+    // parar / retomar / excluir / restaurar (05/11/2026): a esteira encerra o Claude e o render do corte parado no passo seguinte
+    const mexerCorte = async (c, acao) => {
+      if (acao === "excluir" && !confirm(`Excluir o corte ${c.ordem} (“${c.titulo}”)? Ele para de ser produzido e vai para “Excluídos” do lote (dá para restaurar).`)) return;
+      const { error } = await db.rpc("cw_esteira_corte", { p_corte: c.id, p_acao: acao });
+      if (error) return alert(error.message);
+      desenharEsteira();
+    };
+    const acoesCorte = (c) => {
+      if (!["gestor", "producao"].includes(eu.papel) && !tenho("operacao")) return null;
+      const b = (rot, acao, cls) => h("button", { class: "botao peq " + (cls || "leve"), style: "margin-left:6px", onclick: () => mexerCorte(c, acao) }, rot);
+      if (["na_fila", "produzindo"].includes(c.estado)) return [b("⏸ Pausar", "pausar"), b("🗑 Excluir", "excluir", "perigo")];
+      if (c.estado === "pausado") return [b("▶ Retomar", "retomar", "amarelo"), b("🗑 Excluir", "excluir", "perigo")];
+      if (["previa", "erro", "reprovado", "proposto"].includes(c.estado)) return b("🗑 Excluir", "excluir", "perigo");
+      if (c.estado === "descartado") return [b("↩ Restaurar", "restaurar"),
+        c.parado_por ? h("span", { class: "nota", style: "margin-left:6px" }, `excluído por ${c.parado_por.split("@")[0]} ${ha(c.parado_em)}`) : null];
+      return null;
+    };
     const linhaCorte = (c) => { const [rot, tom] = ESTADO_CORTE[c.estado] || [c.estado, "tom-neutro"];
       const dur = c.iniciado && c.terminado ? Math.round((new Date(c.terminado) - new Date(c.iniciado)) / 1000) : null;
       return h("tr", {}, td(c.ordem, 1), h("td", { style: "min-width:200px" }, h("b", {}, c.titulo), h("div", { class: "nota" }, `${mmss(c.inicio)}–${mmss(c.fim)} · ${Math.round(c.fim - c.inicio)} s`),
@@ -4881,10 +4898,11 @@
           c.ajuste_conferido ? h("span", { class: "chip " + (c.ajuste_conferido === "sim" ? "tom-ok" : "tom-critico"), style: "justify-self:start", title: c.ajuste_nota || "" },
             (c.ajuste_conferido === "sim" ? "✅ ajuste conferido" : "❌ ajuste não atendido") + (c.ajuste_nota ? ": " + c.ajuste_nota.slice(0, 90) : "")) : null,
           c.ajuste_mudancas && !["na_fila", "produzindo"].includes(c.estado) ? h("div", { class: "nota" }, "Mudou: " + c.ajuste_mudancas) : null),
-        td(h("span", { class: "chip " + tom }, rot)), td(["produzindo", "na_fila"].includes(c.estado) ? c.etapa || (c.estado === "na_fila" ? "esperando um operário livre" : "") : c.erro || (dur ? `em ${duracao(dur)}` : "")),
+        td(h("span", { class: "chip " + tom }, rot)), td(["produzindo", "na_fila", "pausado"].includes(c.estado) ? c.etapa || (c.estado === "na_fila" ? "esperando um operário livre" : "") : c.erro || (dur ? `em ${duracao(dur)}` : "")),
         h("td", {}, c.publicacao_id ? h("a", { href: "#publicacao", onclick: (ev) => { ev.preventDefault(); trocarAba("publicacao"); } }, "P-" + String(c.publicacao_id).padStart(4, "0")) : null,
           c.estado === "previa" ? h("button", { class: "botao amarelo peq", onclick: () => verPrevia(c) }, "▶ Ver prévia") : null,
-          ["entregue", "reprovado", "erro"].includes(c.estado) ? h("button", { class: "botao leve peq", style: "margin-left:6px", onclick: () => ajustarCorte(c) }, "Pedir ajuste") : null)); };
+          ["entregue", "reprovado", "erro"].includes(c.estado) ? h("button", { class: "botao leve peq", style: "margin-left:6px", onclick: () => ajustarCorte(c) }, "Pedir ajuste") : null,
+          acoesCorte(c))); };
     const blocoLote = (l) => { const [rot, tom] = ESTADO_LOTE[l.estado] || [l.estado, "tom-neutro"], cs = C.filter((c) => c.lote_id === l.id);
       const ent = cs.filter((c) => c.estado === "entregue").length, ativos = cs.filter((c) => !["proposto", "descartado"].includes(c.estado)).length;
       const prevs = cs.filter((c) => c.estado === "previa").length, est = EST.estilos.find((x) => x.id === l.estilo_id), refaz = cs.filter(refazendo).length;
@@ -4922,10 +4940,16 @@
               h("input", { type: "text", placeholder: "Ajuste para este corte (opcional)", value: EST.ajustes[c.id] || "", oninput: (ev) => { EST.ajustes[c.id] = ev.target.value; } }))))),
           h("div", { class: "acoes" }, botao));
       }
-      const visiveis = cs.filter((c) => c.estado !== "descartado");
-      return h("details", { class: "card", open: l.estado === "produzindo" || prevs > 0 }, h("summary", { style: "cursor:pointer;list-style:none" }, cab),
+      const visiveis = cs.filter((c) => c.estado !== "descartado"), excluidos = cs.filter((c) => c.estado === "descartado");
+      EST.verExcl = EST.verExcl || new Set();
+      const verEx = EST.verExcl.has(l.id);
+      return h("details", { class: "card", open: l.estado === "produzindo" || prevs > 0 || verEx }, h("summary", { style: "cursor:pointer;list-style:none" }, cab),
         h("div", { class: "tabela", style: "margin-top:10px" }, h("table", {}, h("thead", {}, h("tr", {}, ["#", "Corte", "Situação", "Agora", ""].map((t) => h("th", {}, t)))),
-          h("tbody", {}, visiveis.map(linhaCorte)))));
+          h("tbody", {}, visiveis.map(linhaCorte)))),
+        excluidos.length ? h("div", { style: "margin-top:8px;display:grid;gap:8px" },
+          h("button", { class: "botao leve peq", style: "justify-self:start", type: "button", onclick: () => { verEx ? EST.verExcl.delete(l.id) : EST.verExcl.add(l.id); desenharEsteira(); } },
+            verEx ? "Esconder excluídos" : `🗑 Ver excluídos (${excluidos.length})`),
+          verEx ? h("div", { class: "tabela", style: "opacity:.85" }, h("table", {}, h("tbody", {}, excluidos.map(linhaCorte)))) : null) : null);
     };
     encher(corpoEst(), navEst,
       avisoContaClaude("esteira", conta.data, limiteClaude(cortes.data)),
