@@ -5877,6 +5877,50 @@
   }
   // ---------------------------------------------------------------- servidor na nuvem (gestão): o pulso que o próprio servidor manda
   const SRV = { timer: null, preco_h: 0.268, disco_mes: 20 };
+  // arquivos do servidor (05/11/2026): pastas de trabalho da esteira com o tamanho e o botão de excluir (quem apaga é o monitor do servidor)
+  async function blocoArquivosSrv(d) {
+    const lista = (d.arquivos || []).slice().sort((a, b) => (b.gb || 0) - (a.gb || 0));
+    const ids = lista.map((a) => +a.alvo).filter(Boolean);
+    const [eps, peds] = await Promise.all([ids.length ? db.from("esteira_episodios").select("id,nome,linha").in("id", ids) : { data: [] },
+      db.from("servidor_pedidos").select("*").order("id", { ascending: false }).limit(12)]);
+    if (peds.error) return h("div", { class: "aviso" }, "Arquivos do servidor: falta ligar no banco (migração dos arquivos).");
+    const nomeEp = Object.fromEntries((eps.data || []).map((e) => [String(e.id), e.nome]));
+    const pend = new Set((peds.data || []).filter((p) => ["pendente", "executando"].includes(p.estado)).map((p) => p.alvo));
+    const msg = h("span", { class: "nota", role: "status" }, SRV.msgArq || "");
+    const gb = (v) => v == null ? "–" : v >= 1 ? v.toFixed(1) + " GB" : Math.round(v * 1000) + " MB";
+    const rotulo = (alvo) => { const [ep, sub] = alvo.split("/");
+      if (!sub) return nomeEp[ep] || "Episódio " + ep;
+      return sub.startsWith("lote-") ? "Lote " + sub.slice(5) + " (cortes desse lote)" : "Estilo " + sub.slice(7).replace(/-/g, " ") + " (trabalho e saídas)"; };
+    const botao = (a) => {
+      if (pend.has(a.alvo)) return h("span", { class: "chip tom-aviso" }, "excluindo…");
+      const conf = SRV.confirmar && SRV.confirmar.alvo === a.alvo && SRV.confirmar.ate > Date.now();
+      return h("button", { class: "botao " + (conf ? "perigo" : "leve") + " peq", onclick: async (ev) => {
+        if (!conf) { SRV.confirmar = { alvo: a.alvo, ate: Date.now() + 8000 }; desenharServidor(); return; }
+        ev.target.disabled = true; SRV.confirmar = null;
+        const { error } = await db.rpc("cw_srv_excluir", { p_alvo: a.alvo });
+        SRV.msgArq = error ? error.message : `Pedido enviado: o servidor exclui "${rotulo(a.alvo)}" em até 30 s.`;
+        desenharServidor(); } }, conf ? `Confirmar: excluir ${gb(a.gb)}` : "Excluir");
+    };
+    const total = lista.reduce((t, a) => t + (a.gb || 0), 0);
+    const linhas = lista.length ? lista.flatMap((a) => [
+      h("tr", {}, h("td", {}, h("b", {}, rotulo(a.alvo)), h("div", { class: "nota" }, "pasta " + a.alvo)), td(gb(a.gb), 1), td(a.mod ? ha(new Date(a.mod * 1000).toISOString()) : "–"),
+        h("td", { class: "n" }, botao(a))),
+      ...(a.sub || []).filter((x) => (x.gb || 0) >= 0.05).sort((x, y) => (y.gb || 0) - (x.gb || 0)).map((x) =>
+        h("tr", {}, td(h("span", { style: "padding-left:18px;display:inline-block" }, "↳ " + rotulo(x.alvo))), td(gb(x.gb), 1),
+          td(x.mod ? ha(new Date(x.mod * 1000).toISOString()) : "–"), h("td", { class: "n" }, botao(x))))])
+      : [vazioLinha(4, d.arquivos ? "Nenhuma pasta de episódio no servidor." : "O servidor ainda não mandou a lista de arquivos (o monitor mede a cada 10 min).")];
+    return h("div", { style: "display:grid;gap:10px" },
+      h("h3", { class: "grupo" }, `Arquivos no servidor${lista.length ? " · " + gb(total) : ""}`),
+      h("p", { class: "nota" }, "Pastas de trabalho da esteira, por episódio. Excluir o episódio apaga do servidor o vídeo bruto e todo o trabalho dele: "
+        + "não dá mais para pedir lote nem ajuste desse episódio sem enviar de novo. Os cortes já entregues continuam no Drive e na Publicação. "
+        + "Episódio com lote ou corte em andamento não pode ser excluído."),
+      msg,
+      h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Pasta", "Tamanho", "Mexido", ""].map((t) => h("th", {}, t)))), h("tbody", {}, linhas))),
+      (peds.data || []).length ? h("details", {}, h("summary", {}, "Exclusões recentes"),
+        h("div", { class: "tabela" }, h("table", {}, h("tbody", {}, peds.data.map((p) => h("tr", {}, td(rotulo(p.alvo)),
+          td(h("span", { class: "chip " + ({ feito: "tom-ok", erro: "tom-erro" }[p.estado] || "tom-aviso") }, { feito: "excluída", erro: "não excluída", pendente: "na fila", executando: "excluindo" }[p.estado] || p.estado)),
+          td(p.resultado || ""), td(p.liberado_gb ? gb(+p.liberado_gb) + " liberados" : ""), td(ha(p.criado)))))))) : null);
+  }
   async function desenharServidor() {
     clearInterval(SRV.timer);
     SRV.timer = setInterval(() => { if (aba === "servidor" && !document.hidden && !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#srv-corpo select, #srv-corpo input"))) desenharServidor(); else if (aba !== "servidor") clearInterval(SRV.timer); }, 15000);
@@ -5930,6 +5974,7 @@
         medidor("Processador", u && idade < 90 ? u.cpu : null), medidor("Memória", u && idade < 90 ? u.ram : null, d.ram_gb ? `de ${d.ram_gb} GB` : null),
         medidor("Disco", u ? u.disco : null, d.disco_gb ? `${d.disco_livre_gb} GB livres de ${d.disco_gb} GB` : null)),
       grafico,
+      await blocoArquivosSrv(d),
       blocoRoteamento(rot.data || [], onde.data || "servidor", usos.data || []),
       h("h3", { class: "grupo" }, "Editores no servidor"),
       h("div", { class: "tabela" }, h("table", {}, h("thead", {}, h("tr", {}, ["Editor", "Estação", "Conta Claude", "Agora", "Plugin", ""].map((t) => h("th", {}, t)))),
