@@ -375,6 +375,12 @@
   .botao.peq { padding: 6px 14px; font-size: 13px; }
   .botao:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
   .pub-barra { position: sticky; bottom: -26px; z-index: 2; background: var(--surface); padding-block: 12px 26px; margin-bottom: -26px; border-top: 1px solid var(--line); }
+  .subnav-grupo { margin-bottom: 4px; justify-self: start; max-width: 100%; overflow-x: auto; }
+  .pub-config { border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 10px 14px; min-width: 0; }
+  .pub-config > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 14px; }
+  .pub-config > summary::-webkit-details-marker { display: none; }
+  .pub-config[open] > summary { margin-bottom: 12px; }
+  .pub-config > div { display: grid; gap: 12px; }
   .pub-conta-linha { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; min-width: 0; }
   .pub-conta + .pub-conta, .pub-conta-linha + .pub-conta-linha { border-top: 1px solid var(--line); padding-top: 10px; }
   .pub-conta { display: grid; gap: 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
@@ -709,13 +715,15 @@
     <header class="cabeca"><p class="kicker">Programas</p><h1>Publicação</h1>
       <p class="sub">Cortes prontos esperando aprovação. Aprovado, o robô posta no Instagram, TikTok e YouTube Shorts (confere a fila a cada 30 min, das 7h às 22h) e traz os links de volta.</p></header>
     <div class="acoes" id="pub-acoes"></div>
-    <div class="pub-conexoes" id="pub-conexoes"></div>
     <div class="segmentos" role="tablist" id="pub-prog" aria-label="Programa"></div>
-    <div class="segmentos" role="tablist" id="pub-seg"></div>
+    <details class="pub-config" id="pub-config"><summary id="pub-config-resumo"></summary><div>
+    <div class="pub-conexoes" id="pub-conexoes"></div>
     <div class="aviso" id="pub-canal2" hidden>Os cortes do Zeca saem nas contas do Canal 2 (cartão abaixo), nunca nas do CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Canal 2”; na sprint: “Editados IA › Canal 2 - Zeca”.</div>
     <div class="aviso" id="pub-dark" hidden>Os cortes do Breu saem nas contas do canal dark (cartão abaixo), sem citar a Cardápio Web nem o CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Canal Dark”; na sprint: “Editados IA › Canal Dark - Breu”.</div>
     <div class="pub-conta" id="pub-conta" hidden></div>
     <div class="pub-conta" id="pub-grade" hidden></div>
+    </div></details>
+    <div class="segmentos" role="tablist" id="pub-seg"></div>
     <div class="pub-lote" id="pub-lote" hidden></div>
     <div class="pub-grade" id="pub-lista"></div>
   </section>
@@ -985,6 +993,41 @@
     return mais.length ? [...base, ["Liberado para você", mais]] : base;
   }
   const abasDe = (papel) => menuDe(papel).flatMap(([, itens]) => itens.map(([id]) => id)).concat(EXTRAS[papel] || []);
+  // menu enxuto (04/11/2026): abas parecidas viram um item só; dentro da aba aparecem as divisões no topo
+  const GRUPOS_MENU = [["g-inicio", "Início", ["inicio", "aovivo"]], ["g-esteira", "Esteira", ["esteira", "canal2", "dark", "reels"]],
+                       ["g-ias", "IAs", ["agentes", "conhecimento", "biblioteca", "ferramentas"]], ["g-pessoas", "Pessoas", ["gestao", "permissoes"]]];
+  const ICONE_GRUPO = { "g-inicio": "inicio", "g-esteira": "esteira", "g-ias": "agentes", "g-pessoas": "gestao" };
+  const GRUPO_LEMBRA = {};   // última divisão aberta de cada grupo
+  const nomeNoMenu = (papel, id) => { for (const [, itens] of menuDe(papel)) for (const [k, nome] of itens) if (k === id) return nome; return id; };
+  function gruposAtivos(papel) {   // só vira grupo quando o papel vê 2 ou mais abas dele
+    const tem = new Set(abasDe(papel));
+    return GRUPOS_MENU.map(([g, nome, membros]) => [g, nome, membros.filter((m) => tem.has(m))]).filter(([, , ms]) => ms.length > 1);
+  }
+  function grupoDaAba(papel, id) {
+    const alvo = { padrao: "agentes", kit: "agentes" }[id] || id;
+    return gruposAtivos(papel).find(([, , ms]) => ms.includes(alvo)) || null;
+  }
+  function menuEnxuto(papel) {
+    const gs = gruposAtivos(papel), vistos = new Set();
+    return menuDe(papel).map(([secao, itens]) => [secao, itens.flatMap(([id, nome]) => {
+      const g = gs.find(([, , ms]) => ms.includes(id));
+      if (!g) return [[id, nome]];
+      if (vistos.has(g[0])) return [];
+      vistos.add(g[0]);
+      return [[g[0], g[1]]];
+    })]).filter(([, itens]) => itens.length);
+  }
+  function subnavGrupo(id) {   // divisões do grupo no topo da aba (ex.: Titeu · Zeca · Breu · FabI.Ano)
+    const sec = $("#aba-" + id), g = sec && grupoDaAba(visao.papel, id);
+    if (!sec) return;
+    let nav = sec.querySelector(":scope > .subnav-grupo");
+    if (!g) { if (nav) nav.remove(); return; }
+    GRUPO_LEMBRA[g[0]] = { padrao: "agentes", kit: "agentes" }[id] || id;
+    if (!nav) { nav = h("div", { class: "subnav-grupo segmentos", role: "tablist" }); sec.prepend(nav); }
+    const atual = GRUPO_LEMBRA[g[0]];
+    encher(nav, g[2].map((m) => h("button", { role: "tab", "aria-selected": String(m === atual), onclick: () => trocarAba(m) },
+      nomeNoMenu(visao.papel, m), contadorN(m) ? h("em", {}, contadorN(m)) : null)));
+  }
   const ICONES = {
     inicio: "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
     aovivo: "M3 12h4l3 8 4-16 3 8h4",
@@ -1108,6 +1151,7 @@
       if (["cwcast", "canal2", "dark"].includes(prog)) PUB.prog = prog;
       PUB.ytMsg = { prog: PUB.prog, texto: volta.get("yt") === "ok" ? `Pronto: canal ${volta.get("canal")} ligado. O robô confere e passa a postar nele na próxima passada.` : "Não ligou: " + (volta.get("msg") || "erro") };
       if (volta.get("yt") !== "ok") { const p = volta.get("msg") || ""; const m = /o (Zeca|Breu)/.exec(p); if (m) PUB.prog = m[1] === "Zeca" ? "canal2" : "dark"; PUB.ytMsg.prog = PUB.prog; }
+      PUB.abrirCfg = true;   // volta do Google: mostra o cartão do canal aberto
       history.replaceState(null, "", location.pathname + "#publicacao");
     }
     montarNav(location.hash.slice(1));
@@ -1179,32 +1223,40 @@
     const caret = document.querySelector('.sb-item[data-aba="cast"] .sb-caret'); if (caret) caret.classList.toggle("aberto", castMenuAberto);
   }
   function montarNav(pedida) {
-    encher($("#nav"), menuDe(visao.papel).map(([secao, itens]) => [h("p", { class: "sb-section" }, secao),
+    encher($("#nav"), menuEnxuto(visao.papel).map(([secao, itens]) => [h("p", { class: "sb-section" }, secao),
       itens.map(([id, nome]) => [h("button", { class: "sb-item", "data-aba": id, "aria-expanded": id === "cast" ? String(castMenuAberto) : null,
-        onclick: () => { if (id === "cast") { castMenuAberto = aba === "cast" ? !castMenuAberto : true; atualizarSubCast(); if (aba === "cast") return; } trocarAba(id); } },
-        h("span", { class: "sb-ico" }, icone(ICONES[id])), h("span", { class: "sb-label" }, nome), contador(id), icone("M9 18l6-6-6-6", "sb-caret")),
+        onclick: () => { if (id === "cast") { castMenuAberto = aba === "cast" ? !castMenuAberto : true; atualizarSubCast(); if (aba === "cast") return; }
+          const g = GRUPOS_MENU.find(([k]) => k === id); trocarAba(g ? (GRUPO_LEMBRA[id] || (gruposAtivos(visao.papel).find(([k]) => k === id) || [0, 0, [g[2][0]]])[2][0]) : id); } },
+        h("span", { class: "sb-ico" }, icone(ICONES[ICONE_GRUPO[id] || id])), h("span", { class: "sb-label" }, nome), contador(id), icone("M9 18l6-6-6-6", "sb-caret")),
         id === "cast" ? subCast() : null])]));
     $("#btn-pedir").hidden = !(abasDe(visao.papel).includes("pedir") && visao.papel !== "solicitante");
     const abas = abasDe(visao.papel);
     trocarAba(abas.includes(pedida) ? pedida : abas[0]);
   }
   function contador(id) {
+    const g = GRUPOS_MENU.find(([k]) => k === id);
+    const n = g ? g[2].reduce((t, m) => t + contadorN(m), 0) : contadorN(id);
+    return n ? h("em", { class: "sb-count" }, n) : null;
+  }
+  function contadorN(id) {
     let n = 0;
     if (id === "inicio") n = alertas().filter((a) => a.tom !== "neutro").length;
     if (id === "pedidos") n = meusPedidos().filter((d) => d.status === "em_revisao").length;
     if (id === "meudia") n = D.demandas.filter((d) => d.editor_slug === visao.editor && d.status === "refazer").length;
     if (id === "cast") n = (castCont.alertas || 0) + (castCont.conf || 0);
     if (id === "publicacao" && ["gestor", "producao"].includes(eu.papel)) n = PUB.lista.filter((x) => x.estado === "aguardando").length;
-    return n ? h("em", { class: "sb-count" }, n) : null;
+    return n;
   }
   function trocarAba(nova) {
     aba = nova;
     if (nova) history.replaceState(null, "", "#" + nova);
+    const gm = grupoDaAba(visao.papel, nova);
     for (const b of document.querySelectorAll(".sb-item")) {
-      const grupo = { padrao: "agentes", kit: "agentes" }[nova] || nova;
+      const grupo = gm ? gm[0] : ({ padrao: "agentes", kit: "agentes" }[nova] || nova);
       b.classList.toggle("is-active", b.dataset.aba === grupo);
       b.setAttribute("aria-current", b.dataset.aba === grupo ? "page" : "false");
     }
+    subnavGrupo(nova);
     if (nova === "cast") castMenuAberto = true;
     atualizarSubCast();
     fecharMenu();
@@ -3872,6 +3924,27 @@
         fila.map((x) => linha(x, x.agendado_para ? "🗓 " + diaHora(x.agendado_para) : "assim que possível", "tom-aviso")),
         postados.map((x) => linha(x, "✓ " + diaHora(x.atualizado), "tom-ok"))) : h("span", { class: "nota" }, "Nenhum corte aprovado na fila deste canal."));
   }
+  // "⚙ Configurações do canal": resumo de uma linha; robô, contas e programação ficam dentro (abre sozinho se algo pede atenção)
+  function resumoConfigPub(st) {
+    const prog = PUB.prog, cp = prog === "cwcast" ? null : ((st.contas || {})[prog] || {});
+    const ig = prog === "cwcast" ? { ok: !!st.instagram && !st.erro_instagram, nome: st.instagram_conta, dias: st.instagram_dias } : { ok: !!cp.instagram && !cp.erro, nome: cp.conta, dias: cp.dias };
+    const yt = prog === "cwcast" ? { ok: !!st.youtube, nome: st.youtube_canal } : { ok: !!cp.youtube, nome: cp.youtube_canal };
+    const g = gradeDe(prog), atrasado = roboAtrasado(st);
+    const chips = [
+      h("b", {}, "⚙ Configurações do canal"),
+      h("span", { class: "chip " + (atrasado ? "tom-aviso" : "tom-neutro") }, atrasado ? "robô atrasado" : st.visto ? "robô passou " + ha(st.visto) : "robô ainda não rodou"),
+      h("span", { class: "chip " + (ig.ok ? "tom-ok" : "tom-critico") }, (ig.ok ? "✓ " : "✗ ") + "Instagram" + (ig.nome ? " @" + ig.nome : "")),
+      ig.ok && ig.dias != null && ig.dias < 15 ? h("span", { class: "chip tom-aviso" }, `Instagram vence em ${ig.dias} dias`) : null,
+      h("span", { class: "chip " + (yt.ok ? "tom-ok" : "tom-neutro") }, (yt.ok ? "✓ " : "✗ ") + "YouTube" + (yt.nome ? " " + yt.nome : "")),
+      prog === "cwcast" ? h("span", { class: "chip " + (st.tiktok ? "tom-ok" : "tom-neutro") }, (st.tiktok ? "✓ " : "✗ ") + "TikTok") : null,
+      g ? h("span", { class: "chip tom-neutro" }, `grade: 1 a cada ${g.intervalo_min / 60} h${g.proximo_livre ? " · próximo " + diaHora(g.proximo_livre) : ""}`) : null,
+      h("span", { class: "nota", style: "margin-left:auto" }, "abrir ▾")];
+    encher($("#pub-config-resumo"), chips);
+    const atencao = atrasado || !ig.ok || (ig.dias != null && ig.dias < 15);
+    const det = $("#pub-config");
+    if (PUB.cfgProg !== prog) { PUB.cfgProg = prog; det.open = atencao && podeAprovar(); }   // ao trocar de canal: abre só se algo pede atenção
+    if (PUB.abrirCfg) { det.open = true; PUB.abrirCfg = false; }
+  }
   async function chamarRoboPub() { try { await db.functions.invoke("robo", { body: { acao: "publicar" } }); } catch { /* fica para a agenda */ } }
   async function desenharPublicacao() {
     if (Date.now() - PUB.carregado > 5000) await carregarPublicacao();
@@ -3894,8 +3967,10 @@
       nome, h("em", { title: "esperando aprovação" }, PUB.lista.filter((x) => progPub(x) === id && x.estado === "aguardando").length))));
     $("#pub-canal2").hidden = PUB.prog !== "canal2";
     $("#pub-dark").hidden = PUB.prog !== "dark";
+    $("#pub-conexoes").hidden = PUB.prog !== "cwcast";   // contas do CW Cast; nos outros canais o cartão do canal mostra as deles
     desenharContaPub(st);
     desenharGradePub();
+    resumoConfigPub(st);
     const doProg = PUB.lista.filter((x) => progPub(x) === PUB.prog);
     encher($("#pub-seg"), SEG_PUB.map(([id, nome, est]) => h("button", { role: "tab", "aria-selected": String(PUB.seg === id), onclick: () => { PUB.seg = id; desenharPublicacao(); } },
       nome, h("em", {}, doProg.filter((x) => est.includes(x.estado)).length))));
@@ -5237,7 +5312,7 @@
   function subnavAgentes(atual) {
     const sec = $("#aba-" + (["padrao", "kit"].includes(atual) ? atual : "agentes"));
     let nav = sec.querySelector(".subnav-agentes");
-    if (!nav) { nav = h("div", { class: "subnav-agentes chips", style: "margin-bottom:6px" }); sec.insertBefore(nav, sec.children[1] || null); }
+    if (!nav) { nav = h("div", { class: "subnav-agentes chips", style: "margin-bottom:6px" }); const cab = sec.querySelector(":scope > header"); cab ? cab.after(nav) : sec.insertBefore(nav, sec.children[1] || null); }
     const itens = SUBNAV_AGENTES.filter(([v]) => eu.papel === "gestor" || ["robos", "skills"].includes(v));
     encher(nav, itens.map(([v, t]) => h("button", { class: "chip" + (v === atual ? " tom-ok" : ""), style: "cursor:pointer;border:0;font-size:14px;padding:6px 12px",
       onclick: () => { if (["padrao", "kit"].includes(v)) trocarAba(v); else { AGT.vista = v; trocarAba("agentes"); } } }, t)));
