@@ -4039,7 +4039,7 @@
       botao.disabled = true; let ok = 0;
       for (const l of linhas) {
         l.st.textContent = "programando…";
-        const capa = (l.x.capas || [])[0] ? await linkCapa(l.x.capas[0].caminho) : {};   // em lote: a primeira capa da Capitu
+        const capa = (l.x.capas || [])[0] ? await linkCapa(l.x.capas[0].caminho) : {};   // em lote: a primeira capa (Capitu ou Tarsila)
         const { error } = await db.rpc("cw_pub_decidir", { p_id: l.x.id, p_aprovar: true, p_motivo: null, p_legenda: l.leg.value, p_titulo_youtube: l.tyt.value,
           p_redes: redes, p_agendado_para: !gradeL && l.quando.value ? new Date(l.quando.value).toISOString() : null, p_opcoes: capa });
         if (error) { l.st.textContent = "✗ " + error.message; l.st.style.color = "var(--critico-tx)"; l.det.open = true; } else { l.st.textContent = "✓ programado"; ok++; }
@@ -4139,6 +4139,7 @@
     const quando = () => dia.value ? new Date(`${dia.value}T${hora.value || "12:00"}`) : null;   // sem dia = publicar agora
     // capa: pedida aqui na Publicação (botão "Gerar capa"); a Capitu faz e as opções aparecem; quem aprova escolhe uma
     let capas = x.capas || [];
+    const capista = progPub(x) === "cwcast" ? "Capitu" : "Tarsila";   // Capitu: CW Cast; Tarsila: Zeca, Breu e Nanquim (visual de cada canal)
     let capaEscolhida = (x.opcoes || {}).capa !== undefined ? (x.opcoes || {}).capa : ((capas[0] || {}).caminho || "");
     const capaOpcoes = [], gradeCapas = h("div", { class: "grade" }), statusCapa = h("span", { class: "nota" });
     const marcaCapa = () => capaOpcoes.forEach(([cam, el]) => el.classList.toggle("on", cam === capaEscolhida));
@@ -4160,11 +4161,11 @@
       const t = (data || [])[0];
       if (!t) { statusCapa.textContent = capas.length ? "" : "Ainda sem capa para este corte."; return; }
       if (["na_fila", "rodando"].includes(t.estado)) {
-        statusCapa.textContent = t.estado === "na_fila" ? "⏳ Na fila da Capitu…" : "🎨 A Capitu está fazendo a capa" + (t.etapa ? ": " + t.etapa : "…");
+        statusCapa.textContent = t.estado === "na_fila" ? `⏳ Na fila da ${capista}…` : `🎨 A ${capista} está fazendo a capa` + (t.etapa ? ": " + t.etapa : "…");
         botaoCapa.disabled = true; clearTimeout(vigiaCapa); vigiaCapa = setTimeout(() => { if ($("#detalhe").open && PUB.aberto === x.id) acompanharCapa(); }, 8000); return;
       }
       botaoCapa.disabled = false;
-      if (t.estado === "erro") { statusCapa.textContent = "✗ A Capitu não conseguiu: " + (t.erro || "erro"); return; }
+      if (t.estado === "erro") { statusCapa.textContent = `✗ A ${capista} não conseguiu: ` + (t.erro || "erro"); return; }
       const { data: p } = await db.from("publicacoes").select("capas").eq("id", x.id).single();   // capa pronta: entra no card
       if (p && JSON.stringify(p.capas || []) !== JSON.stringify(capas)) { capas = p.capas || []; x.capas = capas; capaEscolhida = (capas[0] || {}).caminho || ""; desenharCapas(); }
       statusCapa.textContent = capas.length ? "Toque na capa para escolher (a borda amarela é a que vai)." : "";
@@ -4172,8 +4173,8 @@
     const botaoCapa = h("button", { type: "button", class: "botao leve peq", onclick: async () => {
       const { error } = await db.rpc("cw_pub_gerar_capa", { p_pub: x.id });
       if (error) { statusCapa.textContent = "✗ " + error.message; return; }
-      statusCapa.textContent = "⏳ Pedido enviado para a Capitu…"; botaoCapa.disabled = true; acompanharCapa();
-    } }, capas.length ? "🎨 Gerar outra capa" : "🎨 Gerar capa com a Capitu");
+      statusCapa.textContent = `⏳ Pedido enviado para a ${capista}…`; botaoCapa.disabled = true; acompanharCapa();
+    } }, capas.length ? "🎨 Gerar outra capa" : `🎨 Gerar capa com a ${capista}`);
     const capaBox = x.editor_slug === "esteira" ? h("div", { class: "pub-capas" },
       h("div", { class: "acoes", style: "justify-content:space-between;align-items:center" }, h("b", {}, "Capa"), botaoCapa),
       gradeCapas, statusCapa) : null;
