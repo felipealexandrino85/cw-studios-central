@@ -4038,8 +4038,10 @@
       if (!redes.length) { msg.hidden = false; msg.textContent = "Escolha pelo menos uma rede."; return; }
       botao.disabled = true; let ok = 0;
       for (const l of linhas) {
+        if (l.x.editor_slug === "esteira" && !(l.x.capas || []).length) {   // capa obrigatória: este fica para depois
+          l.st.textContent = "✗ sem capa ainda (a agente de capas está fazendo)"; l.st.style.color = "var(--critico-tx)"; continue; }
         l.st.textContent = "programando…";
-        const capa = (l.x.capas || [])[0] ? await linkCapa(l.x.capas[0].caminho) : {};   // em lote: a primeira capa (Capitu ou Tarsila)
+        const capa = (l.x.capas || [])[0] ? await linkCapa(((l.x.opcoes || {}).capa) || l.x.capas[0].caminho) : {};   // em lote: a capa escolhida, ou a primeira (Capitu ou Tarsila)
         const { error } = await db.rpc("cw_pub_decidir", { p_id: l.x.id, p_aprovar: true, p_motivo: null, p_legenda: l.leg.value, p_titulo_youtube: l.tyt.value,
           p_redes: redes, p_agendado_para: !gradeL && l.quando.value ? new Date(l.quando.value).toISOString() : null, p_opcoes: capa });
         if (error) { l.st.textContent = "✗ " + error.message; l.st.style.color = "var(--critico-tx)"; l.det.open = true; } else { l.st.textContent = "✓ programado"; ok++; }
@@ -4140,7 +4142,7 @@
     // capa: pedida aqui na Publicação (botão "Gerar capa"); a Capitu faz e as opções aparecem; quem aprova escolhe uma
     let capas = x.capas || [];
     const capista = progPub(x) === "cwcast" ? "Capitu" : "Tarsila";   // Capitu: CW Cast; Tarsila: Zeca, Breu e Nanquim (visual de cada canal)
-    let capaEscolhida = (x.opcoes || {}).capa !== undefined ? (x.opcoes || {}).capa : ((capas[0] || {}).caminho || "");
+    let capaEscolhida = (x.opcoes || {}).capa || ((capas[0] || {}).caminho || "");   // a primeira capa (a recomendada) já vem escolhida
     const capaOpcoes = [], gradeCapas = h("div", { class: "grade" }), statusCapa = h("span", { class: "nota" });
     const marcaCapa = () => capaOpcoes.forEach(([cam, el]) => el.classList.toggle("on", cam === capaEscolhida));
     function desenharCapas() {
@@ -4151,8 +4153,8 @@
             h("a", { class: "capa-ver", href: "#", onclick: async (ev) => { ev.preventDefault(); ev.stopPropagation();
               const { data } = await db.storage.from("oficina").createSignedUrl(c.caminho, 3600); if (data) window.open(data.signedUrl, "_blank", "noopener"); } }, "ver"));
           capaOpcoes.push([c.caminho, el]); return el; }),
-        capas.length ? (() => { const el = h("button", { type: "button", class: "capa-op sem", onclick: () => { capaEscolhida = ""; marcaCapa(); } }, "Sem capa", h("small", {}, "quadro do vídeo"));
-          capaOpcoes.push(["", el]); return el; })() : null);
+        capas.length && x.editor_slug !== "esteira" ? (() => { const el = h("button", { type: "button", class: "capa-op sem", onclick: () => { capaEscolhida = ""; marcaCapa(); } }, "Sem capa", h("small", {}, "quadro do vídeo"));
+          capaOpcoes.push(["", el]); return el; })() : null);   // corte da esteira: capa obrigatória (06/11/2026)
       marcaCapa();
     }
     let vigiaCapa = null;
@@ -4237,6 +4239,8 @@
         if (longoDemais) return tt("O vídeo é longo demais para o TikTok desta conta: desmarque o TikTok.");
       }
       if (aprovar && destino.value !== x.destino) { const r = await db.rpc("cw_pub_destino", { p_pub: x.id, p_destino: destino.value }); if (r.error) return erro(r.error); }
+      if (aprovar && x.editor_slug === "esteira" && !capaEscolhida)
+        return erro(capas.length ? "Escolha a capa." : `A capa é obrigatória: espere a ${capista} terminar a capa deste corte (ou peça em "Gerar capa").`);
       const capa = aprovar && capaEscolhida ? await linkCapa(capaEscolhida) : {};
       const { error } = await db.rpc("cw_pub_decidir", { p_id: x.id, p_aprovar: aprovar, p_motivo: motivo.value, p_legenda: legenda.value,
         p_titulo_youtube: tyt.value, p_redes: redes, p_agendado_para: quando() ? quando().toISOString() : null,
