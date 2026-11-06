@@ -1999,12 +1999,12 @@
             previas: cs.filter((x) => x.estado === "previa").length }; };
         SALA.est = contar("cortes"); SALA.estR = contar("reels"); SALA.estZ = contar("canal2"); SALA.estD = contar("dark"); SALA.estN = contar("nanquim");
         // agente que trabalha quando um vídeo fica pronto (a Capitu, das capas): mesa própria na Edição
-        const { data: capAg } = await db.from("agentes").select("id,nome,visual").eq("ativo", true).eq("trabalha", true).or("gatilho.eq.video,papel.eq.design").order("id").limit(1);
-        SALA.capista = (capAg || [])[0] || null;
-        if (SALA.capista) {
-          const { data: ts } = await db.from("agente_tarefas").select("estado,terminado").eq("agente_id", SALA.capista.id).in("estado", ["na_fila", "rodando", "previa", "aprovada", "entregue"]).order("id", { ascending: false }).limit(300);
+        const { data: capAg } = await db.from("agentes").select("id,nome,visual").eq("ativo", true).eq("trabalha", true).or("gatilho.eq.video,papel.eq.design").order("id").limit(4);
+        SALA.capistas = capAg || [];   // Capitu (CW Cast) e Tarsila (canais de corte): uma mesa para cada
+        for (const ag of SALA.capistas) {
+          const { data: ts } = await db.from("agente_tarefas").select("estado,terminado").eq("agente_id", ag.id).in("estado", ["na_fila", "rodando", "previa", "aprovada", "entregue"]).order("id", { ascending: false }).limit(300);
           const T2 = ts || [];
-          SALA.capas = { rodando: T2.filter((x) => x.estado === "rodando").length, fila: T2.filter((x) => x.estado === "na_fila").length,
+          ag.capas = { rodando: T2.filter((x) => x.estado === "rodando").length, fila: T2.filter((x) => x.estado === "na_fila").length,
             previas: T2.filter((x) => x.estado === "previa").length, hoje: T2.filter((x) => ["aprovada", "entregue", "previa"].includes(x.estado) && x.terminado && new Date(x.terminado) >= hoje0).length };
         }
       }
@@ -2329,8 +2329,8 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }, { slug: "__zeca", nome: "Zeca", npc: "zeca" }, { slug: "__breu", nome: "Breu", npc: "breu" }, { slug: "__nanquim", nome: "Nanquim", npc: "nanquim" }].concat(SALA.capista ? [{ slug: "__capista", nome: SALA.capista.nome, npc: "capista" }] : []))), cv = $("#sala-canvas"), T = TILE;
-    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu"), mesaFabia = P.mesas.find((m) => m.ed.npc === "fabia"), mesaCapa = P.mesas.find((m) => m.ed.npc === "capista"), mesaZeca = P.mesas.find((m) => m.ed.npc === "zeca");
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }, { slug: "__zeca", nome: "Zeca", npc: "zeca" }, { slug: "__breu", nome: "Breu", npc: "breu" }, { slug: "__nanquim", nome: "Nanquim", npc: "nanquim" }].concat((SALA.capistas || []).map((a, k) => ({ slug: "__capista" + k, nome: a.nome, npc: "capista" + k }))))), cv = $("#sala-canvas"), T = TILE;
+    const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu"), mesaFabia = P.mesas.find((m) => m.ed.npc === "fabia"), mesasCapa = (SALA.capistas || []).map((ag, k) => ({ ag, mesa: P.mesas.find((m) => m.ed.npc === "capista" + k) })).filter((x) => x.mesa), mesaZeca = P.mesas.find((m) => m.ed.npc === "zeca");
     // Breu (canal dark) e Nanquim (reflexivo P&B): mesa, boneco, plaquinha e balão iguais aos do Zeca, cada um com o seu monitor
     const CANAIS_SALA = [{ npc: "breu", nome: "Breu", aba: "dark", boneco: BREU, est: () => SALA.estD, luz: "#e5232b", ocioso: "🌑 canal dark no ar" },
       { npc: "nanquim", nome: "Nanquim", aba: "nanquim", boneco: NANQUIM, est: () => SALA.estN, luz: "#ffd400", ocioso: "🖋️ cortes em P&B" }]
@@ -2554,8 +2554,8 @@
       px(mx - 3, my - 13, 6, 9, ativo ? "#f7f7f2" : "#3a3550");
       if (ativo) { const yb = my - 6 - (f % 8); px(mx - 2, yb, 4, 1, ["#ffb800", "#a543fa", "#ff6b5b"][Math.floor(f / 8) % 3]); px(mx - 2, my - 6, 4, 1, "#ffb800"); }
     }
-    if (mesaCapa) {   // agente das capas: monitor com a capa vertical sendo montada (foto, faixas coral/amarela e o texto aparecendo)
-      const mx = mesaCapa.x, my = mesaCapa.y, E4 = SALA.capas || {}, ativo = (E4.rodando || 0) > 0;
+    for (const { ag, mesa: mesaCapa } of mesasCapa) {   // agentes das capas: monitor com a capa vertical sendo montada (foto, faixas e o texto aparecendo)
+      const mx = mesaCapa.x, my = mesaCapa.y, E4 = ag.capas || {}, ativo = (E4.rodando || 0) > 0;
       c.drawImage(mesaEstacao(), (mx - 23) * SC, (my - 15) * SC, 46 * SC, 27 * SC);
       px(mx - 9, my - 14, 18, 11, "#24203a");
       px(mx - 3, my - 14, 7, 11, ativo ? "#6b4f8f" : "#3a3550");
@@ -2644,10 +2644,10 @@
       c.drawImage(bonecoCostas(ag.boneco, ativo ? (f % 4 < 2 ? 1 : 2) : 0), (pz.x - 11) * SC, (pz.y - 24) * SC, 22 * SC, 27 * SC);
       c.drawImage(cadeiraCostas(), (pz.x - 10) * SC, (pz.y - 6) * SC, 20 * SC, 13 * SC);
     }
-    if (mesaCapa) {
-      const cp = { x: mesaCapa.x, y: mesaCapa.y + 22 }, cpAtivo = ((SALA.capas || {}).rodando || 0) > 0;
+    for (const { ag, mesa: mesaCapa } of mesasCapa) {
+      const cp = { x: mesaCapa.x, y: mesaCapa.y + 22 }, cpAtivo = ((ag.capas || {}).rodando || 0) > 0;
       px(cp.x - 7, cp.y, 14, 2, "#00000026");
-      c.drawImage(bonecoCostas(visualRobo(SALA.capista), cpAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (cp.x - 11) * SC, (cp.y - 24) * SC, 22 * SC, 27 * SC);
+      c.drawImage(bonecoCostas(visualRobo(ag), cpAtivo ? (f % 4 < 2 ? 1 : 2) : 0), (cp.x - 11) * SC, (cp.y - 24) * SC, 22 * SC, 27 * SC);
       c.drawImage(cadeiraCostas(), (cp.x - 10) * SC, (cp.y - 6) * SC, 20 * SC, 13 * SC);
     }
     const bia = { x: mesaBia.x, y: mesaBia.y + 22 };
@@ -2748,8 +2748,8 @@
         px(bx, by, bw, 11, cor); px(t6.x - 1, by + 11, 3, 2, cor); txt(fala6, bx + bw / 2, by + 8, 4.6, "#2a1b40", 600);
       }
     }
-    if (mesaCapa) {   // agente das capas: plaquinha e balão
-      const t4 = { x: mesaCapa.x, y: mesaCapa.y + 22 }, E4 = SALA.capas || {}, nomeC = SALA.capista.nome;
+    for (const { ag, mesa: mesaCapa } of mesasCapa) {   // agentes das capas: plaquinha e balão
+      const t4 = { x: mesaCapa.x, y: mesaCapa.y + 22 }, E4 = ag.capas || {}, nomeC = ag.nome;
       c.font = `700 ${4.8 * SC}px Inter, system-ui, sans-serif`;
       const lwC = c.measureText(nomeC).width / SC + 12;
       px(t4.x - lwC / 2, t4.y + 6, lwC, 10, "#2a2440"); px(t4.x - lwC / 2 + 3, t4.y + 9.5, 4, 4, E4.rodando ? "#4cd07d" : "#ffb800aa");
