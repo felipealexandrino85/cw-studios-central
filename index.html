@@ -633,9 +633,10 @@
     <p class="nota" id="rel-periodo-txt" style="margin:0"></p>
     <div id="rel-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px"></div>
     <h3 class="grupo">Lado a lado</h3>
-    <div class="tabela"><table><thead><tr><th>Agente</th><th class="n">Feitos</th><th class="n">Aprovados</th><th class="n">Postados</th><th class="n">Reprovados / erro</th>
+    <div class="tabela"><table><thead><tr><th>Agente</th><th class="n">Feitos</th><th class="n">Aguardando</th><th class="n">Agendados</th><th class="n">Postados</th><th class="n">Reprovados / erro</th>
       <th class="n">Tempo médio</th><th class="n">Claude (US$ equiv.)</th><th class="n">Tokens</th><th class="n">Higgsfield</th></tr></thead><tbody id="rel-tabela"></tbody></table></div>
-    <p class="nota">Feitos = cortes que chegaram à prévia no período. Aprovados = foram para a Publicação. Postados = saíram nas redes.
+    <p class="nota">Feitos = cortes que chegaram à prévia no período. Aguardando = estão na Publicação esperando aprovação. Agendados = aprovados, com data
+      para sair. Postados = saíram nas redes no período. Aguardando e Agendados são de agora; cancelados e removidos não entram.
       Tempo médio = tempo de produção do corte (da hora que o agente pega até a prévia, somando as tentativas). Claude = custo que essas chamadas teriam
       na API (a esteira roda na assinatura, então é uma medida de uso, não uma cobrança); medido a partir de 04/11/2026. Higgsfield = gerações de imagem/vídeo.</p>
   </section>
@@ -1767,15 +1768,16 @@
       h("div", { style: "display:flex;justify-content:space-between;align-items:baseline;gap:8px" }, h("b", { style: "font-size:18px" }, a.nome),
         a.na_fila ? h("span", { class: "chip tom-neutro" }, `${a.na_fila} na fila agora`) : null),
       h("div", { style: "display:flex;align-items:baseline;gap:8px" }, h("span", { style: "font-size:40px;font-weight:900;line-height:1" }, a.feitos), h("span", { class: "nota" }, "cortes feitos")),
-      linha("Aprovados (foram para a Publicação)", a.aprovados), linha("Postados nas redes", a.postados), linha("Reprovados / erro", a.reprovados),
+      linha("Na Publicação, aguardando aprovação", a.aguardando), linha("Agendados (aprovados, vão sair)", a.agendados),
+      linha("Postados nas redes", a.postados), linha("Reprovados / erro", a.reprovados),
       linha("Tempo médio por corte", minutos(a.tempo_medio_min), a.tempo_amostra ? `(${a.tempo_amostra} medidos)` : ""),
       linha("Claude (custo equivalente)", a.claude.cortes_medidos ? usd(a.claude.custo_usd) : "medindo", a.claude.cortes_medidos ? `(${a.claude.cortes_medidos} cortes)` : ""),
       a.claude.cortes_medidos ? linha("Tokens do Claude", mil(a.claude.tokens)) : null,
       linha("Gerações no Higgsfield", a.higgsfield))));
     const tot = (k) => ags.reduce((t, a) => t + Number(a[k] || 0), 0);
-    encher($("#rel-tabela"), [...ags.map((a) => h("tr", {}, td(h("b", {}, a.nome)), td(a.feitos, 1), td(a.aprovados, 1), td(a.postados, 1), td(a.reprovados, 1),
+    encher($("#rel-tabela"), [...ags.map((a) => h("tr", {}, td(h("b", {}, a.nome)), td(a.feitos, 1), td(a.aguardando, 1), td(a.agendados, 1), td(a.postados, 1), td(a.reprovados, 1),
         td(minutos(a.tempo_medio_min), 1), td(a.claude.cortes_medidos ? usd(a.claude.custo_usd) : "–", 1), td(a.claude.cortes_medidos ? mil(a.claude.tokens) : "–", 1), td(a.higgsfield, 1))),
-      h("tr", { style: "font-weight:800" }, td("Total"), td(tot("feitos"), 1), td(tot("aprovados"), 1), td(tot("postados"), 1), td(tot("reprovados"), 1), td("", 1),
+      h("tr", { style: "font-weight:800" }, td("Total"), td(tot("feitos"), 1), td(tot("aguardando"), 1), td(tot("agendados"), 1), td(tot("postados"), 1), td(tot("reprovados"), 1), td("", 1),
         td(usd(ags.reduce((t, a) => t + Number(a.claude.custo_usd || 0), 0)), 1), td(mil(ags.reduce((t, a) => t + Number(a.claude.tokens || 0), 0)), 1), td(tot("higgsfield"), 1))]);
   }
 
