@@ -5907,12 +5907,15 @@
     const botao = (a) => {
       if (pend.has(a.alvo)) return h("span", { class: "chip tom-aviso" }, "excluindo…");
       const conf = SRV.confirmar && SRV.confirmar.alvo === a.alvo && SRV.confirmar.ate > Date.now();
-      return h("button", { class: "botao " + (conf ? "perigo" : "leve") + " peq", onclick: async (ev) => {
+      const erro = SRV.erroArq && SRV.erroArq.alvo === a.alvo ? SRV.erroArq.msg : null;   // o motivo fica na linha clicada (no topo ninguém via)
+      const b = h("button", { class: "botao " + (conf ? "perigo" : "leve") + " peq", onclick: async (ev) => {
         if (!conf) { SRV.confirmar = { alvo: a.alvo, ate: Date.now() + 8000 }; desenharServidor(); return; }
         ev.target.disabled = true; SRV.confirmar = null;
         const { error } = await db.rpc("cw_srv_excluir", { p_alvo: a.alvo });
         SRV.msgArq = error ? error.message : `Pedido enviado: o servidor exclui "${rotulo(a.alvo)}" em até 30 s.`;
+        SRV.erroArq = error ? { alvo: a.alvo, msg: error.message } : null;
         desenharServidor(); } }, conf ? `Confirmar: excluir ${gb(a.gb)}` : "Excluir");
+      return erro ? h("div", { style: "display:grid;gap:4px;justify-items:end" }, b, h("span", { class: "nota", style: "color:var(--critico-tx);max-width:260px;text-align:right" }, erro)) : b;
     };
     const total = lista.reduce((t, a) => t + (a.gb || 0), 0);
     const linhas = lista.length ? lista.flatMap((a) => [
