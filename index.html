@@ -627,7 +627,7 @@
   </section>
 
   <section id="aba-relatorio" hidden>
-    <header class="cabeca"><p class="kicker">Gestão</p><h1>Relatório</h1><p class="sub">Produção dos agentes que editam: Titeu, Zeca, Breu e Nanquim. Quantos cortes cada um fez, quanto tempo leva cada corte e quanto consome. Só a gestão vê esta página.</p></header>
+    <header class="cabeca"><p class="kicker">Gestão</p><h1>Relatório</h1><p class="sub">Produção dos agentes que editam: Titeu, Zeca, Breu, Nanquim e Glautin. Quantos cortes cada um fez, quanto tempo leva cada corte e quanto consome. Só a gestão vê esta página.</p></header>
     <div class="segmentos" role="tablist" id="rel-filtros" aria-label="Período"></div>
     <div class="acoes" id="rel-personalizado" hidden></div>
     <p class="nota" id="rel-periodo-txt" style="margin:0"></p>
@@ -696,6 +696,7 @@
     <div class="pub-conexoes" id="pub-conexoes"></div>
     <div class="aviso" id="pub-canal2" hidden>Os cortes do Zeca saem nas contas do Canal 2 (cartão abaixo), nunca nas do CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Canal 2”; na sprint: “Editados IA › Canal 2 - Zeca”.</div>
     <div class="aviso" id="pub-nanquim" hidden>Os cortes do Nanquim saem nas contas do canal @mentalidaderestaurante (cartão abaixo: Instagram e YouTube), sem citar a Cardápio Web nem o CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Nanquim”.</div>
+    <div class="aviso" id="pub-glautin" hidden>Os cortes do Glautin são do perfil pessoal do Glauton, que ainda não está ligado: o robô não posta. Aprovar aqui manda o vídeo para a sprint (“Editados IA › Perfil Glauton”); a postagem é manual. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Glautin”.</div>
     <div class="aviso" id="pub-dark" hidden>Os cortes do Breu saem nas contas do canal dark (cartão abaixo), sem citar a Cardápio Web nem o CW Cast. No Drive: “CW Cast - Cortes › 2. PARA APROVAR - Canal Dark”; na sprint: “Editados IA › Canal Dark - Breu”.</div>
     <div class="pub-conta" id="pub-conta" hidden></div>
     <div class="pub-conta" id="pub-grade" hidden></div>
@@ -748,6 +749,11 @@
       <p class="sub">Usa os mesmos episódios do podcast, mas escolhe OUTROS momentos, os de peso emocional (quedas, viradas, conselhos para outros donos), e edita em preto e branco: a imagem numa faixa que acompanha o rosto, abertura em fenda, legenda palavra por palavra com a palavra-chave grande, trilha emocional licenciada e "me siga" no fim. Sem b-roll e sem logo.</p></div></header>
     <div id="nanquim-corpo" style="display:grid;gap:16px"></div>
   </section>
+  <section id="aba-glautin" hidden>
+    <header class="cabeca" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><canvas id="glautin-retrato" width="22" height="35" style="width:66px;height:105px;image-rendering:pixelated;flex:none" aria-hidden="true"></canvas><div style="flex:1 1 280px;min-width:0"><p class="kicker">Cortes do Glauton · perfil pessoal</p><h1>Glautin</h1>
+      <p class="sub">Pega episódios do CW Cast e de podcasts de fora e corta só os momentos em que o Glauton fala (opinião, número do setor, bastidor, decisão). Edita no modelo Editorial: título em serifa no alto, legenda limpa com as palavras surgindo, palavra-chave em itálico com fio dourado, nome e cargo discretos e cartão com o número quando ele cita um dado. Sem logo, sem CTA e quase sem b-roll. O perfil dele ainda não está ligado: o aprovado vai para a sprint (Perfil Glauton) e a postagem é manual.</p></div></header>
+    <div id="glautin-corpo" style="display:grid;gap:16px"></div>
+  </section>
 
   <section id="aba-esteira" hidden>
     <header class="cabeca" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><canvas id="titeu-retrato" width="22" height="35" style="width:66px;height:105px;image-rendering:pixelated;flex:none" aria-hidden="true"></canvas><div style="flex:1 1 280px;min-width:0"><p class="kicker">Esteira de cortes</p><h1>Titeu</h1>
@@ -763,7 +769,7 @@
 
   <section id="aba-conhecimento" hidden>
     <header class="cabeca"><p class="kicker">Gestão</p><h1>Conhecimento</h1>
-      <p class="sub">O que as IAs do sistema aprendem sozinhas. Todo dia às 20h a Lia lê o trabalho dos agentes que editam (Titeu, Zeca, Breu e Nanquim: ajustes pedidos nos cortes, avisos da conferência automática, recusas na Publicação) e as regras que a Doti tira dos números do Instagram, e transforma os padrões em lições. As conversas do time com o Claude deles não entram.</p></header>
+      <p class="sub">O que as IAs do sistema aprendem sozinhas. Todo dia às 20h a Lia lê o trabalho dos agentes que editam (Titeu, Zeca, Breu, Nanquim e Glautin: ajustes pedidos nos cortes, avisos da conferência automática, recusas na Publicação) e as regras que a Doti tira dos números do Instagram, e transforma os padrões em lições. As conversas do time com o Claude deles não entram.</p></header>
     <div id="con-corpo" style="display:grid;gap:16px"></div>
   </section>
 
@@ -955,16 +961,16 @@
     ["motion", "Legenda e motion"], ["render", "Render"], ["acabamento", "Acabamento (Premiere)"], ["revisao", "Revisão"], ["entrega", "Entrega"]];
   // menu lateral: seções com [id, nome]; "extras" abrem por botão (Pedir edição, no topo)
   const MENU = {
-    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["nanquim", "Nanquim · reflexivo"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]],
+    gestor: [["Operação", [["inicio", "Início"], ["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"]]], ["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["nanquim", "Nanquim · reflexivo"], ["glautin", "Glautin · Glauton"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]],
              ["Gestão", [["relatorio", "Relatório"], ["agentes", "Oficina"], ["conhecimento", "Conhecimento"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["servidor", "Servidor"], ["gestao", "Pessoas"], ["permissoes", "Permissões"]]]],
-    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["nanquim", "Nanquim · reflexivo"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Oficina"]]]],
-    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Oficina"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["nanquim", "Nanquim · reflexivo"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]]],
+    producao: [["Programas", [["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["nanquim", "Nanquim · reflexivo"], ["glautin", "Glautin · Glauton"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]], ["Operação", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Demandas"], ["agentes", "Oficina"]]]],
+    editor: [["Meu trabalho", [["meudia", "Meu dia"], ["escritorio", "Meu computador"], ["agentes", "Oficina"], ["biblioteca", "Biblioteca"], ["ferramentas", "Ferramentas"], ["entregas", "Minhas entregas"]]], ["Time", [["sala", "Sala"], ["aovivo", "Ao vivo"], ["demandas", "Fila"], ["cast", "CW Cast"], ["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["nanquim", "Nanquim · reflexivo"], ["glautin", "Glautin · Glauton"], ["reels", "FabI.Ano · reels"], ["publicacao", "Publicação"]]]],
     solicitante: [["Pedidos", [["pedidos", "Meus pedidos"], ["pedir", "Pedir edição"]]], ["Time", [["sala", "Sala"]]]],
   };
   const EXTRAS = { gestor: ["pedir", "escritorio", "padrao", "kit"], producao: ["pedir"], editor: [], solicitante: [] };   // abas sem item no menu
   // permissões extras (aba Permissões): o que a gestão liberou para esta pessoa além do papel dela
   const tenho = (x) => eu.papel === "gestor" || (eu.extras || []).includes(x);
-  const ABAS_ESTEIRA = [["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["nanquim", "Nanquim · reflexivo"], ["reels", "FabI.Ano · reels"]];
+  const ABAS_ESTEIRA = [["esteira", "Titeu · cortes"], ["canal2", "Zeca · canal 2"], ["dark", "Breu · canal dark"], ["nanquim", "Nanquim · reflexivo"], ["glautin", "Glautin · Glauton"], ["reels", "FabI.Ano · reels"]];
   const ABAS_EXTRA = { operacao: ABAS_ESTEIRA, estilos: ABAS_ESTEIRA, publicacao: [["publicacao", "Publicação"]], contas: [["publicacao", "Publicação"]],
                        servidor: [["servidor", "Servidor"]], conta_claude: [["servidor", "Servidor"]] };
   function menuDe(papel) {
@@ -976,7 +982,7 @@
   }
   const abasDe = (papel) => menuDe(papel).flatMap(([, itens]) => itens.map(([id]) => id)).concat(EXTRAS[papel] || []);
   // menu enxuto (04/11/2026): abas parecidas viram um item só; dentro da aba aparecem as divisões no topo
-  const GRUPOS_MENU = [["g-inicio", "Início", ["inicio", "aovivo"]], ["g-esteira", "Esteira", ["esteira", "canal2", "dark", "nanquim", "reels"]],
+  const GRUPOS_MENU = [["g-inicio", "Início", ["inicio", "aovivo"]], ["g-esteira", "Esteira", ["esteira", "canal2", "dark", "nanquim", "glautin", "reels"]],
                        ["g-ias", "IAs", ["agentes", "conhecimento", "biblioteca", "ferramentas"]], ["g-pessoas", "Pessoas", ["gestao", "permissoes"]]];
   const ICONE_GRUPO = { "g-inicio": "inicio", "g-esteira": "esteira", "g-ias": "agentes", "g-pessoas": "gestao" };
   const GRUPO_LEMBRA = {};   // última divisão aberta de cada grupo
@@ -1030,6 +1036,7 @@
     canal2: "M4 7h16v10H4zM8 21h8M12 17v4M9 10l5 2-5 2z",
     dark: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z",
     nanquim: "M12 2.7C9 7 6 10.2 6 14a6 6 0 0 0 12 0c0-3.8-3-7-6-11.3z",
+    glautin: "M6 4h12M6 20h12M9 4c0 6 6 10 6 16M15 4c0 6-6 10-6 16",
     agentes: "M12 3v3M7 8h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3zM9 13h.01M15 13h.01M9.5 17h5M2 13v2M22 13v2",
     conhecimento: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-1.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z",
     escritorio: "M3 4h18v12H3zM8 20h8M12 16v4",
@@ -1131,7 +1138,7 @@
     const volta = new URLSearchParams(location.search);   // volta do login do Google (Ligar YouTube)
     if (volta.get("yt")) {
       const prog = volta.get("prog") || PUB.prog;
-      if (["cwcast", "canal2", "dark", "nanquim"].includes(prog)) PUB.prog = prog;
+      if (["cwcast", "canal2", "dark", "nanquim", "glautin"].includes(prog)) PUB.prog = prog;
       PUB.ytMsg = { prog: PUB.prog, texto: volta.get("yt") === "ok" ? `Pronto: canal ${volta.get("canal")} ligado. O robô confere e passa a postar nele na próxima passada.` : "Não ligou: " + (volta.get("msg") || "erro") };
       if (volta.get("yt") !== "ok") { const p = volta.get("msg") || ""; const m = /o (Zeca|Breu|Nanquim)/.exec(p); if (m) PUB.prog = { Zeca: "canal2", Breu: "dark", Nanquim: "nanquim" }[m[1]]; PUB.ytMsg.prog = PUB.prog; }
       PUB.abrirCfg = true;   // volta do Google: mostra o cartão do canal aberto
@@ -1321,7 +1328,7 @@
   }
 
   function desenhar() {
-    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, canal2: desenharEsteira, dark: desenharEsteira, nanquim: desenharEsteira, reels: desenharEsteira, inicio: desenharInicio, aovivo: () => { desenharAoVivo(); carregarTiteu().then(() => { if (aba === "aovivo") desenharAoVivo(); }); }, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, permissoes: desenharPermissoes, cast: abrirCast,
+    ({ sala: desenharSala, ferramentas: desenharFerramentas, biblioteca: desenharBiblioteca, publicacao: desenharPublicacao, escritorio: desenharEscritorio, kit: () => { subnavAgentes("kit"); desenharKit(); }, servidor: desenharServidor, conhecimento: desenharConhecimento, agentes: desenharAgentes, esteira: desenharEsteira, canal2: desenharEsteira, dark: desenharEsteira, nanquim: desenharEsteira, glautin: desenharEsteira, reels: desenharEsteira, inicio: desenharInicio, aovivo: () => { desenharAoVivo(); carregarTiteu().then(() => { if (aba === "aovivo") desenharAoVivo(); }); }, demandas: desenharDemandas, relatorio: desenharRelatorio, padrao: () => { subnavAgentes("padrao"); desenharPadrao(); }, gestao: desenharGestao, permissoes: desenharPermissoes, cast: abrirCast,
        meudia: desenharMeuDia, entregas: desenharEntregas, pedidos: desenharPedidos }[aba] || (() => {}))();
   }
 
@@ -1733,7 +1740,7 @@
   // relatório dos agentes (04/11/2026): Titeu, Zeca e Breu; períodos rápidos ou personalizado
   const REL = { periodo: "30", de: "", ate: "" };
   const PERIODOS_REL = [["hoje", "Hoje"], ["2", "2 dias"], ["3", "3 dias"], ["5", "5 dias"], ["7", "7 dias"], ["30", "1 mês"], ["60", "2 meses"], ["90", "3 meses"], ["tudo", "Tudo"], ["pers", "Personalizado"]];
-  const CORES_AGENTE = { titeu: "#7c3aed", zeca: "#0ea5e9", breu: "#111114", nanquim: "#8a8f98" };
+  const CORES_AGENTE = { titeu: "#7c3aed", zeca: "#0ea5e9", breu: "#111114", nanquim: "#8a8f98", glautin: "#b08d57" };
   function periodoRel() {
     const agora = new Date(), v = REL.periodo;
     if (v === "hoje") { const d = new Date(); d.setHours(0, 0, 0, 0); return [d, agora]; }
@@ -1999,7 +2006,7 @@
             hoje: cs.filter((x) => x.estado === "entregue" && x.terminado && new Date(x.terminado) >= hoje0).length,
             conferir: (el.data || []).filter((x) => (x.linha || "cortes") === ln).length, preparando: (ee.data || []).filter((x) => (x.linha || "cortes") === ln).length,
             previas: cs.filter((x) => x.estado === "previa").length }; };
-        SALA.est = contar("cortes"); SALA.estR = contar("reels"); SALA.estZ = contar("canal2"); SALA.estD = contar("dark"); SALA.estN = contar("nanquim");
+        SALA.est = contar("cortes"); SALA.estR = contar("reels"); SALA.estZ = contar("canal2"); SALA.estD = contar("dark"); SALA.estN = contar("nanquim"); SALA.estG = contar("glautin");
         // agente que trabalha quando um vídeo fica pronto (a Capitu, das capas): mesa própria na Edição
         const { data: capAg } = await db.from("agentes").select("id,nome,visual").eq("ativo", true).eq("trabalha", true).or("gatilho.eq.video,papel.eq.design").order("id").limit(4);
         SALA.capistas = capAg || [];   // Capitu (CW Cast) e Tarsila (canais de corte): uma mesa para cada
@@ -2185,6 +2192,7 @@
   const TITEU = { cabelo: "#1c1c28", pele: "#c98a5e", camisa: "#ffb800", calca: "#2a2a33", estilo: 4, acessorio: "fone", barba: "curta" };
   const BREU = { cabelo: "#111114", pele: "#c98e6b", camisa: "#1b1b20", calca: "#0b0b0c", estilo: 1, acessorio: "bone", barba: "cavanhaque" };   // canal dark (preto e vermelho)
   const NANQUIM = { cabelo: "#d6d6da", pele: "#d9a27a", camisa: "#f2f2f2", calca: "#111114", estilo: 3, acessorio: "oculos", barba: "curta" };   // cortes reflexivos (preto e branco)
+  const GLAUTIN = { cabelo: "#2a2018", pele: "#d9a27a", camisa: "#e8c98d", calca: "#1b1822", estilo: 1, acessorio: "", barba: "curta" };   // cortes do Glauton (dourado editorial)
   const ZECA = { cabelo: "#3a2a1c", pele: "#d9a27a", camisa: "#3cff8c", calca: "#1e1e26", estilo: 2, acessorio: "bone", barba: "cavanhaque" };   // canal 2 (verde-neon)
   const LIA = { cabelo: "#1f1a2e", pele: "#8d5a3b", camisa: "#2f8f5b", calca: "#2a2a33", estilo: 3, acessorio: "oculos", feminino: true };
   const BIA = { cabelo: "#c58b4b", pele: "#e0a97f", camisa: "#ff6b5b", calca: "#3b4a6b", estilo: 2, acessorio: "fone", feminino: true };
@@ -2331,11 +2339,12 @@
     if (document.hidden || t - SALA.ultimo < 110) return;   // ~9 quadros por segundo
     SALA.ultimo = t; SALA.quadro++;
     const editores = D.editores.filter((e) => e.ativo);
-    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }, { slug: "__zeca", nome: "Zeca", npc: "zeca" }, { slug: "__breu", nome: "Breu", npc: "breu" }, { slug: "__nanquim", nome: "Nanquim", npc: "nanquim" }].concat((SALA.capistas || []).map((a, k) => ({ slug: "__capista" + k, nome: a.nome, npc: "capista" + k }))))), cv = $("#sala-canvas"), T = TILE;
+    const P = layoutSala(editores.concat([{ slug: "__ze", nome: "Zé Algoritmo", npc: "ze" }, { slug: "__bia", nome: "Doti", npc: "bia" }, { slug: "__titeu", nome: "Titeu", npc: "titeu" }, { slug: "__fabia", nome: "FabI.Ano", npc: "fabia" }, { slug: "__zeca", nome: "Zeca", npc: "zeca" }, { slug: "__breu", nome: "Breu", npc: "breu" }, { slug: "__nanquim", nome: "Nanquim", npc: "nanquim" }, { slug: "__glautin", nome: "Glautin", npc: "glautin" }].concat((SALA.capistas || []).map((a, k) => ({ slug: "__capista" + k, nome: a.nome, npc: "capista" + k }))))), cv = $("#sala-canvas"), T = TILE;
     const mesaZe = P.mesas.find((m) => m.ed.npc === "ze"), mesaBia = P.mesas.find((m) => m.ed.npc === "bia"), mesaTiteu = P.mesas.find((m) => m.ed.npc === "titeu"), mesaFabia = P.mesas.find((m) => m.ed.npc === "fabia"), mesasCapa = (SALA.capistas || []).map((ag, k) => ({ ag, mesa: P.mesas.find((m) => m.ed.npc === "capista" + k) })).filter((x) => x.mesa), mesaZeca = P.mesas.find((m) => m.ed.npc === "zeca");
     // Breu (canal dark) e Nanquim (reflexivo P&B): mesa, boneco, plaquinha e balão iguais aos do Zeca, cada um com o seu monitor
     const CANAIS_SALA = [{ npc: "breu", nome: "Breu", aba: "dark", boneco: BREU, est: () => SALA.estD, luz: "#e5232b", ocioso: "🌑 canal dark no ar" },
-      { npc: "nanquim", nome: "Nanquim", aba: "nanquim", boneco: NANQUIM, est: () => SALA.estN, luz: "#ffd400", ocioso: "🖋️ cortes em P&B" }]
+      { npc: "nanquim", nome: "Nanquim", aba: "nanquim", boneco: NANQUIM, est: () => SALA.estN, luz: "#ffd400", ocioso: "🖋️ cortes em P&B" },
+      { npc: "glautin", nome: "Glautin", aba: "glautin", boneco: GLAUTIN, est: () => SALA.estG, luz: "#e8c98d", ocioso: "✒️ cortes do Glauton" }]
       .map((x) => Object.assign(x, { mesa: P.mesas.find((m) => m.ed.npc === x.npc) })).filter((x) => x.mesa);
     P.mesas = P.mesas.filter((m) => !m.ed.npc);   // as mesas dos agentes (Zé Algoritmo e Doti) na Edição
     if (cv.width !== P.W * SC || cv.height !== P.H * SC) { cv.width = P.W * SC; cv.height = P.H * SC; }
@@ -3634,8 +3643,8 @@
   // ---------------------------------------------------------------- publicação (cortes → redes)
   const PUB = { lista: [], situacao: {}, seg: "aguardando", prog: "cwcast", timer: null, carregado: 0, sel: new Set() };
   // abas por programa: o Canal 2 (Zeca) não é do CW Cast e o robô não posta nas contas do CW Cast (fica guardado até ter as contas dele)
-  const PROG_PUB = [["cwcast", "CW Cast"], ["canal2", "Zeca · Canal 2"], ["dark", "Breu · Canal Dark"], ["nanquim", "Nanquim"]];
-  const progPub = (x) => ["canal2", "dark", "nanquim"].includes(x.programa) ? x.programa : "cwcast";
+  const PROG_PUB = [["cwcast", "CW Cast"], ["canal2", "Zeca · Canal 2"], ["dark", "Breu · Canal Dark"], ["nanquim", "Nanquim"], ["glautin", "Glautin · Perfil Glauton"]];
+  const progPub = (x) => ["canal2", "dark", "nanquim", "glautin"].includes(x.programa) ? x.programa : "cwcast";
   const REDES = [["instagram", "Instagram"], ["tiktok", "TikTok"], ["youtube", "YouTube Shorts"]];
   const ICONES_REDE = {
     instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
@@ -3953,6 +3962,7 @@
     $("#pub-canal2").hidden = PUB.prog !== "canal2";
     $("#pub-dark").hidden = PUB.prog !== "dark";
     $("#pub-nanquim").hidden = PUB.prog !== "nanquim";
+    $("#pub-glautin").hidden = PUB.prog !== "glautin";
     $("#pub-conexoes").hidden = PUB.prog !== "cwcast";   // contas do CW Cast; nos outros canais o cartão do canal mostra as deles
     desenharContaPub(st);
     desenharGradePub();
@@ -4128,7 +4138,7 @@
     $("#detalhe").classList.toggle("compositor", compor);
     $("#detalhe").addEventListener("close", () => { $("#detalhe").classList.remove("compositor"); PUB.aberto = null; }, { once: true });
     let irAba = () => {};   // o compositor troca a aba do texto (ex.: erro do TikTok abre a aba TikTok)
-    const agenteIA = x.destino === "Instagram Cardapio Web" ? "FabI.Ano" : { canal2: "Zeca", dark: "Breu", nanquim: "Nanquim" }[progPub(x)] || "Titeu";   // reels da Cardápio Web: FabI.Ano; cortes: Titeu, Zeca ou Breu
+    const agenteIA = x.destino === "Instagram Cardapio Web" ? "FabI.Ano" : { canal2: "Zeca", dark: "Breu", nanquim: "Nanquim", glautin: "Glautin" }[progPub(x)] || "Titeu";   // reels da Cardápio Web: FabI.Ano; cortes: Titeu, Zeca ou Breu
     const legenda = h("textarea", { id: "pub-legenda", style: "min-height:140px" }); legenda.value = x.legenda || "";
     const contLeg = h("span", { class: "nota" });
     const contar = () => { const n = legenda.value.length, ht = hashtags(legenda.value);
@@ -4184,7 +4194,7 @@
       gradeCapas, statusCapa) : null;
     desenharCapas(); if (capaBox) acompanharCapa();
     const ttTravado = !(PUB.situacao || {}).tiktok_publico;   // até o TikTok aprovar o app, ele só posta em conta privada
-    const soInstagram = ["canal2", "dark", "nanquim"].includes(progPub(x));   // Zeca e Breu: Instagram e, se ligado, o YouTube do canal (TikTok ainda não)
+    const soInstagram = ["canal2", "dark", "nanquim", "glautin"].includes(progPub(x));   // Zeca e Breu: Instagram e, se ligado, o YouTube do canal (TikTok ainda não)
     const ytCanal = soInstagram && !!(((PUB.situacao || {}).contas || {})[progPub(x)] || {}).youtube;
     const caixas = REDES.map(([k, nome]) => { const c = h("input", { type: "checkbox", value: k, style: "width:auto;margin:0" });
       const fora = soInstagram && k !== "instagram" && !(k === "youtube" && ytCanal);
@@ -4274,7 +4284,7 @@
       $("#detalhe").close(); await carregarPublicacao(); desenharPublicacao();
     }
     function montarCompositor() {
-      const st = PUB.situacao || {}, prog = progPub(x), canal2 = ["canal2", "dark", "nanquim"].includes(prog), pv = x.prevoo || {};   // Zeca e Breu: sem as contas do CW Cast
+      const st = PUB.situacao || {}, prog = progPub(x), canal2 = ["canal2", "dark", "nanquim", "glautin"].includes(prog), pv = x.prevoo || {};   // Zeca e Breu: sem as contas do CW Cast
       const nomeProg = (PROG_PUB.find(([k]) => k === prog) || [0, "CW Cast"])[1];
       const vistos = PUB.vistos || [], pos = vistos.findIndex((y) => y.id === x.id);
       const hoje = new Date(), doProg = PUB.lista.filter((y) => progPub(y) === prog);
@@ -4586,7 +4596,7 @@
     }
     return null;
   }
-  const NOME_CONTA_SRV = { esteira: "da esteira (Titeu, Zeca, Breu e Nanquim)", robos: "dos robôs" };
+  const NOME_CONTA_SRV = { esteira: "da esteira (Titeu, Zeca, Breu, Nanquim e Glautin)", robos: "dos robôs" };
   function avisoContaClaude(alvo, conta, limite) {   // gestão: ligar, trocar ou avisar que bateu o limite
     if (!tenho("conta_claude")) return null;
     const ok = conta && conta.estado === "ok", nome = NOME_CONTA_SRV[alvo];
@@ -4892,22 +4902,23 @@
     previa: ["Prévia: aprovar", "tom-aviso"], aprovado: ["Indo para a Publicação", "tom-ok"],
     entregue: ["Na Publicação", "tom-ok"], reprovado: ["Reprovado no QC", "tom-critico"], erro: ["Erro", "tom-critico"] };
   const mmss = (x) => { x = Math.round(+x || 0); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`; };
-  const linhaEst = () => ["reels", "canal2", "dark", "nanquim"].includes(aba) ? aba : "cortes";
-  const corpoEst = () => $({ reels: "#reels-corpo", canal2: "#canal2-corpo", dark: "#dark-corpo", nanquim: "#nanquim-corpo" }[linhaEst()] || "#est-corpo");
-  const nomeLinha = (ln) => ({ reels: "FabI.Ano", canal2: "Zeca", dark: "Breu", nanquim: "Nanquim" }[ln || linhaEst()] || "Titeu");
+  const linhaEst = () => ["reels", "canal2", "dark", "nanquim", "glautin"].includes(aba) ? aba : "cortes";
+  const corpoEst = () => $({ reels: "#reels-corpo", canal2: "#canal2-corpo", dark: "#dark-corpo", nanquim: "#nanquim-corpo", glautin: "#glautin-corpo" }[linhaEst()] || "#est-corpo");
+  const nomeLinha = (ln) => ({ reels: "FabI.Ano", canal2: "Zeca", dark: "Breu", nanquim: "Nanquim", glautin: "Glautin" }[ln || linhaEst()] || "Titeu");
   async function desenharEsteira() {
     { const cv = $("#titeu-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(TITEU, 0), 0, 0); cv.dataset.ok = "1"; } }
     { const cv = $("#fabiano-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(FABIA, 0), 0, 0); cv.dataset.ok = "1"; } }
     { const cv = $("#zeca-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(ZECA, 0), 0, 0); cv.dataset.ok = "1"; } }
     { const cv = $("#breu-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(BREU, 0), 0, 0); cv.dataset.ok = "1"; } }
     { const cv = $("#nanquim-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(NANQUIM, 0), 0, 0); cv.dataset.ok = "1"; } }
+    { const cv = $("#glautin-retrato"); if (cv && !cv.dataset.ok) { cv.getContext("2d").drawImage(bonecoFrente(GLAUTIN, 0), 0, 0); cv.dataset.ok = "1"; } }
     const linha = linhaEst();
     clearInterval(EST.timer);
     EST.timer = setInterval(() => { const a = document.activeElement;
-      if (!["esteira", "reels", "canal2", "dark", "nanquim"].includes(aba)) return clearInterval(EST.timer);
-      if (!document.hidden && !(a && a.closest && a.closest("#est-corpo, #reels-corpo, #canal2-corpo, #dark-corpo, #nanquim-corpo") && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !$("#detalhe").open) desenharEsteira(); }, 10000);
+      if (!["esteira", "reels", "canal2", "dark", "nanquim", "glautin"].includes(aba)) return clearInterval(EST.timer);
+      if (!document.hidden && !(a && a.closest && a.closest("#est-corpo, #reels-corpo, #canal2-corpo, #dark-corpo, #nanquim-corpo, #glautin-corpo") && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !$("#detalhe").open) desenharEsteira(); }, 10000);
     const [eps, lotes, cortes, conta, ests] = await Promise.all([
-      db.from("esteira_episodios").select("*").eq("linha", ["canal2", "dark", "nanquim"].includes(linha) ? "cortes" : linha).neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
+      db.from("esteira_episodios").select("*").eq("linha", ["canal2", "dark", "nanquim", "glautin"].includes(linha) ? "cortes" : linha).neq("estado", "arquivado").order("id", { ascending: false }).limit(20),
       db.from("esteira_lotes").select("*").eq("linha", linha).order("id", { ascending: false }).limit(15),
       db.from("esteira_cortes").select("*").order("id", { ascending: false }).limit(600),   // os mais novos (por ordem, os lotes novos sumiam depois de 600)
       tenho("conta_claude") ? db.from("servidor_conta").select("estado").eq("editor_slug", "esteira").maybeSingle() : Promise.resolve({ data: { estado: "ok" } }),
@@ -5344,6 +5355,7 @@
     { id: "zeca", nome: "Zeca", missao: "Segundo canal do CW Cast: outros momentos dos episódios, edição básica com frases animadas", cores: () => ZECA, abrir: () => trocarAba("canal2"), estilos: () => { EST.vista = "estilos"; trocarAba("canal2"); }, papeis: ["gestor", "producao", "editor"] },
     { id: "breu", nome: "Breu", missao: "Canal dark de cortes (@corte_sdelivery): outros momentos dos episódios, estilo Noir Motion", cores: () => BREU, abrir: () => trocarAba("dark"), estilos: () => { EST.vista = "estilos"; trocarAba("dark"); }, papeis: ["gestor", "producao", "editor"] },
     { id: "nanquim", nome: "Nanquim", missao: "Cortes reflexivos em P&B: quedas, viradas e conselhos dos episódios, com trilha emocional (canal próprio em breve)", cores: () => NANQUIM, abrir: () => trocarAba("nanquim"), estilos: () => { EST.vista = "estilos"; trocarAba("nanquim"); }, papeis: ["gestor", "producao", "editor"] },
+    { id: "glautin", nome: "Glautin", missao: "Cortes do Glauton (CEO) para o perfil pessoal dele, no modelo Editorial: só os momentos em que ele fala", cores: () => GLAUTIN, abrir: () => trocarAba("glautin"), estilos: () => { EST.vista = "estilos"; trocarAba("glautin"); }, papeis: ["gestor", "producao", "editor"] },
     { id: "titeu", nome: "Titeu", missao: "A esteira de cortes: prepara os episódios e produz os cortes em paralelo", cores: () => TITEU, abrir: () => trocarAba("esteira"), estilos: () => { EST.vista = "estilos"; trocarAba("esteira"); }, papeis: ["gestor", "producao", "editor"] },
     { id: "ze", nome: "Zé Algoritmo", missao: "SEO do YouTube do CW Cast (todo dia às 22h)", cores: () => ZE, abrir: () => abrirChatZe(), papeis: ["gestor", "producao"] },
     { id: "bia", nome: "Doti", missao: "Desempenho dos cortes no Instagram (segunda, 9h)", cores: () => BIA, abrir: () => abrirChatAgente("bia"), papeis: ["gestor", "producao", "editor"] },
@@ -5981,7 +5993,7 @@
       tenho("conta_claude") && h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px" }, ["esteira", "robos"].map((a) => {
         const c = contaDe[a], ok = c && c.estado === "ok", lim = a === "esteira" ? SRV.limite : null;
         return h("div", { class: "card", style: "display:grid;gap:8px;min-width:0" },
-          h("div", { style: "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap" }, h("b", {}, a === "esteira" ? "Esteira · Titeu, Zeca, Breu e Nanquim" : "Robôs (agentes)"),
+          h("div", { style: "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap" }, h("b", {}, a === "esteira" ? "Esteira · Titeu, Zeca, Breu, Nanquim e Glautin" : "Robôs (agentes)"),
             h("span", { class: "chip " + (lim ? "tom-erro" : ok ? "tom-ok" : "tom-aviso") }, lim ? "bateu o limite" : ok ? "ligada" : c && c.estado === "link" ? "esperando o código" : "falta ligar")),
           lim ? h("span", { class: "nota" }, "Os cortes param com erro" + (lim.volta ? " (a conta volta " + lim.volta + ")" : "") + ". Troque a conta para seguir agora.") : c ? h("span", { class: "nota" }, "desde " + ha(c.atualizado)) : null,
           h("div", {}, h("button", { class: "botao " + (lim || !ok ? "amarelo" : "leve") + " peq", onclick: () => abrirContaServidor(a) }, ok ? "Trocar a conta" : "Ligar a conta")));
